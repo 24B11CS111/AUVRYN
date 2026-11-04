@@ -1,0 +1,177 @@
+-- ==============================================================================
+-- POSTGRESQL RLS REPRODUCIBLE VERIFICATION SUITE
+-- Executes directly against PostgreSQL / Supabase to verify Row Level Security
+-- Usage:
+--   psql -h <host> -U postgres -d postgres -f supabase/tests/rls_security_verification.sql
+--   or
+--   supabase test db
+-- ==============================================================================
+
+BEGIN;
+
+-- 1. Setup Synthetic Test Environment
+CREATE TEMP TABLE rls_test_results (
+  test_name TEXT,
+  passed BOOLEAN,
+  details TEXT
+);
+
+DO $$
+DECLARE
+  v_user_alice UUID := '11111111-1111-1111-1111-111111111111'; -- Owner of Inst A
+  v_user_bob UUID   := '22222222-2222-2222-2222-222222222222'; -- Admin of Inst A, Owner of Inst B
+  v_user_charlie UUID := '33333333-3333-3333-3333-333333333333'; -- Revoked member of Inst A
+  v_user_david UUID := '44444444-4444-4444-4444-444444444444'; -- Unaffiliated stranger
+
+  v_inst_a UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  v_inst_b UUID := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+  v_campus_a UUID := 'caaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  v_campus_b UUID := 'cbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+  v_count INT;
+  v_error_caught BOOLEAN;
+BEGIN
+  -- Insert Synthetic Profiles
+  INSERT INTO public.profiles (id, email, full_name) VALUES
+    (v_user_alice, 'alice@test.edu', 'Alice Owner'),
+    (v_user_bob, 'bob@test.edu', 'Bob Admin'),
+    (v_user_charlie, 'charlie@test.edu', 'Charlie Revoked'),
+    (v_user_david, 'david@test.edu', 'David Stranger')
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Insert Synthetic Institutions
+  INSERT INTO public.institutions (id, name, slug, code, type, status, city, state, country) VALUES
+    (v_inst_a, 'Synthetic School A', 'syn-school-a', 'SYNA', 'school', 'active', 'City A', 'State A', 'Country A'),
+    (v_inst_b, 'Synthetic College B', 'syn-college-b', 'SYNB', 'degree_college', 'active', 'City B', 'State B', 'Country B')
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Insert Memberships
+  INSERT INTO public.institution_memberships (institution_id, user_id, role, status) VALUES
+    (v_inst_a, v_user_alice, 'owner', 'active'),
+    (v_inst_a, v_user_bob, 'admin', 'active'),
+    (v_inst_a, v_user_charlie, 'faculty', 'revoked'),
+    (v_inst_b, v_user_bob, 'owner', 'active')
+  ON CONFLICT (institution_id, user_id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
+
+  -- Insert Campuses
+  INSERT INTO public.campuses (id, institution_id, name, code, is_primary, city, state, country) VALUES
+    (v_campus_a, v_inst_a, 'Campus A Main', 'CAMPA', true, 'City A', 'State A', 'Country A'),
+    (v_campus_b, v_inst_b, 'Campus B Main', 'CAMPB', true, 'City B', 'State B', 'Country B')
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ============================================================================
+  -- TEST 1: Cross-Tenant Isolation (Alice belongs to Inst A, tries to select Inst B)
+  -- ============================================================================
+  -- Emulate Alice's session
+  PERFORM set_config('role', 'authenticated', true);
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  SELECT count(*) INTO v_count FROM public.campuses WHERE institution_id = v_inst_b;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('1. Cross-Tenant SELECT Isolation', true, 'Alice cannot see Inst B campuses');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('1. Cross-Tenant SELECT Isolation', false, 'LEAK: Alice saw ' || v_count || ' Inst B records');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 2: Cross-Tenant Mutation (Alice tries to insert into Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.campuses (institution_id, name, code, is_primary, city, state, country)
+    VALUES (v_inst_b, 'Rogue Campus', 'ROGUE', false, 'City B', 'State B', 'Country B');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('2. Cross-Tenant INSERT Prevention', true, 'Alice was denied inserting into Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('2. Cross-Tenant INSERT Prevention', false, 'SECURITY FAILURE: Alice inserted into Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 3: Privilege Escalation (Bob is Admin in Inst A, tries to elevate to Owner)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_bob::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    -- Bob tries to promote Charlie to Owner in Inst A
+    UPDATE public.institution_memberships
+    SET role = 'owner'
+    WHERE institution_id = v_inst_a AND user_id = v_user_charlie;
+    -- If RLS denies update, row is filtered out (0 rows updated)
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    IF v_count = 0 THEN
+      v_error_caught := true;
+    END IF;
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('3. Privilege Escalation Prevention', true, 'Admin cannot promote another member to Owner');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('3. Privilege Escalation Prevention', false, 'SECURITY FAILURE: Admin elevated member to Owner');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 4: Revoked Membership Exclusion (Charlie has revoked status in Inst A)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_charlie::text, true);
+
+  SELECT count(*) INTO v_count FROM public.campuses WHERE institution_id = v_inst_a;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('4. Revoked Membership Exclusion', true, 'Revoked user Charlie has 0 access to Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('4. Revoked Membership Exclusion', false, 'LEAK: Revoked member accessed ' || v_count || ' records');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 5: Direct Raw Client INSERT on Institutions (Blocked)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.institutions (name, slug, code, type, city, state, country)
+    VALUES ('Rogue School', 'rogue-school', 'ROGUE', 'school', 'City', 'State', 'Country');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('5. Raw Client Institution INSERT Blocked', true, 'Direct raw insert is forbidden by RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('5. Raw Client Institution INSERT Blocked', false, 'SECURITY FAILURE: Raw institution inserted');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 6: Audit Log Direct Client INSERT (Blocked)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.audit_logs (institution_id, actor_user_id, action, entity_type)
+    VALUES (v_inst_a, v_user_david, 'forged.action', 'institution');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('6. Audit Log Forgery Prevention', true, 'Direct client audit log insert is blocked');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('6. Audit Log Forgery Prevention', false, 'SECURITY FAILURE: Direct client inserted audit log');
+  END IF;
+
+END $$;
+
+-- Print test report
+SELECT test_name, passed, details FROM rls_test_results;
+
+ROLLBACK;

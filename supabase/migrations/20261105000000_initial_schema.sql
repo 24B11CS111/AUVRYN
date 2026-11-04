@@ -1,13 +1,14 @@
 -- ==============================================================================
 -- MULTI-INSTITUTION EDUCATION MANAGEMENT PLATFORM
--- Initial Database Migration: Multi-Tenant Schema, RLS Policies, Functions
+-- Authoritative Supabase Migration: 20261105000000_initial_schema.sql
+-- Multi-Tenant Database Architecture, Role-Based Access Control, and Hardened RLS
 -- ==============================================================================
 
--- 1. Enable required PostgreSQL extensions
+-- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 2. Define Domain Enums
+-- 2. Domain Enums
 DO $$ BEGIN
   CREATE TYPE institution_type AS ENUM (
     'school',
@@ -70,7 +71,7 @@ END $$;
 -- 3. Core Tables
 -- ==============================================================================
 
--- 3.1 User Profiles (linked to auth.users)
+-- 3.1 User Profiles (linked 1:1 to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
@@ -81,7 +82,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
--- 3.2 Institutions (The Tenant Entity)
+-- 3.2 Institutions (The Multi-Tenant Root Entity)
 CREATE TABLE IF NOT EXISTS public.institutions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -103,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.institutions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
--- 3.3 Institution Memberships (Users <-> Institutions with RBAC)
+-- 3.3 Institution Memberships (Single Identity <-> Multi-Tenant Affiliations)
 CREATE TABLE IF NOT EXISTS public.institution_memberships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   institution_id UUID NOT NULL REFERENCES public.institutions(id) ON DELETE CASCADE,
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS public.institution_memberships (
   CONSTRAINT uq_institution_member UNIQUE(institution_id, user_id)
 );
 
--- 3.4 Campuses (Multi-campus management per institution)
+-- 3.4 Campuses (Multi-campus hierarchy per institution)
 CREATE TABLE IF NOT EXISTS public.campuses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   institution_id UUID NOT NULL REFERENCES public.institutions(id) ON DELETE CASCADE,
@@ -169,7 +170,7 @@ CREATE TABLE IF NOT EXISTS public.academic_terms (
   CONSTRAINT chk_term_dates CHECK (start_date < end_date)
 );
 
--- 3.6 Audit Logs (Immutable security tracking)
+-- 3.6 Audit Logs (Immutable, Tamper-Resistant Security Ledger)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   institution_id UUID NOT NULL REFERENCES public.institutions(id) ON DELETE CASCADE,
@@ -200,10 +201,10 @@ CREATE INDEX IF NOT EXISTS idx_academic_terms_institution_id ON public.academic_
 CREATE INDEX IF NOT EXISTS idx_audit_logs_institution_id ON public.audit_logs(institution_id, created_at DESC);
 
 -- ==============================================================================
--- 5. Helper Functions for Security and Access Control
+-- 5. Helper Functions for Security and Access Control (SECURITY DEFINER)
 -- ==============================================================================
 
--- 5.1 Helper: Get all active institution IDs for the current authenticated user
+-- 5.1 Helper: Get all active institution IDs for current authenticated caller
 CREATE OR REPLACE FUNCTION public.get_user_institution_ids()
 RETURNS TABLE (institution_id UUID)
 LANGUAGE sql
@@ -217,7 +218,7 @@ AS $$
     AND m.status = 'active';
 $$;
 
--- 5.2 Helper: Check if user is an active member with specific roles
+-- 5.2 Helper: Check if caller holds specific active roles in target institution
 CREATE OR REPLACE FUNCTION public.has_institution_role(
   p_institution_id UUID,
   p_roles membership_role[]
@@ -238,7 +239,7 @@ AS $$
   );
 $$;
 
--- 5.3 Helper: Check if user is an active member
+-- 5.3 Helper: Check if caller is an active member in target institution
 CREATE OR REPLACE FUNCTION public.is_institution_member(
   p_institution_id UUID
 )
@@ -257,11 +258,87 @@ AS $$
   );
 $$;
 
+-- 5.4 Helper: Check if caller is specifically an active OWNER of the institution
+CREATE OR REPLACE FUNCTION public.is_institution_owner(
+  p_institution_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.institution_memberships m
+    WHERE m.institution_id = p_institution_id
+      AND m.user_id = auth.uid()
+      AND m.role = 'owner'
+      AND m.status = 'active'
+  );
+$$;
+
+-- 5.5 Helper: Check if target user shares at least one active institution with caller
+CREATE OR REPLACE FUNCTION public.shares_active_institution_with(
+  p_target_user_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.institution_memberships m1
+    JOIN public.institution_memberships m2 ON m1.institution_id = m2.institution_id
+    WHERE m1.user_id = auth.uid()
+      AND m1.status = 'active'
+      AND m2.user_id = p_target_user_id
+      AND m2.status = 'active'
+  );
+$$;
+
+-- 5.6 Helper: Record tamper-resistant audit event
+CREATE OR REPLACE FUNCTION public.log_institution_audit_event(
+  p_institution_id UUID,
+  p_action TEXT,
+  p_entity_type TEXT,
+  p_entity_id TEXT DEFAULT NULL,
+  p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_log_id UUID;
+BEGIN
+  INSERT INTO public.audit_logs (
+    institution_id,
+    actor_user_id,
+    action,
+    entity_type,
+    entity_id,
+    metadata
+  ) VALUES (
+    p_institution_id,
+    auth.uid(),
+    p_action,
+    p_entity_type,
+    p_entity_id,
+    p_metadata
+  )
+  RETURNING id INTO v_log_id;
+
+  RETURN v_log_id;
+END;
+$$;
+
 -- ==============================================================================
 -- 6. Atomic Onboarding Stored Procedure
 -- ==============================================================================
--- Runs as an atomic transaction creating the institution, owner membership,
--- initial campus, initial academic year, and initial audit log.
 CREATE OR REPLACE FUNCTION public.create_institution_with_owner(
   p_name TEXT,
   p_slug TEXT,
@@ -460,7 +537,7 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- ==============================================================================
--- 8. ROW LEVEL SECURITY (RLS) POLICIES
+-- 8. HARDENED ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 
 -- Enable RLS on all tables
@@ -473,19 +550,11 @@ ALTER TABLE public.academic_terms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- 8.1 Profiles Policies
--- Users can read their own profile OR profiles of members in institutions they share
+-- Non-recursive profile read: Self OR shares active institution membership
 CREATE POLICY "profiles_select_policy" ON public.profiles
   FOR SELECT TO authenticated
   USING (
-    id = auth.uid() OR
-    EXISTS (
-      SELECT 1 FROM public.institution_memberships m1
-      JOIN public.institution_memberships m2 ON m1.institution_id = m2.institution_id
-      WHERE m1.user_id = auth.uid()
-        AND m1.status = 'active'
-        AND m2.user_id = profiles.id
-        AND m2.status = 'active'
-    )
+    id = auth.uid() OR public.shares_active_institution_with(id)
   );
 
 -- Users can update only their own profile
@@ -502,10 +571,11 @@ CREATE POLICY "institutions_select_policy" ON public.institutions
     id IN (SELECT institution_id FROM public.get_user_institution_ids())
   );
 
--- Authenticated users can insert an institution (or via create_institution_with_owner)
+-- Direct client INSERT into institutions is forbidden.
+-- Institutions must be created via atomic create_institution_with_owner() or service_role.
 CREATE POLICY "institutions_insert_policy" ON public.institutions
   FOR INSERT TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (false);
 
 -- Only owners and admins can update an institution's details
 CREATE POLICY "institutions_update_policy" ON public.institutions
@@ -532,39 +602,57 @@ CREATE POLICY "memberships_select_policy" ON public.institution_memberships
     institution_id IN (SELECT institution_id FROM public.get_user_institution_ids())
   );
 
--- Only owners and admins can insert new memberships
+-- Insert policy with privilege boundary protections:
+-- - Must be owner or admin
+-- - Only an owner can grant the 'owner' role
+-- - User cannot insert a membership for themselves (prevents self-invitation/assignment)
 CREATE POLICY "memberships_insert_policy" ON public.institution_memberships
   FOR INSERT TO authenticated
   WITH CHECK (
     public.has_institution_role(institution_id, ARRAY['owner'::membership_role, 'admin'::membership_role])
+    AND
+    (role != 'owner'::membership_role OR public.is_institution_owner(institution_id))
+    AND
+    (user_id != auth.uid())
   );
 
--- Only owners and admins can update memberships
+-- Update policy with privilege boundary protections:
+-- - Admins cannot elevate anyone or themselves to owner
+-- - Admins cannot mutate or demote an owner's record
+-- - Admins cannot alter their own membership record (prevents self-escalation)
 CREATE POLICY "memberships_update_policy" ON public.institution_memberships
   FOR UPDATE TO authenticated
   USING (
     public.has_institution_role(institution_id, ARRAY['owner'::membership_role, 'admin'::membership_role])
+    AND
+    (role != 'owner'::membership_role OR public.is_institution_owner(institution_id))
+    AND
+    (user_id != auth.uid() OR public.is_institution_owner(institution_id))
   )
   WITH CHECK (
     public.has_institution_role(institution_id, ARRAY['owner'::membership_role, 'admin'::membership_role])
+    AND
+    (role != 'owner'::membership_role OR public.is_institution_owner(institution_id))
+    AND
+    (user_id != auth.uid() OR public.is_institution_owner(institution_id))
   );
 
--- Only owners can delete memberships
+-- Delete policy: Only owner can delete memberships, and owner cannot delete themselves
 CREATE POLICY "memberships_delete_policy" ON public.institution_memberships
   FOR DELETE TO authenticated
   USING (
-    public.has_institution_role(institution_id, ARRAY['owner'::membership_role])
+    public.is_institution_owner(institution_id)
+    AND
+    user_id != auth.uid()
   );
 
 -- 8.4 Campuses Policies
--- Members of the institution can view campuses
 CREATE POLICY "campuses_select_policy" ON public.campuses
   FOR SELECT TO authenticated
   USING (
     institution_id IN (SELECT institution_id FROM public.get_user_institution_ids())
   );
 
--- Owners and admins can manage campuses
 CREATE POLICY "campuses_insert_policy" ON public.campuses
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -587,14 +675,12 @@ CREATE POLICY "campuses_delete_policy" ON public.campuses
   );
 
 -- 8.5 Academic Years & Terms Policies
--- Members can view academic years
 CREATE POLICY "academic_years_select_policy" ON public.academic_years
   FOR SELECT TO authenticated
   USING (
     institution_id IN (SELECT institution_id FROM public.get_user_institution_ids())
   );
 
--- Owners, admins, and academic_admins can manage academic years
 CREATE POLICY "academic_years_insert_policy" ON public.academic_years
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -616,7 +702,6 @@ CREATE POLICY "academic_years_delete_policy" ON public.academic_years
     public.has_institution_role(institution_id, ARRAY['owner'::membership_role, 'admin'::membership_role])
   );
 
--- Academic Terms
 CREATE POLICY "academic_terms_select_policy" ON public.academic_terms
   FOR SELECT TO authenticated
   USING (
@@ -640,13 +725,11 @@ CREATE POLICY "audit_logs_select_policy" ON public.audit_logs
     public.has_institution_role(institution_id, ARRAY['owner'::membership_role, 'admin'::membership_role])
   );
 
--- Inserting audit logs is handled by triggers and secure functions; authenticated users cannot insert arbitary audit logs
+-- Direct client INSERT into audit logs is forbidden.
+-- Audit logs must only be written by system functions / triggers (log_institution_audit_event).
 CREATE POLICY "audit_logs_insert_policy" ON public.audit_logs
   FOR INSERT TO authenticated
-  WITH CHECK (
-    actor_user_id = auth.uid() AND
-    public.is_institution_member(institution_id)
-  );
+  WITH CHECK (false);
 
--- Audit logs cannot be updated or deleted by anyone (immutable records)
--- (No UPDATE or DELETE policies created, meaning all updates and deletes are denied by RLS)
+-- No UPDATE or DELETE policies are declared.
+-- Row Level Security denies all UPDATE and DELETE requests on audit_logs by default.

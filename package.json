@@ -7,9 +7,16 @@
     "packages/*",
     "apps/*"
   ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "vitest run",
+    "test": "vitest run tests/unit tests/security",
+    "test:unit": "vitest run tests/unit",
+    "test:security": "vitest run tests/security",
+    "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

@@ -6,9 +6,9 @@ import {
   campusCreateSchema,
   academicYearCreateSchema,
   onboardingFlowSchema,
-} from '../packages/validators/src';
+} from '../../packages/validators/src';
 
-describe('Authentication Schemas', () => {
+describe('Unit: Authentication Schemas', () => {
   it('validates correct login credentials', () => {
     const result = loginSchema.safeParse({
       email: 'admin@school.edu',
@@ -63,7 +63,7 @@ describe('Authentication Schemas', () => {
   });
 });
 
-describe('Institution & Onboarding Schemas', () => {
+describe('Unit: Institution & Onboarding Schemas', () => {
   it('validates all supported institution types', () => {
     const types = [
       'school',
@@ -126,7 +126,7 @@ describe('Institution & Onboarding Schemas', () => {
       name: '2026-2027',
       code: 'AY26-27',
       startDate: '2027-06-01',
-      endDate: '2026-05-31', // inverted dates
+      endDate: '2026-05-31',
       termSystem: 'semester',
       isCurrent: true,
     });

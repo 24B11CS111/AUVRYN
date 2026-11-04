@@ -3,9 +3,9 @@ import {
   ROLE_PERMISSIONS,
   type Role,
   type Permission,
-} from '../packages/types/src';
+} from '../../packages/types/src';
 
-describe('Role-Based Access Control (RBAC) Permissions Matrix', () => {
+describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
   function checkPermission(role: Role, requiredPermission: Permission): boolean {
     const rolePermissions = ROLE_PERMISSIONS[role] || [];
     return rolePermissions.includes(requiredPermission);
@@ -21,7 +21,7 @@ describe('Role-Based Access Control (RBAC) Permissions Matrix', () => {
     expect(ownerPermissions).toContain('billing:manage');
   });
 
-  it('verifies Admin has administrative rights but restricted from billing', () => {
+  it('verifies Admin has administrative rights but is strictly barred from billing', () => {
     expect(checkPermission('admin', 'institution:manage')).toBe(true);
     expect(checkPermission('admin', 'members:manage')).toBe(true);
     expect(checkPermission('admin', 'audit:view')).toBe(true);
