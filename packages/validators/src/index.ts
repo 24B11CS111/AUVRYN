@@ -907,3 +907,189 @@ export const staffInvitationAcceptSchema = z.object({
 });
 
 export type StaffInvitationAcceptInput = z.input<typeof staffInvitationAcceptSchema>;
+
+// ==========================================
+// 9. Attendance & Leave Management Schemas (Milestone 5)
+// ==========================================
+
+export const attendanceStatusEnum = z.enum([
+  'present',
+  'absent',
+  'late',
+  'half_day',
+  'excused',
+  'on_leave',
+]);
+
+export const attendanceSessionTypeEnum = z.enum([
+  'daily',
+  'lecture',
+  'lab',
+  'practical',
+  'tutorial',
+]);
+
+export const attendanceSessionStatusEnum = z.enum([
+  'draft',
+  'submitted',
+  'locked',
+]);
+
+export const staffAttendanceStatusEnum = z.enum([
+  'present',
+  'absent',
+  'late',
+  'half_day',
+  'on_leave',
+  'excused',
+]);
+
+export const leaveApplicantTypeEnum = z.enum([
+  'student',
+  'staff',
+]);
+
+export const leaveTypeEnum = z.enum([
+  'casual',
+  'sick',
+  'medical',
+  'academic',
+  'bereavement',
+  'maternity',
+  'emergency',
+  'other',
+]);
+
+export const leaveStatusEnum = z.enum([
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
+
+export const notificationDeliveryStatusEnum = z.enum([
+  'pending',
+  'queued',
+  'delivered',
+  'failed',
+]);
+
+export const attendanceSessionCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Valid Class ID is required'),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  subjectId: z.string().uuid('Invalid Subject ID').optional().nullable().or(z.literal('')),
+  sessionDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Session Date (YYYY-MM-DD) is required')
+    .refine((val) => {
+      // Validate date is not in the future beyond today (UTC)
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      return val <= todayStr;
+    }, 'Attendance session date cannot be in the future'),
+  sessionType: attendanceSessionTypeEnum.default('daily'),
+  periodNumber: z.coerce.number().int().min(1).max(20).optional().nullable(),
+  startTime: z.string().trim().max(10).optional().or(z.literal('')),
+  endTime: z.string().trim().max(10).optional().or(z.literal('')),
+  topicCovered: z.string().trim().max(300).optional().or(z.literal('')),
+  markedByStaffId: z.string().uuid('Invalid Staff ID').optional().nullable().or(z.literal('')),
+});
+
+export type AttendanceSessionCreateInput = z.input<typeof attendanceSessionCreateSchema>;
+
+export const studentAttendanceItemSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  enrollmentId: z.string().uuid('Invalid Enrollment ID').optional().nullable().or(z.literal('')),
+  status: attendanceStatusEnum.default('present'),
+  remarks: z.string().trim().max(250).optional().or(z.literal('')),
+  isExcused: z.boolean().default(false),
+});
+
+export const studentAttendanceBatchSchema = z.object({
+  sessionId: z.string().uuid('Valid Session ID is required'),
+  records: z.array(studentAttendanceItemSchema).min(1, 'At least one student record is required to submit attendance'),
+});
+
+export type StudentAttendanceBatchInput = z.input<typeof studentAttendanceBatchSchema>;
+
+export const studentAttendanceCorrectionSchema = z.object({
+  recordId: z.string().uuid('Valid Record ID is required'),
+  newStatus: attendanceStatusEnum,
+  reason: z
+    .string()
+    .trim()
+    .min(3, 'Correction reason must be at least 3 characters')
+    .max(300, 'Correction reason cannot exceed 300 characters'),
+});
+
+export type StudentAttendanceCorrectionInput = z.input<typeof studentAttendanceCorrectionSchema>;
+
+export const staffAttendanceItemSchema = z.object({
+  staffId: z.string().uuid('Valid Staff ID is required'),
+  status: staffAttendanceStatusEnum.default('present'),
+  checkInTime: z.string().trim().max(10).optional().or(z.literal('')),
+  checkOutTime: z.string().trim().max(10).optional().or(z.literal('')),
+  remarks: z.string().trim().max(250).optional().or(z.literal('')),
+});
+
+export const staffAttendanceBatchSchema = z.object({
+  attendanceDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date (YYYY-MM-DD) is required')
+    .refine((val) => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      return val <= todayStr;
+    }, 'Staff attendance date cannot be in the future'),
+  records: z.array(staffAttendanceItemSchema).min(1, 'At least one staff record is required'),
+});
+
+export type StaffAttendanceBatchInput = z.input<typeof staffAttendanceBatchSchema>;
+
+export const staffAttendanceCorrectionSchema = z.object({
+  recordId: z.string().uuid('Valid Record ID is required'),
+  newStatus: staffAttendanceStatusEnum,
+  reason: z
+    .string()
+    .trim()
+    .min(3, 'Correction reason must be at least 3 characters')
+    .max(300, 'Correction reason cannot exceed 300 characters'),
+});
+
+export type StaffAttendanceCorrectionInput = z.input<typeof staffAttendanceCorrectionSchema>;
+
+export const leaveRequestCreateSchema = z.object({
+  applicantType: leaveApplicantTypeEnum,
+  studentId: z.string().uuid('Invalid Student ID').optional().nullable().or(z.literal('')),
+  staffId: z.string().uuid('Invalid Staff ID').optional().nullable().or(z.literal('')),
+  leaveType: leaveTypeEnum.default('casual'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Start Date (YYYY-MM-DD) is required'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid End Date (YYYY-MM-DD) is required'),
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(500),
+  supportingDocumentUrl: z.string().url('Invalid supporting document URL').optional().or(z.literal('')),
+}).refine((data) => {
+  return data.endDate >= data.startDate;
+}, {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
+}).refine((data) => {
+  if (data.applicantType === 'student') {
+    return !!data.studentId;
+  }
+  return !!data.staffId;
+}, {
+  message: 'Valid applicant identifier required for the chosen applicant type',
+  path: ['applicantType'],
+});
+
+export type LeaveRequestCreateInput = z.input<typeof leaveRequestCreateSchema>;
+
+export const leaveRequestReviewSchema = z.object({
+  leaveRequestId: z.string().uuid('Valid Leave Request ID is required'),
+  status: z.enum(['approved', 'rejected']),
+  reviewRemarks: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type LeaveRequestReviewInput = z.input<typeof leaveRequestReviewSchema>;
+

@@ -14,6 +14,7 @@ import {
   UserCheck,
   ClipboardList,
   UserCog,
+  CalendarCheck,
   FileClock,
   Settings,
   Shield,
@@ -80,6 +81,12 @@ export function Sidebar({
       href: '/dashboard/staff',
       icon: UserCog,
       roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'accountant', 'staff'],
+    },
+    {
+      label: 'Attendance',
+      href: '/dashboard/attendance',
+      icon: CalendarCheck,
+      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
     },
     {
       label: 'Audit Trail',

@@ -169,7 +169,14 @@ export type Permission =
   | 'documents:manage'
   | 'documents:verify'
   | 'audit:view'
-  | 'billing:manage';
+  | 'billing:manage'
+  | 'attendance:mark'
+  | 'attendance:view'
+  | 'attendance:correct'
+  | 'attendance:reports'
+  | 'leaves:apply'
+  | 'leaves:approve'
+  | 'leaves:view';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -196,6 +203,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'documents:verify',
     'audit:view',
     'billing:manage',
+    'attendance:mark',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:approve',
+    'leaves:view',
   ],
   admin: [
     'institution:manage',
@@ -220,6 +234,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'documents:manage',
     'documents:verify',
     'audit:view',
+    'attendance:mark',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:approve',
+    'leaves:view',
   ],
   hr_administrator: [
     'institution:view',
@@ -233,6 +254,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'documents:manage',
     'documents:verify',
     'students:view',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:approve',
+    'leaves:view',
   ],
   academic_admin: [
     'institution:view',
@@ -245,6 +272,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'guardians:view',
     'staff:view',
     'faculty:assign',
+    'attendance:mark',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:approve',
+    'leaves:view',
   ],
   department_head: [
     'institution:view',
@@ -255,6 +289,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'guardians:view',
     'staff:view',
     'faculty:assign',
+    'attendance:mark',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:approve',
+    'leaves:view',
   ],
   admissions_officer: [
     'institution:view',
@@ -269,6 +310,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'admissions:view',
     'documents:manage',
     'documents:verify',
+    'attendance:view',
+    'leaves:apply',
+    'leaves:view',
   ],
   faculty: [
     'institution:view',
@@ -278,29 +322,48 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'students:view',
     'guardians:view',
     'staff:view',
+    'attendance:mark',
+    'attendance:view',
+    'attendance:correct',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:view',
   ],
   staff: [
     'institution:view',
     'campuses:view',
     'students:view',
     'staff:view',
+    'attendance:view',
+    'leaves:apply',
+    'leaves:view',
   ],
   accountant: [
     'institution:view',
     'students:view',
     'staff:view',
     'billing:manage',
+    'attendance:view',
+    'attendance:reports',
+    'leaves:apply',
+    'leaves:view',
   ],
   student: [
     'institution:view',
     'academics:view',
     'students:view',
+    'attendance:view',
+    'leaves:apply',
+    'leaves:view',
   ],
   parent: [
     'institution:view',
     'academics:view',
     'students:view',
     'guardians:view',
+    'attendance:view',
+    'leaves:apply',
+    'leaves:view',
   ],
 };
 
@@ -1015,3 +1078,251 @@ export interface StaffInvitation {
   staff?: StaffProfile | null;
   inviter?: Profile | null;
 }
+
+// ==========================================
+// 9. Universal Attendance & Leave Management (Milestone 5)
+// ==========================================
+
+export type AttendanceStatus =
+  | 'present'
+  | 'absent'
+  | 'late'
+  | 'half_day'
+  | 'excused'
+  | 'on_leave';
+
+export type AttendanceSessionType =
+  | 'daily'
+  | 'lecture'
+  | 'lab'
+  | 'practical'
+  | 'tutorial';
+
+export type AttendanceSessionStatus =
+  | 'draft'
+  | 'submitted'
+  | 'locked';
+
+export type StaffAttendanceStatus =
+  | 'present'
+  | 'absent'
+  | 'late'
+  | 'half_day'
+  | 'on_leave'
+  | 'excused';
+
+export type LeaveApplicantType =
+  | 'student'
+  | 'staff';
+
+export type LeaveType =
+  | 'casual'
+  | 'sick'
+  | 'medical'
+  | 'academic'
+  | 'bereavement'
+  | 'maternity'
+  | 'emergency'
+  | 'other';
+
+export type LeaveStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled';
+
+export type NotificationDeliveryStatus =
+  | 'pending'
+  | 'queued'
+  | 'delivered'
+  | 'failed';
+
+export interface LeaveRequest {
+  id: string;
+  institutionId: string;
+  applicantType: LeaveApplicantType;
+  studentId?: string | null;
+  staffId?: string | null;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  supportingDocumentUrl?: string | null;
+  status: LeaveStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewRemarks?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  student?: Student;
+  staff?: StaffProfile;
+  reviewer?: Profile;
+}
+
+export interface AttendanceSession {
+  id: string;
+  institutionId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  classId: string;
+  sectionId?: string | null;
+  subjectId?: string | null;
+  sessionDate: string;
+  sessionType: AttendanceSessionType;
+  periodNumber?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  topicCovered?: string | null;
+  markedByStaffId?: string | null;
+  status: AttendanceSessionStatus;
+  totalStudents: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  halfDayCount: number;
+  excusedCount: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  academicYear?: AcademicYear;
+  campus?: Campus | null;
+  academicClass?: AcademicClass;
+  section?: AcademicSection | null;
+  subject?: AcademicSubject | null;
+  markedByStaff?: StaffProfile | null;
+}
+
+export interface StudentAttendanceRecord {
+  id: string;
+  institutionId: string;
+  sessionId: string;
+  studentId: string;
+  enrollmentId?: string | null;
+  status: AttendanceStatus;
+  remarks?: string | null;
+  isExcused: boolean;
+  leaveRequestId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  student?: Student;
+  session?: AttendanceSession;
+  enrollment?: StudentEnrollment;
+  leaveRequest?: LeaveRequest;
+}
+
+export interface AttendanceCorrection {
+  id: string;
+  institutionId: string;
+  recordId: string;
+  sessionId: string;
+  studentId: string;
+  previousStatus: AttendanceStatus;
+  newStatus: AttendanceStatus;
+  reason: string;
+  correctedBy: string;
+  correctedAt: string;
+  // Joins
+  corrector?: Profile;
+  student?: Student;
+}
+
+export interface StaffAttendanceRecord {
+  id: string;
+  institutionId: string;
+  staffId: string;
+  attendanceDate: string;
+  status: StaffAttendanceStatus;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  remarks?: string | null;
+  leaveRequestId?: string | null;
+  markedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  staff?: StaffProfile;
+  leaveRequest?: LeaveRequest;
+  marker?: Profile;
+}
+
+export interface StaffAttendanceCorrection {
+  id: string;
+  institutionId: string;
+  recordId: string;
+  staffId: string;
+  previousStatus: StaffAttendanceStatus;
+  newStatus: StaffAttendanceStatus;
+  reason: string;
+  correctedBy: string;
+  correctedAt: string;
+  // Joins
+  corrector?: Profile;
+  staff?: StaffProfile;
+}
+
+export interface AttendanceNotification {
+  id: string;
+  institutionId: string;
+  sessionId: string;
+  recordId: string;
+  studentId: string;
+  guardianId: string;
+  channel: string;
+  status: NotificationDeliveryStatus;
+  title: string;
+  message: string;
+  deliveryError?: string | null;
+  sentAt?: string | null;
+  createdAt: string;
+  // Joins
+  student?: Student;
+  guardian?: Guardian;
+}
+
+export interface AttendanceOverviewStats {
+  date: string;
+  totalSessions: number;
+  totalStudentsRecorded: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  halfDayCount: number;
+  excusedCount: number;
+  attendancePercentage: number;
+  staffTotal: number;
+  staffPresent: number;
+  staffAbsent: number;
+  staffOnLeave: number;
+}
+
+export interface ClassAttendanceSummary {
+  classId: string;
+  className: string;
+  sectionId?: string | null;
+  sectionName?: string | null;
+  totalStudents: number;
+  presentCount: number;
+  absentCount: number;
+  attendancePercentage: number;
+}
+
+export interface StudentAttendanceMetric {
+  studentId: string;
+  admissionNumber: string;
+  studentName: string;
+  className: string;
+  sectionName?: string | null;
+  totalSessions: number;
+  attendedSessions: number; // Present + Late + (HalfDay * 0.5)
+  absentSessions: number;
+  attendancePercentage: number;
+  isShortage: boolean; // < 75%
+}
+

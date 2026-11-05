@@ -115,4 +115,36 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'institution:manage')).toBe(false);
     }
   });
+
+  it('verifies Attendance & Leave management permissions matrix', () => {
+    // Faculty can mark, view and correct attendance
+    expect(checkPermission('faculty', 'attendance:mark')).toBe(true);
+    expect(checkPermission('faculty', 'attendance:view')).toBe(true);
+    expect(checkPermission('faculty', 'attendance:correct')).toBe(true);
+    expect(checkPermission('faculty', 'attendance:reports')).toBe(true);
+    expect(checkPermission('faculty', 'leaves:apply')).toBe(true);
+    expect(checkPermission('faculty', 'leaves:approve')).toBe(false);
+
+    // Academic Admin and Department Head can approve leaves and manage attendance
+    expect(checkPermission('academic_admin', 'attendance:mark')).toBe(true);
+    expect(checkPermission('academic_admin', 'leaves:approve')).toBe(true);
+    expect(checkPermission('department_head', 'attendance:mark')).toBe(true);
+    expect(checkPermission('department_head', 'leaves:approve')).toBe(true);
+
+    // HR Administrator can view/correct attendance and approve staff leaves
+    expect(checkPermission('hr_administrator', 'attendance:view')).toBe(true);
+    expect(checkPermission('hr_administrator', 'attendance:correct')).toBe(true);
+    expect(checkPermission('hr_administrator', 'leaves:approve')).toBe(true);
+
+    // Students and Parents have view-only attendance & apply-only leave permissions
+    const viewerRoles: Role[] = ['student', 'parent'];
+    for (const r of viewerRoles) {
+      expect(checkPermission(r, 'attendance:view')).toBe(true);
+      expect(checkPermission(r, 'leaves:apply')).toBe(true);
+      expect(checkPermission(r, 'leaves:view')).toBe(true);
+      expect(checkPermission(r, 'attendance:mark')).toBe(false);
+      expect(checkPermission(r, 'attendance:correct')).toBe(false);
+      expect(checkPermission(r, 'leaves:approve')).toBe(false);
+    }
+  });
 });

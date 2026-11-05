@@ -387,6 +387,64 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('17. Stranger Staff Read Block', false, 'SECURITY FAILURE: David can read staff profiles across institutions');
   END IF;
 
+  -- ============================================================================
+  -- TEST 18: Authorized Attendance Session Creation in Inst A
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.attendance_sessions (
+      institution_id, academic_year_id, class_id, session_date, session_type
+    ) VALUES (
+      v_inst_a, '22222222-2222-2222-2222-222222222222', '44444444-4444-4444-4444-444444444444',
+      CURRENT_DATE, 'daily'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('18. Authorized Attendance Creation', true, 'Alice created attendance session in Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('18. Authorized Attendance Creation', false, 'FAILURE: Alice could not create attendance session');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 19: Cross-Tenant Attendance Write Block (Alice -> Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.attendance_sessions (
+      institution_id, academic_year_id, class_id, session_date, session_type
+    ) VALUES (
+      v_inst_b, '22222222-2222-2222-2222-222222222222', '44444444-4444-4444-4444-444444444444',
+      CURRENT_DATE, 'daily'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('19. Cross-Tenant Attendance Write Block', true, 'Alice blocked from creating attendance session in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('19. Cross-Tenant Attendance Write Block', false, 'SECURITY FAILURE: Alice created attendance session in Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 20: Stranger Attendance Read Block (David sees 0 attendance records)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.attendance_sessions;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('20. Stranger Attendance Read Block', true, 'David sees 0 attendance sessions due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('20. Stranger Attendance Read Block', false, 'SECURITY FAILURE: David can read attendance sessions');
+  END IF;
+
 END $$;
 
 -- Print test report

@@ -43,3 +43,11 @@ export function CardDescription({ className, children, ...props }: React.HTMLAtt
     </p>
   );
 }
+
+export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  );
+}

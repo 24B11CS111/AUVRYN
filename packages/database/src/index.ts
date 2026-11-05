@@ -1404,6 +1404,366 @@ export interface Database {
         };
         Relationships: [];
       };
+      leave_requests: {
+        Row: {
+          id: string;
+          institution_id: string;
+          applicant_type: 'student' | 'staff';
+          student_id: string | null;
+          staff_id: string | null;
+          leave_type: 'casual' | 'sick' | 'medical' | 'academic' | 'bereavement' | 'maternity' | 'emergency' | 'other';
+          start_date: string;
+          end_date: string;
+          reason: string;
+          supporting_document_url: string | null;
+          status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_remarks: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          applicant_type: 'student' | 'staff';
+          student_id?: string | null;
+          staff_id?: string | null;
+          leave_type?: 'casual' | 'sick' | 'medical' | 'academic' | 'bereavement' | 'maternity' | 'emergency' | 'other';
+          start_date: string;
+          end_date: string;
+          reason: string;
+          supporting_document_url?: string | null;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          applicant_type?: 'student' | 'staff';
+          student_id?: string | null;
+          staff_id?: string | null;
+          leave_type?: 'casual' | 'sick' | 'medical' | 'academic' | 'bereavement' | 'maternity' | 'emergency' | 'other';
+          start_date?: string;
+          end_date?: string;
+          reason?: string;
+          supporting_document_url?: string | null;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      attendance_sessions: {
+        Row: {
+          id: string;
+          institution_id: string;
+          academic_year_id: string;
+          campus_id: string | null;
+          class_id: string;
+          section_id: string | null;
+          subject_id: string | null;
+          session_date: string;
+          session_type: 'daily' | 'lecture' | 'lab' | 'practical' | 'tutorial';
+          period_number: number | null;
+          start_time: string | null;
+          end_time: string | null;
+          topic_covered: string | null;
+          marked_by_staff_id: string | null;
+          status: 'draft' | 'submitted' | 'locked';
+          total_students: number;
+          present_count: number;
+          absent_count: number;
+          late_count: number;
+          half_day_count: number;
+          excused_count: number;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          academic_year_id: string;
+          campus_id?: string | null;
+          class_id: string;
+          section_id?: string | null;
+          subject_id?: string | null;
+          session_date: string;
+          session_type?: 'daily' | 'lecture' | 'lab' | 'practical' | 'tutorial';
+          period_number?: number | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          topic_covered?: string | null;
+          marked_by_staff_id?: string | null;
+          status?: 'draft' | 'submitted' | 'locked';
+          total_students?: number;
+          present_count?: number;
+          absent_count?: number;
+          late_count?: number;
+          half_day_count?: number;
+          excused_count?: number;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          academic_year_id?: string;
+          campus_id?: string | null;
+          class_id?: string;
+          section_id?: string | null;
+          subject_id?: string | null;
+          session_date?: string;
+          session_type?: 'daily' | 'lecture' | 'lab' | 'practical' | 'tutorial';
+          period_number?: number | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          topic_covered?: string | null;
+          marked_by_staff_id?: string | null;
+          status?: 'draft' | 'submitted' | 'locked';
+          total_students?: number;
+          present_count?: number;
+          absent_count?: number;
+          late_count?: number;
+          half_day_count?: number;
+          excused_count?: number;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      student_attendance_records: {
+        Row: {
+          id: string;
+          institution_id: string;
+          session_id: string;
+          student_id: string;
+          enrollment_id: string | null;
+          status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          remarks: string | null;
+          is_excused: boolean;
+          leave_request_id: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          session_id: string;
+          student_id: string;
+          enrollment_id?: string | null;
+          status?: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          remarks?: string | null;
+          is_excused?: boolean;
+          leave_request_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          session_id?: string;
+          student_id?: string;
+          enrollment_id?: string | null;
+          status?: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          remarks?: string | null;
+          is_excused?: boolean;
+          leave_request_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      attendance_corrections: {
+        Row: {
+          id: string;
+          institution_id: string;
+          record_id: string;
+          session_id: string;
+          student_id: string;
+          previous_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          new_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          reason: string;
+          corrected_by: string;
+          corrected_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          record_id: string;
+          session_id: string;
+          student_id: string;
+          previous_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          new_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          reason: string;
+          corrected_by: string;
+          corrected_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          record_id?: string;
+          session_id?: string;
+          student_id?: string;
+          previous_status?: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          new_status?: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          reason?: string;
+          corrected_by?: string;
+          corrected_at?: string;
+        };
+        Relationships: [];
+      };
+      staff_attendance_records: {
+        Row: {
+          id: string;
+          institution_id: string;
+          staff_id: string;
+          attendance_date: string;
+          status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          check_in_time: string | null;
+          check_out_time: string | null;
+          remarks: string | null;
+          leave_request_id: string | null;
+          marked_by: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          staff_id: string;
+          attendance_date: string;
+          status?: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          check_in_time?: string | null;
+          check_out_time?: string | null;
+          remarks?: string | null;
+          leave_request_id?: string | null;
+          marked_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          staff_id?: string;
+          attendance_date?: string;
+          status?: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          check_in_time?: string | null;
+          check_out_time?: string | null;
+          remarks?: string | null;
+          leave_request_id?: string | null;
+          marked_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      staff_attendance_corrections: {
+        Row: {
+          id: string;
+          institution_id: string;
+          record_id: string;
+          staff_id: string;
+          previous_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          new_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          reason: string;
+          corrected_by: string;
+          corrected_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          record_id: string;
+          staff_id: string;
+          previous_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          new_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          reason: string;
+          corrected_by: string;
+          corrected_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          record_id?: string;
+          staff_id?: string;
+          previous_status?: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          new_status?: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          reason?: string;
+          corrected_by?: string;
+          corrected_at?: string;
+        };
+        Relationships: [];
+      };
+      attendance_notifications: {
+        Row: {
+          id: string;
+          institution_id: string;
+          session_id: string;
+          record_id: string;
+          student_id: string;
+          guardian_id: string;
+          channel: string;
+          status: 'pending' | 'queued' | 'delivered' | 'failed';
+          title: string;
+          message: string;
+          delivery_error: string | null;
+          sent_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          session_id: string;
+          record_id: string;
+          student_id: string;
+          guardian_id: string;
+          channel?: string;
+          status?: 'pending' | 'queued' | 'delivered' | 'failed';
+          title: string;
+          message: string;
+          delivery_error?: string | null;
+          sent_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          session_id?: string;
+          record_id?: string;
+          student_id?: string;
+          guardian_id?: string;
+          channel?: string;
+          status?: 'pending' | 'queued' | 'delivered' | 'failed';
+          title?: string;
+          message?: string;
+          delivery_error?: string | null;
+          sent_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1486,6 +1846,54 @@ export interface Database {
           staff_id?: string | null;
         };
       };
+      record_student_attendance_batch: {
+        Args: {
+          p_institution_id: string;
+          p_session_id: string;
+          p_records: Record<string, unknown>[];
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          session_id: string;
+          total_students: number;
+          present_count: number;
+          absent_count: number;
+          late_count: number;
+          half_day_count: number;
+          excused_count: number;
+        };
+      };
+      correct_student_attendance_record: {
+        Args: {
+          p_institution_id: string;
+          p_record_id: string;
+          p_new_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+          p_reason: string;
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          record_id: string;
+          previous_status: string;
+          new_status: string;
+        };
+      };
+      correct_staff_attendance_record: {
+        Args: {
+          p_institution_id: string;
+          p_record_id: string;
+          p_new_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+          p_reason: string;
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          record_id: string;
+          previous_status: string;
+          new_status: string;
+        };
+      };
     };
     Enums: {
       institution_type: 'school' | 'junior_college' | 'degree_college' | 'engineering_college' | 'university';
@@ -1507,6 +1915,14 @@ export interface Database {
       employment_status: 'active' | 'probation' | 'notice_period' | 'suspended' | 'terminated' | 'resigned' | 'retired';
       staff_document_type: 'qualification' | 'experience' | 'identity' | 'contract' | 'appointment_letter' | 'other';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
+      attendance_status: 'present' | 'absent' | 'late' | 'half_day' | 'excused' | 'on_leave';
+      attendance_session_type: 'daily' | 'lecture' | 'lab' | 'practical' | 'tutorial';
+      attendance_session_status: 'draft' | 'submitted' | 'locked';
+      staff_attendance_status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave' | 'excused';
+      leave_applicant_type: 'student' | 'staff';
+      leave_type: 'casual' | 'sick' | 'medical' | 'academic' | 'bereavement' | 'maternity' | 'emergency' | 'other';
+      leave_status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+      notification_delivery_status: 'pending' | 'queued' | 'delivered' | 'failed';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -1540,3 +1956,11 @@ export type StaffEmploymentRow = Database['public']['Tables']['staff_employments
 export type FacultyAllocationRow = Database['public']['Tables']['faculty_allocations']['Row'];
 export type StaffDocumentRow = Database['public']['Tables']['staff_documents']['Row'];
 export type StaffInvitationRow = Database['public']['Tables']['staff_invitations']['Row'];
+
+export type LeaveRequestRow = Database['public']['Tables']['leave_requests']['Row'];
+export type AttendanceSessionRow = Database['public']['Tables']['attendance_sessions']['Row'];
+export type StudentAttendanceRecordRow = Database['public']['Tables']['student_attendance_records']['Row'];
+export type AttendanceCorrectionRow = Database['public']['Tables']['attendance_corrections']['Row'];
+export type StaffAttendanceRecordRow = Database['public']['Tables']['staff_attendance_records']['Row'];
+export type StaffAttendanceCorrectionRow = Database['public']['Tables']['staff_attendance_corrections']['Row'];
+export type AttendanceNotificationRow = Database['public']['Tables']['attendance_notifications']['Row'];
