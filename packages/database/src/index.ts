@@ -64,6 +64,18 @@ export const DATABASE_TABLES = {
   FEE_REFUND_REQUESTS: 'fee_refund_requests',
   GATEWAY_ORDERS: 'gateway_orders',
   GATEWAY_WEBHOOK_EVENTS: 'gateway_webhook_events',
+  NOTIFICATIONS: 'notifications',
+  NOTIFICATION_DELIVERIES: 'notification_deliveries',
+  NOTIFICATION_PREFERENCES: 'notification_preferences',
+  NOTIFICATION_TEMPLATES: 'notification_templates',
+  PUSH_DEVICE_TOKENS: 'push_device_tokens',
+  ANNOUNCEMENTS: 'announcements',
+  ANNOUNCEMENT_ACKNOWLEDGEMENTS: 'announcement_acknowledgements',
+  HOMEWORK_ASSIGNMENTS: 'homework_assignments',
+  HOMEWORK_SUBMISSIONS: 'homework_submissions',
+  COMMUNICATION_THREADS: 'communication_threads',
+  COMMUNICATION_PARTICIPANTS: 'communication_participants',
+  COMMUNICATION_MESSAGES: 'communication_messages',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -2626,6 +2638,570 @@ export interface Database {
         };
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          id: string;
+          institution_id: string;
+          recipient_user_id: string;
+          category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          title: string;
+          body: string;
+          priority: 'low' | 'normal' | 'high' | 'urgent';
+          data: Record<string, unknown>;
+          is_read: boolean;
+          read_at: string | null;
+          expires_at: string | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          recipient_user_id: string;
+          category?: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          title: string;
+          body: string;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          data?: Record<string, unknown>;
+          is_read?: boolean;
+          read_at?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          recipient_user_id?: string;
+          category?: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          title?: string;
+          body?: string;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          data?: Record<string, unknown>;
+          is_read?: boolean;
+          read_at?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      notification_deliveries: {
+        Row: {
+          id: string;
+          notification_id: string;
+          institution_id: string;
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          recipient_target: string;
+          status: 'pending' | 'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled';
+          attempt_count: number;
+          max_attempts: number;
+          last_attempt_at: string | null;
+          next_retry_at: string | null;
+          response_payload: Record<string, unknown> | null;
+          error_message: string | null;
+          external_message_id: string | null;
+          idempotency_key: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          notification_id: string;
+          institution_id: string;
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          recipient_target: string;
+          status?: 'pending' | 'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled';
+          attempt_count?: number;
+          max_attempts?: number;
+          last_attempt_at?: string | null;
+          next_retry_at?: string | null;
+          response_payload?: Record<string, unknown> | null;
+          error_message?: string | null;
+          external_message_id?: string | null;
+          idempotency_key?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          notification_id?: string;
+          institution_id?: string;
+          channel?: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          recipient_target?: string;
+          status?: 'pending' | 'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled';
+          attempt_count?: number;
+          max_attempts?: number;
+          last_attempt_at?: string | null;
+          next_retry_at?: string | null;
+          response_payload?: Record<string, unknown> | null;
+          error_message?: string | null;
+          external_message_id?: string | null;
+          idempotency_key?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: {
+          id: string;
+          institution_id: string;
+          user_id: string;
+          category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          is_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          user_id: string;
+          category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          user_id?: string;
+          category?: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel?: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_templates: {
+        Row: {
+          id: string;
+          institution_id: string;
+          template_code: string;
+          name: string;
+          category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          subject_template: string | null;
+          body_template: string;
+          variables: string[];
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          template_code: string;
+          name: string;
+          category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          subject_template?: string | null;
+          body_template: string;
+          variables?: string[];
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          template_code?: string;
+          name?: string;
+          category?: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+          channel?: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+          subject_template?: string | null;
+          body_template?: string;
+          variables?: string[];
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      push_device_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          platform: 'ios' | 'android' | 'web';
+          device_model: string | null;
+          app_version: string | null;
+          is_active: boolean;
+          last_seen_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          platform: 'ios' | 'android' | 'web';
+          device_model?: string | null;
+          app_version?: string | null;
+          is_active?: boolean;
+          last_seen_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          token?: string;
+          platform?: 'ios' | 'android' | 'web';
+          device_model?: string | null;
+          app_version?: string | null;
+          is_active?: boolean;
+          last_seen_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      announcements: {
+        Row: {
+          id: string;
+          institution_id: string;
+          title: string;
+          content: string;
+          scope: 'institution' | 'campus' | 'department' | 'program' | 'class' | 'section' | 'role' | 'individual';
+          target_entity_id: string | null;
+          target_role: string | null;
+          priority: 'low' | 'standard' | 'important' | 'urgent';
+          status: 'draft' | 'scheduled' | 'published' | 'archived';
+          published_at: string | null;
+          expires_at: string | null;
+          scheduled_for: string | null;
+          requires_acknowledgement: boolean;
+          acknowledgement_deadline: string | null;
+          attachments: Array<{ name: string; url: string; size?: number; type?: string }>;
+          view_count: number;
+          acknowledgement_count: number;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          title: string;
+          content: string;
+          scope?: 'institution' | 'campus' | 'department' | 'program' | 'class' | 'section' | 'role' | 'individual';
+          target_entity_id?: string | null;
+          target_role?: string | null;
+          priority?: 'low' | 'standard' | 'important' | 'urgent';
+          status?: 'draft' | 'scheduled' | 'published' | 'archived';
+          published_at?: string | null;
+          expires_at?: string | null;
+          scheduled_for?: string | null;
+          requires_acknowledgement?: boolean;
+          acknowledgement_deadline?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number; type?: string }>;
+          view_count?: number;
+          acknowledgement_count?: number;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          title?: string;
+          content?: string;
+          scope?: 'institution' | 'campus' | 'department' | 'program' | 'class' | 'section' | 'role' | 'individual';
+          target_entity_id?: string | null;
+          target_role?: string | null;
+          priority?: 'low' | 'standard' | 'important' | 'urgent';
+          status?: 'draft' | 'scheduled' | 'published' | 'archived';
+          published_at?: string | null;
+          expires_at?: string | null;
+          scheduled_for?: string | null;
+          requires_acknowledgement?: boolean;
+          acknowledgement_deadline?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number; type?: string }>;
+          view_count?: number;
+          acknowledgement_count?: number;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      announcement_acknowledgements: {
+        Row: {
+          id: string;
+          announcement_id: string;
+          institution_id: string;
+          user_id: string;
+          acknowledged_at: string;
+          ip_address: string | null;
+          user_agent: string | null;
+        };
+        Insert: {
+          id?: string;
+          announcement_id: string;
+          institution_id: string;
+          user_id: string;
+          acknowledged_at?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+        };
+        Update: {
+          id?: string;
+          announcement_id?: string;
+          institution_id?: string;
+          user_id?: string;
+          acknowledged_at?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
+      homework_assignments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          academic_year_id: string;
+          campus_id: string | null;
+          class_id: string;
+          section_id: string | null;
+          subject_id: string;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          instructions: string | null;
+          attachments: Array<{ name: string; url: string; size?: number }>;
+          max_marks: number;
+          due_date: string;
+          due_time: string | null;
+          allow_late_submissions: boolean;
+          late_penalty_percent: number;
+          status: 'draft' | 'published' | 'closed' | 'archived';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          academic_year_id: string;
+          campus_id?: string | null;
+          class_id: string;
+          section_id?: string | null;
+          subject_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          instructions?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number }>;
+          max_marks?: number;
+          due_date: string;
+          due_time?: string | null;
+          allow_late_submissions?: boolean;
+          late_penalty_percent?: number;
+          status?: 'draft' | 'published' | 'closed' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          academic_year_id?: string;
+          campus_id?: string | null;
+          class_id?: string;
+          section_id?: string | null;
+          subject_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          instructions?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number }>;
+          max_marks?: number;
+          due_date?: string;
+          due_time?: string | null;
+          allow_late_submissions?: boolean;
+          late_penalty_percent?: number;
+          status?: 'draft' | 'published' | 'closed' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homework_submissions: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          student_id: string;
+          institution_id: string;
+          submission_text: string | null;
+          attachments: Array<{ name: string; url: string; size?: number }>;
+          submitted_at: string;
+          is_late: boolean;
+          status: 'pending' | 'submitted' | 'late' | 'graded' | 'resubmit_requested';
+          marks_obtained: number | null;
+          feedback: string | null;
+          graded_by: string | null;
+          graded_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          student_id: string;
+          institution_id: string;
+          submission_text?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number }>;
+          submitted_at?: string;
+          is_late?: boolean;
+          status?: 'pending' | 'submitted' | 'late' | 'graded' | 'resubmit_requested';
+          marks_obtained?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          graded_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          student_id?: string;
+          institution_id?: string;
+          submission_text?: string | null;
+          attachments?: Array<{ name: string; url: string; size?: number }>;
+          submitted_at?: string;
+          is_late?: boolean;
+          status?: 'pending' | 'submitted' | 'late' | 'graded' | 'resubmit_requested';
+          marks_obtained?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          graded_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_threads: {
+        Row: {
+          id: string;
+          institution_id: string;
+          thread_type: 'parent_teacher' | 'student_faculty' | 'admin_broadcast' | 'staff_internal';
+          subject: string;
+          created_by: string;
+          is_locked: boolean;
+          is_archived: boolean;
+          last_message_at: string;
+          message_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          thread_type: 'parent_teacher' | 'student_faculty' | 'admin_broadcast' | 'staff_internal';
+          subject: string;
+          created_by: string;
+          is_locked?: boolean;
+          is_archived?: boolean;
+          last_message_at?: string;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          thread_type?: 'parent_teacher' | 'student_faculty' | 'admin_broadcast' | 'staff_internal';
+          subject?: string;
+          created_by?: string;
+          is_locked?: boolean;
+          is_archived?: boolean;
+          last_message_at?: string;
+          message_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_participants: {
+        Row: {
+          id: string;
+          thread_id: string;
+          institution_id: string;
+          user_id: string;
+          role: string;
+          last_read_at: string | null;
+          is_muted: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          institution_id: string;
+          user_id: string;
+          role?: string;
+          last_read_at?: string | null;
+          is_muted?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          institution_id?: string;
+          user_id?: string;
+          role?: string;
+          last_read_at?: string | null;
+          is_muted?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_messages: {
+        Row: {
+          id: string;
+          thread_id: string;
+          institution_id: string;
+          sender_id: string;
+          body: string;
+          attachments: Array<{ name: string; url: string; size?: number; type?: string }>;
+          is_edited: boolean;
+          is_flagged: boolean;
+          is_deleted: boolean;
+          flagged_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          institution_id: string;
+          sender_id: string;
+          body: string;
+          attachments?: Array<{ name: string; url: string; size?: number; type?: string }>;
+          is_edited?: boolean;
+          is_flagged?: boolean;
+          is_deleted?: boolean;
+          flagged_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          institution_id?: string;
+          sender_id?: string;
+          body?: string;
+          attachments?: Array<{ name: string; url: string; size?: number; type?: string }>;
+          is_edited?: boolean;
+          is_flagged?: boolean;
+          is_deleted?: boolean;
+          flagged_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -2834,6 +3410,53 @@ export interface Database {
           withheld_count: number;
         };
       };
+      dispatch_notification_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_recipient_user_id: string;
+          p_category: string;
+          p_title: string;
+          p_body: string;
+          p_priority?: string;
+          p_channels?: string[];
+          p_data?: Record<string, unknown>;
+          p_idempotency_key?: string | null;
+          p_sender_user_id?: string | null;
+        };
+        Returns: {
+          notification_id: string;
+          deliveries_queued: number;
+          idempotent_replay: boolean;
+        };
+      };
+      submit_homework_atomic: {
+        Args: {
+          p_assignment_id: string;
+          p_student_id: string;
+          p_submission_text?: string | null;
+          p_attachments?: Array<{ name: string; url: string; size?: number }>;
+        };
+        Returns: {
+          submission_id: string;
+          status: string;
+          is_late: boolean;
+        };
+      };
+      submit_parent_child_leave_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_student_id: string;
+          p_start_date: string;
+          p_end_date: string;
+          p_reason: string;
+          p_user_id: string;
+        };
+        Returns: {
+          leave_request_id: string;
+          student_id: string;
+          status: string;
+        };
+      };
     };
     Enums: {
       institution_type: 'school' | 'junior_college' | 'degree_college' | 'engineering_college' | 'university';
@@ -2880,6 +3503,14 @@ export interface Database {
       marks_entry_status: 'draft' | 'submitted' | 'verified' | 'locked';
       exam_result_status: 'pass' | 'fail' | 'distinction' | 'promoted_with_backlog' | 'withheld';
       revaluation_status: 'applied' | 'assigned' | 'under_review' | 'completed' | 'rejected';
+      notification_category: 'attendance' | 'examinations' | 'results' | 'fees_payments' | 'admissions' | 'homework' | 'timetable' | 'leave' | 'transport' | 'announcements' | 'emergency' | 'general';
+      notification_channel: 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+      notification_priority: 'low' | 'normal' | 'high' | 'urgent';
+      announcement_scope: 'institution' | 'campus' | 'department' | 'program' | 'class' | 'section' | 'role' | 'individual';
+      announcement_priority: 'low' | 'standard' | 'important' | 'urgent';
+      announcement_status: 'draft' | 'scheduled' | 'published' | 'archived';
+      assignment_submission_status: 'pending' | 'submitted' | 'late' | 'graded' | 'resubmit_requested';
+      conversation_type: 'parent_teacher' | 'student_faculty' | 'admin_broadcast' | 'staff_internal';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -3199,5 +3830,19 @@ export type ExamRevaluationRow = {
   completed_at: string | null;
   reviewed_by: string | null;
 };
+
+export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
+export type NotificationDeliveryRow = Database['public']['Tables']['notification_deliveries']['Row'];
+export type NotificationPreferenceRow = Database['public']['Tables']['notification_preferences']['Row'];
+export type NotificationTemplateRow = Database['public']['Tables']['notification_templates']['Row'];
+export type PushDeviceTokenRow = Database['public']['Tables']['push_device_tokens']['Row'];
+export type AnnouncementRow = Database['public']['Tables']['announcements']['Row'];
+export type AnnouncementAcknowledgementRow = Database['public']['Tables']['announcement_acknowledgements']['Row'];
+export type HomeworkAssignmentRow = Database['public']['Tables']['homework_assignments']['Row'];
+export type HomeworkSubmissionRow = Database['public']['Tables']['homework_submissions']['Row'];
+export type CommunicationThreadRow = Database['public']['Tables']['communication_threads']['Row'];
+export type CommunicationParticipantRow = Database['public']['Tables']['communication_participants']['Row'];
+export type CommunicationMessageRow = Database['public']['Tables']['communication_messages']['Row'];
+
 
 

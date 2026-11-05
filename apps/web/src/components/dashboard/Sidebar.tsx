@@ -22,6 +22,11 @@ import {
   Settings,
   Shield,
   X,
+  Megaphone,
+  BookOpen,
+  CalendarOff,
+  User,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -108,6 +113,36 @@ export function Sidebar({
       href: '/dashboard/fees',
       icon: CreditCard,
       roles: ['owner', 'admin', 'accountant', 'academic_admin', 'department_head', 'admissions_officer', 'student', 'parent'],
+    },
+    {
+      label: 'Communications',
+      href: '/dashboard/communications',
+      icon: Megaphone,
+      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant', 'hr_administrator'],
+    },
+    {
+      label: 'Assignments',
+      href: '/dashboard/assignments',
+      icon: BookOpen,
+      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'student', 'parent'],
+    },
+    {
+      label: 'Leave Management',
+      href: '/dashboard/leave',
+      icon: CalendarOff,
+      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+    },
+    {
+      label: 'Parent Portal',
+      href: '/portal/parent',
+      icon: HeartHandshake,
+      roles: ['owner', 'admin', 'parent'],
+    },
+    {
+      label: 'Student Portal',
+      href: '/portal/student',
+      icon: User,
+      roles: ['owner', 'admin', 'student'],
     },
     {
       label: 'Audit Trail',

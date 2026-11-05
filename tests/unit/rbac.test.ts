@@ -264,4 +264,45 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'fees:reports_view')).toBe(false);
     }
   });
+
+  it('verifies Communications, Announcements, Messaging, and Homework RBAC permissions (Milestone 9)', () => {
+    // Owner and Admin have complete communications and homework management
+    const adminRoles: Role[] = ['owner', 'admin'];
+    for (const r of adminRoles) {
+      expect(checkPermission(r, 'communications:manage')).toBe(true);
+      expect(checkPermission(r, 'announcements:publish')).toBe(true);
+      expect(checkPermission(r, 'announcements:view')).toBe(true);
+      expect(checkPermission(r, 'messages:send')).toBe(true);
+      expect(checkPermission(r, 'messages:moderate')).toBe(true);
+      expect(checkPermission(r, 'homework:manage')).toBe(true);
+      expect(checkPermission(r, 'homework:grade')).toBe(true);
+      expect(checkPermission(r, 'notifications:manage')).toBe(true);
+    }
+
+    // Faculty can manage homework, grade, view announcements, and send messages, but cannot moderate
+    expect(checkPermission('faculty', 'homework:manage')).toBe(true);
+    expect(checkPermission('faculty', 'homework:grade')).toBe(true);
+    expect(checkPermission('faculty', 'announcements:view')).toBe(true);
+    expect(checkPermission('faculty', 'messages:send')).toBe(true);
+    expect(checkPermission('faculty', 'messages:moderate')).toBe(false);
+    expect(checkPermission('faculty', 'communications:manage')).toBe(false);
+
+    // Students can view announcements, send messages, and submit homework, but cannot manage or grade
+    expect(checkPermission('student', 'announcements:view')).toBe(true);
+    expect(checkPermission('student', 'messages:send')).toBe(true);
+    expect(checkPermission('student', 'homework:submit')).toBe(true);
+    expect(checkPermission('student', 'homework:manage')).toBe(false);
+    expect(checkPermission('student', 'homework:grade')).toBe(false);
+    expect(checkPermission('student', 'announcements:publish')).toBe(false);
+    expect(checkPermission('student', 'messages:moderate')).toBe(false);
+
+    // Parents can view announcements, send messages, and view homework, but cannot submit or grade
+    expect(checkPermission('parent', 'announcements:view')).toBe(true);
+    expect(checkPermission('parent', 'messages:send')).toBe(true);
+    expect(checkPermission('parent', 'homework:manage')).toBe(true);
+    expect(checkPermission('parent', 'homework:submit')).toBe(false);
+    expect(checkPermission('parent', 'homework:grade')).toBe(false);
+    expect(checkPermission('parent', 'announcements:publish')).toBe(false);
+    expect(checkPermission('parent', 'messages:moderate')).toBe(false);
+  });
 });

@@ -18,12 +18,36 @@ interface DashboardScreenProps {
   userEmail: string;
 }
 
+export const registerPushDeviceToken = async (
+  userId: string,
+  token: string,
+  platform: 'ios' | 'android' | 'web'
+) => {
+  try {
+    await supabase.from('push_device_tokens').upsert(
+      {
+        user_id: userId,
+        token,
+        platform,
+        is_active: true,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id, token' }
+    );
+  } catch (err) {
+    console.error('Failed to register push token:', err);
+  }
+};
+
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEmail }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [memberships, setMemberships] = useState<InstitutionMembership[]>([]);
   const [campuses, setCampuses] = useState<CampusRow[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYearRow[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [studentSummary, setStudentSummary] = useState<any | null>(null);
 
   const fetchData = async () => {
     try {
@@ -63,8 +87,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
 
       // If membership exists, fetch campuses and academic years for the active institution
       const activeInstId = parsedMems[0]?.institution_id;
+      const userRole = parsedMems[0]?.role;
+
       if (activeInstId) {
-        const [{ data: camps }, { data: ays }] = await Promise.all([
+        const [{ data: camps }, { data: ays }, { data: anns }, { data: notifs }] = await Promise.all([
           supabase
             .from('campuses')
             .select('*')
@@ -73,10 +99,54 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
             .from('academic_years')
             .select('*')
             .eq('institution_id', activeInstId),
+          supabase
+            .from('announcements')
+            .select('id, title, content, priority, published_at')
+            .eq('institution_id', activeInstId)
+            .eq('status', 'published')
+            .order('published_at', { ascending: false })
+            .limit(4),
+          supabase
+            .from('notifications')
+            .select('id, title, body, category, is_read, created_at')
+            .eq('institution_id', activeInstId)
+            .eq('recipient_user_id', userId)
+            .eq('is_read', false)
+            .order('created_at', { ascending: false })
+            .limit(4),
         ]);
 
         setCampuses(camps || []);
         setAcademicYears(ays || []);
+        setAnnouncements(anns || []);
+        setNotifications(notifs || []);
+
+        // If student role, fetch summary
+        if (userRole === 'student') {
+          const { data: st } = await supabase
+            .from('students')
+            .select('id, admission_number, first_name, last_name')
+            .eq('institution_id', activeInstId)
+            .eq('user_id', userId)
+            .single();
+
+          if (st) {
+            const [{ data: att }, { count: hwCount }] = await Promise.all([
+              supabase.from('student_attendance_records').select('status').eq('student_id', st.id),
+              supabase.from('homework_assignments').select('*', { count: 'exact', head: true }).eq('institution_id', activeInstId).eq('status', 'published'),
+            ]);
+
+            const total = att?.length || 0;
+            const present = (att || []).filter((a: any) => a.status === 'present').length;
+            const pct = total > 0 ? Math.round((present / total) * 100) : 100;
+
+            setStudentSummary({
+              student: st,
+              attendancePct: pct,
+              pendingHomework: hwCount || 0,
+            });
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -175,6 +245,52 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
           <Text style={styles.metaText}>
             Please complete the onboarding flow on the web dashboard to create or join an institution.
           </Text>
+        </View>
+      )}
+
+      {/* Student Academic Hub if student */}
+      {studentSummary && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Student Academic Hub</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{studentSummary.attendancePct}%</Text>
+              <Text style={styles.statLabel}>Attendance</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{studentSummary.pendingHomework}</Text>
+              <Text style={styles.statLabel}>Assignments</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Unread Notifications Feed */}
+      {notifications.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications ({notifications.length})</Text>
+          {notifications.map((n) => (
+            <View key={n.id} style={styles.notifItem}>
+              <Text style={styles.notifTitle}>{n.title}</Text>
+              <Text style={styles.notifBody}>{n.body}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* School Circulars Feed */}
+      {announcements.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>School Circulars & Notices</Text>
+          {announcements.map((ann) => (
+            <View key={ann.id} style={styles.annItem}>
+              <View style={styles.annHeader}>
+                <Text style={styles.annTitle}>{ann.title}</Text>
+                <Text style={styles.annPriority}>{ann.priority}</Text>
+              </View>
+              <Text style={styles.annContent} numberOfLines={2}>{ann.content}</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -389,5 +505,78 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
     fontStyle: 'italic',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  notifItem: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginBottom: 8,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  notifBody: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  annItem: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginBottom: 8,
+  },
+  annHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  annTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    flex: 1,
+    marginRight: 8,
+  },
+  annPriority: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    color: '#4338ca',
+  },
+  annContent: {
+    fontSize: 11,
+    color: '#64748b',
   },
 });

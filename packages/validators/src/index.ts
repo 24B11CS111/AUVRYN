@@ -1734,6 +1734,244 @@ export const gatewayOrderCreateSchema = z.object({
 
 export type GatewayOrderCreateInput = z.input<typeof gatewayOrderCreateSchema>;
 
+// ==========================================
+// 13. Universal Parent & Student Communication Ecosystem (Milestone 9)
+// ==========================================
+
+export const notificationCategoryEnum = z.enum([
+  'attendance',
+  'examinations',
+  'results',
+  'fees_payments',
+  'admissions',
+  'homework',
+  'timetable',
+  'leave',
+  'transport',
+  'announcements',
+  'emergency',
+  'general',
+]);
+
+export const notificationChannelEnum = z.enum([
+  'in_app',
+  'push',
+  'email',
+  'sms',
+  'whatsapp',
+]);
+
+export const notificationPriorityEnum = z.enum([
+  'low',
+  'normal',
+  'high',
+  'urgent',
+]);
+
+export const announcementScopeEnum = z.enum([
+  'institution',
+  'campus',
+  'department',
+  'program',
+  'class',
+  'section',
+  'role',
+  'individual',
+]);
+
+export const announcementPriorityEnum = z.enum([
+  'low',
+  'standard',
+  'important',
+  'urgent',
+]);
+
+export const announcementStatusEnum = z.enum([
+  'draft',
+  'scheduled',
+  'published',
+  'archived',
+]);
+
+export const assignmentSubmissionStatusEnum = z.enum([
+  'pending',
+  'submitted',
+  'late',
+  'graded',
+  'resubmit_requested',
+]);
+
+export const conversationTypeEnum = z.enum([
+  'parent_teacher',
+  'student_faculty',
+  'admin_broadcast',
+  'staff_internal',
+]);
+
+export const announcementCreateSchema = z.object({
+  title: z.string().trim().min(3, 'Title must be at least 3 characters').max(200, 'Title cannot exceed 200 characters'),
+  content: z.string().trim().min(5, 'Content must be at least 5 characters').max(5000, 'Content cannot exceed 5000 characters'),
+  scope: announcementScopeEnum.default('institution'),
+  targetEntityId: z.string().uuid('Invalid target entity ID').optional().nullable().or(z.literal('')),
+  targetRole: roleEnum.optional().nullable().or(z.literal('')),
+  priority: announcementPriorityEnum.default('standard'),
+  status: announcementStatusEnum.default('published'),
+  scheduledFor: z.string().optional().nullable().or(z.literal('')),
+  expiresAt: z.string().optional().nullable().or(z.literal('')),
+  requiresAcknowledgement: z.boolean().default(false),
+  acknowledgementDeadline: z.string().optional().nullable().or(z.literal('')),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url('Invalid attachment URL'),
+        size: z.number().optional(),
+        type: z.string().optional(),
+      })
+    )
+    .default([]),
+});
+
+export type AnnouncementCreateInput = z.input<typeof announcementCreateSchema>;
+
+export const announcementAcknowledgeSchema = z.object({
+  announcementId: z.string().uuid('Valid announcement ID is required'),
+});
+
+export type AnnouncementAcknowledgeInput = z.input<typeof announcementAcknowledgeSchema>;
+
+export const homeworkAssignmentCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid academic year ID is required'),
+  campusId: z.string().uuid('Valid campus ID is required').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Valid class ID is required'),
+  sectionId: z.string().uuid('Valid section ID is required').optional().nullable().or(z.literal('')),
+  subjectId: z.string().uuid('Valid subject ID is required'),
+  title: z.string().trim().min(3, 'Title must be at least 3 characters').max(200, 'Title cannot exceed 200 characters'),
+  description: z.string().trim().max(2000).optional().or(z.literal('')),
+  instructions: z.string().trim().max(5000).optional().or(z.literal('')),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url('Invalid attachment URL'),
+        size: z.number().optional(),
+      })
+    )
+    .default([]),
+  maxMarks: z.coerce.number().min(1, 'Max marks must be at least 1').max(1000, 'Max marks cannot exceed 1000').default(100),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be in YYYY-MM-DD format'),
+  dueTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Due time must be in HH:MM format').optional().nullable().or(z.literal('')),
+  allowLateSubmissions: z.boolean().default(true),
+  latePenaltyPercent: z.coerce.number().min(0).max(100).default(0),
+  status: z.enum(['draft', 'published', 'closed']).default('published'),
+});
+
+export type HomeworkAssignmentCreateInput = z.input<typeof homeworkAssignmentCreateSchema>;
+
+export const homeworkSubmissionSchema = z.object({
+  assignmentId: z.string().uuid('Valid assignment ID is required'),
+  studentId: z.string().uuid('Valid student ID is required'),
+  submissionText: z.string().trim().max(5000).optional().or(z.literal('')),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url('Invalid attachment URL'),
+        size: z.number().optional(),
+      })
+    )
+    .default([]),
+});
+
+export type HomeworkSubmissionInput = z.input<typeof homeworkSubmissionSchema>;
+
+export const homeworkGradingSchema = z.object({
+  submissionId: z.string().uuid('Valid submission ID is required'),
+  marksObtained: z.coerce.number().min(0, 'Marks must be positive'),
+  feedback: z.string().trim().max(2000).optional().or(z.literal('')),
+  status: z.enum(['graded', 'resubmit_requested']).default('graded'),
+});
+
+export type HomeworkGradingInput = z.input<typeof homeworkGradingSchema>;
+
+export const communicationThreadCreateSchema = z.object({
+  threadType: conversationTypeEnum,
+  subject: z.string().trim().min(2, 'Subject must be at least 2 characters').max(200, 'Subject cannot exceed 200 characters'),
+  initialMessage: z.string().trim().min(1, 'Message cannot be empty').max(5000, 'Message cannot exceed 5000 characters'),
+  participantUserIds: z.array(z.string().uuid('Invalid user ID')).min(1, 'At least one participant is required'),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url('Invalid attachment URL'),
+        size: z.number().optional(),
+      })
+    )
+    .default([]),
+});
+
+export type CommunicationThreadCreateInput = z.input<typeof communicationThreadCreateSchema>;
+
+export const communicationMessageSendSchema = z.object({
+  threadId: z.string().uuid('Valid thread ID is required'),
+  body: z.string().trim().min(1, 'Message body cannot be empty').max(5000, 'Message cannot exceed 5000 characters'),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url('Invalid attachment URL'),
+        size: z.number().optional(),
+      })
+    )
+    .default([]),
+});
+
+export type CommunicationMessageSendInput = z.input<typeof communicationMessageSendSchema>;
+
+export const notificationDispatchSchema = z.object({
+  recipientUserId: z.string().uuid('Valid recipient user ID is required'),
+  category: notificationCategoryEnum,
+  title: z.string().trim().min(2, 'Title must be at least 2 characters').max(200, 'Title cannot exceed 200 characters'),
+  body: z.string().trim().min(2, 'Body must be at least 2 characters').max(2000, 'Body cannot exceed 2000 characters'),
+  priority: notificationPriorityEnum.default('normal'),
+  channels: z.array(notificationChannelEnum).min(1, 'At least one channel is required').default(['in_app']),
+  data: z.record(z.unknown()).default({}),
+  idempotencyKey: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+});
+
+export type NotificationDispatchInput = z.input<typeof notificationDispatchSchema>;
+
+export const notificationPreferencesUpdateSchema = z.object({
+  preferences: z.array(
+    z.object({
+      category: notificationCategoryEnum,
+      channel: notificationChannelEnum,
+      isEnabled: z.boolean(),
+    })
+  ),
+});
+
+export type NotificationPreferencesUpdateInput = z.input<typeof notificationPreferencesUpdateSchema>;
+
+export const pushTokenRegisterSchema = z.object({
+  token: z.string().trim().min(1, 'Token is required').max(500),
+  platform: z.enum(['ios', 'android', 'web']),
+  deviceModel: z.string().trim().max(100).optional().or(z.literal('')),
+  appVersion: z.string().trim().max(50).optional().or(z.literal('')),
+});
+
+export type PushTokenRegisterInput = z.input<typeof pushTokenRegisterSchema>;
+
+export const parentChildLeaveRequestSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format'),
+  reason: z.string().trim().min(3, 'Reason must be at least 3 characters').max(500, 'Reason cannot exceed 500 characters'),
+});
+
+export type ParentChildLeaveRequestInput = z.input<typeof parentChildLeaveRequestSchema>;
+
+
 
 
 

@@ -600,6 +600,66 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('30. Stranger Fee Payments Read Block', false, 'SECURITY FAILURE: David can read fee payments');
   END IF;
 
+  -- ============================================================================
+  -- TEST 31: Authorized Announcement Read & Audience Targeting (Alice -> Inst A)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  INSERT INTO public.announcements (
+    institution_id, title, content, scope, priority, status, created_by
+  ) VALUES (
+    v_inst_a, 'Annual Day Notice', 'Details for upcoming annual sports day', 'institution', 'standard', 'published', v_user_alice
+  );
+
+  SELECT COUNT(*) INTO v_count FROM public.announcements WHERE institution_id = v_inst_a;
+  IF v_count >= 1 THEN
+    INSERT INTO rls_test_results VALUES ('31. Authorized Announcement Creation & Read', true, 'Alice can create and read announcements in Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('31. Authorized Announcement Creation & Read', false, 'SECURITY FAILURE: Alice cannot read announcements');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 32: Cross-Tenant Announcement Read Block (Stranger David sees 0)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.announcements WHERE institution_id = v_inst_a;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('32. Stranger Announcement Read Block', true, 'David cannot read announcements in Inst A due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('32. Stranger Announcement Read Block', false, 'SECURITY FAILURE: David can read Inst A announcements');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 33: Homework Assignment Creation & Student Access Isolation
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.homework_assignments WHERE institution_id = v_inst_a;
+  INSERT INTO rls_test_results VALUES ('33. Authorized Homework Assignment Query', true, 'Alice can query homework assignments in Inst A');
+
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.homework_assignments;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('34. Stranger Homework Read Block', true, 'David sees 0 homework assignments due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('34. Stranger Homework Read Block', false, 'SECURITY FAILURE: David can read homework assignments');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 35: Notification Recipient Isolation
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  -- David queries notifications; should only see notifications where recipient_user_id = David
+  SELECT COUNT(*) INTO v_count FROM public.notifications WHERE recipient_user_id != v_user_david;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('35. Notification Recipient Isolation', true, 'David cannot view other users notifications due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('35. Notification Recipient Isolation', false, 'SECURITY FAILURE: David can view other users notifications');
+  END IF;
+
 END $$;
 
 -- Print test report

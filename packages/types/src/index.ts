@@ -200,7 +200,16 @@ export type Permission =
   | 'fees:refund_request'
   | 'fees:refund_approve'
   | 'fees:reports_view'
-  | 'receipts:view';
+  | 'receipts:view'
+  | 'communications:manage'
+  | 'announcements:publish'
+  | 'announcements:view'
+  | 'messages:send'
+  | 'messages:moderate'
+  | 'homework:manage'
+  | 'homework:submit'
+  | 'homework:grade'
+  | 'notifications:manage';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -258,6 +267,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'fees:refund_approve',
     'fees:reports_view',
     'receipts:view',
+    'communications:manage',
+    'announcements:publish',
+    'announcements:view',
+    'messages:send',
+    'messages:moderate',
+    'homework:manage',
+    'homework:submit',
+    'homework:grade',
+    'notifications:manage',
   ],
   admin: [
     'institution:manage',
@@ -313,6 +331,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'fees:refund_approve',
     'fees:reports_view',
     'receipts:view',
+    'communications:manage',
+    'announcements:publish',
+    'announcements:view',
+    'messages:send',
+    'messages:moderate',
+    'homework:manage',
+    'homework:submit',
+    'homework:grade',
+    'notifications:manage',
   ],
   hr_administrator: [
     'institution:view',
@@ -334,6 +361,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:view',
     'timetable:view',
     'exams:view',
+    'announcements:view',
+    'messages:send',
+    'notifications:manage',
   ],
   academic_admin: [
     'institution:view',
@@ -372,6 +402,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'fees:concession_apply',
     'fees:reports_view',
     'receipts:view',
+    'communications:manage',
+    'announcements:publish',
+    'announcements:view',
+    'messages:send',
+    'messages:moderate',
+    'homework:manage',
+    'homework:grade',
+    'notifications:manage',
   ],
   department_head: [
     'institution:view',
@@ -402,6 +440,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'grading:manage',
     'revaluation:review',
     'fees:view',
+    'communications:manage',
+    'announcements:publish',
+    'announcements:view',
+    'messages:send',
+    'messages:moderate',
+    'homework:manage',
+    'homework:grade',
+    'notifications:manage',
   ],
   admissions_officer: [
     'institution:view',
@@ -425,6 +471,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'results:view',
     'fees:view',
     'receipts:view',
+    'announcements:view',
+    'messages:send',
   ],
   faculty: [
     'institution:view',
@@ -447,6 +495,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'marks:enter',
     'results:view',
     'revaluation:review',
+    'announcements:view',
+    'messages:send',
+    'homework:manage',
+    'homework:grade',
   ],
   staff: [
     'institution:view',
@@ -460,6 +512,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'rooms:view',
     'exams:view',
     'results:view',
+    'announcements:view',
+    'messages:send',
   ],
   accountant: [
     'institution:view',
@@ -480,6 +534,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'fees:refund_request',
     'fees:reports_view',
     'receipts:view',
+    'announcements:view',
+    'messages:send',
   ],
   student: [
     'institution:view',
@@ -496,6 +552,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'receipts:view',
     'fees:concession_apply',
     'fees:refund_request',
+    'announcements:view',
+    'messages:send',
+    'homework:submit',
   ],
   parent: [
     'institution:view',
@@ -513,6 +572,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'receipts:view',
     'fees:concession_apply',
     'fees:refund_request',
+    'announcements:view',
+    'messages:send',
+    'homework:manage',
   ],
 };
 
@@ -1283,8 +1345,12 @@ export type LeaveStatus =
 export type NotificationDeliveryStatus =
   | 'pending'
   | 'queued'
+  | 'sending'
+  | 'sent'
   | 'delivered'
-  | 'failed';
+  | 'failed'
+  | 'bounced'
+  | 'cancelled';
 
 export interface LeaveRequest {
   id: string;
@@ -2389,6 +2455,296 @@ export interface FeeOverviewStats {
   pendingConcessionsCount: number;
   pendingRefundsCount: number;
 }
+
+// ============================================================================
+// Milestone 9: Universal Parent & Student Communication Ecosystem
+// ============================================================================
+
+export type NotificationCategory =
+  | 'attendance'
+  | 'examinations'
+  | 'results'
+  | 'fees_payments'
+  | 'admissions'
+  | 'homework'
+  | 'timetable'
+  | 'leave'
+  | 'transport'
+  | 'announcements'
+  | 'emergency'
+  | 'general';
+
+export type NotificationChannel =
+  | 'in_app'
+  | 'push'
+  | 'email'
+  | 'sms'
+  | 'whatsapp';
+
+export type NotificationPriority =
+  | 'low'
+  | 'normal'
+  | 'high'
+  | 'urgent';
+
+export type AnnouncementScope =
+  | 'institution'
+  | 'campus'
+  | 'department'
+  | 'program'
+  | 'class'
+  | 'section'
+  | 'role'
+  | 'individual';
+
+export type AnnouncementPriority =
+  | 'low'
+  | 'standard'
+  | 'important'
+  | 'urgent';
+
+export type AnnouncementStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'published'
+  | 'archived';
+
+export type AssignmentSubmissionStatus =
+  | 'pending'
+  | 'submitted'
+  | 'late'
+  | 'graded'
+  | 'resubmit_requested';
+
+export type ConversationType =
+  | 'parent_teacher'
+  | 'student_faculty'
+  | 'admin_broadcast'
+  | 'staff_internal';
+
+export interface Notification {
+  id: string;
+  institutionId: string;
+  recipientUserId: string;
+  category: NotificationCategory;
+  title: string;
+  body: string;
+  priority: NotificationPriority;
+  data: Record<string, unknown>;
+  isRead: boolean;
+  readAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+  recipient?: Profile;
+  creator?: Profile;
+}
+
+export interface NotificationDelivery {
+  id: string;
+  notificationId: string;
+  institutionId: string;
+  channel: NotificationChannel;
+  recipientTarget: string;
+  status: NotificationDeliveryStatus;
+  attemptCount: number;
+  maxAttempts: number;
+  lastAttemptAt?: string | null;
+  nextRetryAt?: string | null;
+  responsePayload?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  externalMessageId?: string | null;
+  idempotencyKey?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreference {
+  id: string;
+  institutionId: string;
+  userId: string;
+  category: NotificationCategory;
+  channel: NotificationChannel;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  institutionId: string;
+  templateCode: string;
+  name: string;
+  category: NotificationCategory;
+  channel: NotificationChannel;
+  subjectTemplate?: string | null;
+  bodyTemplate: string;
+  variables: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PushDeviceToken {
+  id: string;
+  userId: string;
+  token: string;
+  platform: 'ios' | 'android' | 'web';
+  deviceModel?: string | null;
+  appVersion?: string | null;
+  isActive: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Announcement {
+  id: string;
+  institutionId: string;
+  title: string;
+  content: string;
+  scope: AnnouncementScope;
+  targetEntityId?: string | null;
+  targetRole?: Role | null;
+  priority: AnnouncementPriority;
+  status: AnnouncementStatus;
+  publishedAt?: string | null;
+  expiresAt?: string | null;
+  scheduledFor?: string | null;
+  requiresAcknowledgement: boolean;
+  acknowledgementDeadline?: string | null;
+  attachments: Array<{ name: string; url: string; size?: number; type?: string }>;
+  viewCount: number;
+  acknowledgementCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  creator?: Profile;
+  isAcknowledged?: boolean;
+}
+
+export interface AnnouncementAcknowledgement {
+  id: string;
+  announcementId: string;
+  institutionId: string;
+  userId: string;
+  acknowledgedAt: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  user?: Profile;
+}
+
+export interface HomeworkAssignment {
+  id: string;
+  institutionId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  classId: string;
+  sectionId?: string | null;
+  subjectId: string;
+  teacherId: string;
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  attachments: Array<{ name: string; url: string; size?: number }>;
+  maxMarks: number;
+  dueDate: string;
+  dueTime?: string | null;
+  allowLateSubmissions: boolean;
+  latePenaltyPercent: number;
+  status: 'draft' | 'published' | 'closed' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+  academicYear?: AcademicYear;
+  campus?: Campus;
+  academicClass?: AcademicClass;
+  academicSection?: AcademicSection;
+  academicSubject?: AcademicSubject;
+  class?: AcademicClass;
+  section?: AcademicSection;
+  subject?: AcademicSubject;
+  teacher?: Profile;
+  submissionCount?: number;
+  userSubmission?: HomeworkSubmission;
+}
+
+export interface HomeworkSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  institutionId: string;
+  submissionText?: string | null;
+  attachments: Array<{ name: string; url: string; size?: number }>;
+  submittedAt: string;
+  isLate: boolean;
+  status: AssignmentSubmissionStatus;
+  marksObtained?: number | null;
+  feedback?: string | null;
+  gradedBy?: string | null;
+  gradedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignment?: HomeworkAssignment;
+  student?: Student;
+  grader?: Profile;
+}
+
+export interface CommunicationThread {
+  id: string;
+  institutionId: string;
+  threadType: ConversationType;
+  subject: string;
+  createdBy: string;
+  isLocked: boolean;
+  isArchived: boolean;
+  lastMessageAt: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+  creator?: Profile;
+  participants?: CommunicationParticipant[];
+  messages?: CommunicationMessage[];
+  unreadCount?: number;
+}
+
+export interface CommunicationParticipant {
+  id: string;
+  threadId: string;
+  institutionId: string;
+  userId: string;
+  role: string;
+  lastReadAt?: string | null;
+  isMuted: boolean;
+  createdAt: string;
+  user?: Profile;
+}
+
+export interface CommunicationMessage {
+  id: string;
+  threadId: string;
+  institutionId: string;
+  senderId: string;
+  body: string;
+  attachments: Array<{ name: string; url: string; size?: number; type?: string }>;
+  isEdited: boolean;
+  isFlagged: boolean;
+  isDeleted: boolean;
+  flaggedReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sender?: Profile;
+}
+
+export interface CommunicationsOverviewStats {
+  totalAnnouncements: number;
+  activeAnnouncements: number;
+  unreadNotifications: number;
+  pendingDeliveries: number;
+  failedDeliveries: number;
+  activeThreads: number;
+  pendingHomework: number;
+}
+
 
 
 
