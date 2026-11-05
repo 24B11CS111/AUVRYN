@@ -169,6 +169,82 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('6. Audit Log Forgery Prevention', false, 'SECURITY FAILURE: Direct client inserted audit log');
   END IF;
 
+  -- ============================================================================
+  -- TEST 7: Academic Departments Cross-Tenant SELECT Isolation
+  -- ============================================================================
+  -- Insert test departments
+  INSERT INTO public.academic_departments (id, institution_id, name, code)
+  VALUES ('da000000-0000-0000-0000-000000000001', v_inst_a, 'Dept A', 'D-A'),
+         ('db000000-0000-0000-0000-000000000002', v_inst_b, 'Dept B', 'D-B')
+  ON CONFLICT DO NOTHING;
+
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  SELECT count(*) INTO v_count FROM public.academic_departments WHERE institution_id = v_inst_b;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('7. Academic Department Cross-Tenant Read Block', true, 'Inst A user sees 0 departments from Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('7. Academic Department Cross-Tenant Read Block', false, 'LEAK: Alice saw ' || v_count || ' departments from Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 8: Academic Cross-Tenant INSERT Prevention
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.academic_departments (institution_id, name, code)
+    VALUES (v_inst_b, 'Malicious Dept', 'MALICIOUS');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('8. Academic Department Cross-Tenant Write Block', true, 'Inst A user blocked from inserting into Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('8. Academic Department Cross-Tenant Write Block', false, 'SECURITY FAILURE: Alice inserted department into Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 9: Unauthorized User Academic Modification Blocked
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.academic_departments (institution_id, name, code)
+    VALUES (v_inst_a, 'David Rogue Dept', 'ROGUE-D');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('9. Stranger Academic Creation Blocked', true, 'Unaffiliated user blocked from academic modification');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('9. Stranger Academic Creation Blocked', false, 'SECURITY FAILURE: Stranger created academic department');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 10: Authorized Academic Admin Insert
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_bob::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.academic_departments (institution_id, name, code)
+    VALUES (v_inst_b, 'Engineering Faculty', 'ENGR-FAC');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('10. Authorized Academic Creation', true, 'Owner/Admin Bob successfully created department in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('10. Authorized Academic Creation', false, 'FAILURE: Authorized Bob could not create department in Inst B');
+  END IF;
+
 END $$;
 
 -- Print test report

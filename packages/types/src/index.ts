@@ -66,7 +66,7 @@ export const INSTITUTION_TYPE_DEFINITIONS: Record<InstitutionType, InstitutionTy
     type: 'school',
     label: 'K-12 School',
     description: 'Primary, middle, and high schools following national or international boards.',
-    departmentLabel: 'Grade Levels',
+    departmentLabel: 'Grade Levels / Wings',
     cohortLabel: 'Classes & Sections',
     defaultTermType: 'annual',
     icon: 'GraduationCap',
@@ -76,7 +76,7 @@ export const INSTITUTION_TYPE_DEFINITIONS: Record<InstitutionType, InstitutionTy
     label: 'Junior College / Pre-University',
     description: 'Higher secondary institutions (11th & 12th / +2 / Intermediate) preparing students for universities.',
     departmentLabel: 'Streams',
-    cohortLabel: 'Batches',
+    cohortLabel: 'Batches & Groups',
     defaultTermType: 'annual',
     icon: 'BookOpen',
   },
@@ -268,7 +268,233 @@ export interface AcademicYear {
 }
 
 // ==========================================
-// 5. Audit Logging
+// 5. Academic Hierarchy & Structure (Milestone 2)
+// ==========================================
+
+export type AcademicRecordStatus = 'active' | 'inactive' | 'archived';
+
+export type AcademicLevelType =
+  | 'primary'
+  | 'middle_school'
+  | 'secondary'
+  | 'higher_secondary'
+  | 'diploma'
+  | 'undergraduate'
+  | 'postgraduate'
+  | 'doctoral';
+
+export type SubjectCategoryType =
+  | 'theory'
+  | 'practical'
+  | 'lab'
+  | 'elective'
+  | 'vocational'
+  | 'project';
+
+export interface AcademicDepartment {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  parentDepartmentId?: string | null;
+  name: string;
+  code: string;
+  description?: string | null;
+  headProfileId?: string | null;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  headProfile?: Profile | null;
+  campus?: Campus | null;
+  parentDepartment?: AcademicDepartment | null;
+}
+
+export interface AcademicProgram {
+  id: string;
+  institutionId: string;
+  departmentId?: string | null;
+  campusId?: string | null;
+  name: string;
+  code: string;
+  description?: string | null;
+  level: AcademicLevelType;
+  durationYears: number;
+  termSystem: 'semester' | 'trimester' | 'annual';
+  totalTerms: number;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  department?: AcademicDepartment | null;
+  campus?: Campus | null;
+}
+
+export interface AcademicClass {
+  id: string;
+  institutionId: string;
+  programId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  name: string;
+  code: string;
+  levelNumber: number; // e.g. Grade 1-12, or Year 1-4
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  program?: AcademicProgram | null;
+  academicYear?: AcademicYear | null;
+  campus?: Campus | null;
+  sectionsCount?: number;
+}
+
+export interface AcademicSection {
+  id: string;
+  institutionId: string;
+  classId: string;
+  campusId?: string | null;
+  name: string;
+  code: string;
+  capacity: number;
+  roomNumber?: string | null;
+  classTeacherProfileId?: string | null;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  academicClass?: AcademicClass | null;
+  classTeacher?: Profile | null;
+  campus?: Campus | null;
+}
+
+export interface AcademicSubject {
+  id: string;
+  institutionId: string;
+  departmentId?: string | null;
+  name: string;
+  code: string;
+  subjectType: SubjectCategoryType;
+  creditHours: number;
+  description?: string | null;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  department?: AcademicDepartment | null;
+}
+
+export interface AcademicClassSubject {
+  id: string;
+  institutionId: string;
+  classId: string;
+  sectionId?: string | null;
+  subjectId: string;
+  termId?: string | null;
+  facultyProfileId?: string | null;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Join extensions
+  academicClass?: AcademicClass | null;
+  section?: AcademicSection | null;
+  subject?: AcademicSubject | null;
+  term?: AcademicTerm | null;
+  faculty?: Profile | null;
+}
+
+// Dynamic terminology mapping helper
+export interface AcademicTerminology {
+  departmentTitle: string; // e.g., "Wings / Divisions", "Streams", "Departments", "Faculties"
+  departmentDescription: string;
+  programTitle: string;    // e.g., "Curriculums", "Stream Tracks", "Programs / Degrees", "Degrees"
+  programDescription: string;
+  classTitle: string;      // e.g., "Grades / Classes", "Year Batches", "Batches / Cohorts"
+  classDescription: string;
+  sectionTitle: string;    // e.g., "Sections", "Divisions", "Lab Batches / Sections"
+  sectionDescription: string;
+  teacherTitle: string;    // e.g., "Class Teacher", "Stream Mentor", "Faculty Advisor / Proctor"
+  subjectTitle: string;    // e.g., "Subjects", "Subjects", "Course Modules", "Courses"
+}
+
+export function getAcademicTerminology(type: InstitutionType): AcademicTerminology {
+  switch (type) {
+    case 'school':
+      return {
+        departmentTitle: 'Academic Wings',
+        departmentDescription: 'Organizational levels such as Primary, Middle, and Senior Wing',
+        programTitle: 'Curriculum Tracks',
+        programDescription: 'Educational boards and curricula (e.g. CBSE, ICSE, Cambridge)',
+        classTitle: 'Grades & Classes',
+        classDescription: 'Standard grade levels (e.g. Grade 1 through Grade 12)',
+        sectionTitle: 'Sections',
+        sectionDescription: 'Classroom divisions (e.g. Section A, Section B)',
+        teacherTitle: 'Class Teacher',
+        subjectTitle: 'Subjects',
+      };
+    case 'junior_college':
+      return {
+        departmentTitle: 'Academic Streams',
+        departmentDescription: 'Pre-university streams (e.g. Science, Commerce, Arts)',
+        programTitle: 'Stream Groups',
+        programDescription: 'Specialized subject combinations (e.g. MPC, BiPC, MEC, CEC)',
+        classTitle: 'Year Batches',
+        classDescription: 'Intermediate cohorts (e.g. 1st Year, 2nd Year)',
+        sectionTitle: 'Groups & Sections',
+        sectionDescription: 'Batch subdivisions and study cohorts',
+        teacherTitle: 'Stream Mentor / Class Teacher',
+        subjectTitle: 'Stream Subjects',
+      };
+    case 'degree_college':
+      return {
+        departmentTitle: 'Academic Departments',
+        departmentDescription: 'Discipline departments (e.g. Computer Science, Commerce, Physics)',
+        programTitle: 'Degree Programs',
+        programDescription: 'Undergraduate and postgraduate degrees (e.g. B.Sc, B.Com, M.Sc)',
+        classTitle: 'Batches & Years',
+        classDescription: 'Annual student cohorts and academic years',
+        sectionTitle: 'Sections & Divisions',
+        sectionDescription: 'Class lecture divisions and tutorial groups',
+        teacherTitle: 'Faculty Mentor / Advisor',
+        subjectTitle: 'Courses & Papers',
+      };
+    case 'engineering_college':
+      return {
+        departmentTitle: 'Engineering Departments',
+        departmentDescription: 'Core departments (e.g. CSE, ECE, Mechanical, Civil)',
+        programTitle: 'Branches & Degrees',
+        programDescription: 'Technical engineering programs (e.g. B.Tech CSE, M.Tech VLSI)',
+        classTitle: 'Batches & Semesters',
+        classDescription: 'Engineering cohort years and current semester classes',
+        sectionTitle: 'Sections & Lab Batches',
+        sectionDescription: 'Lecture sections and laboratory practical groups',
+        teacherTitle: 'Faculty Proctor / Advisor',
+        subjectTitle: 'Course Modules & Labs',
+      };
+    case 'university':
+    default:
+      return {
+        departmentTitle: 'Schools & Faculties',
+        departmentDescription: 'Constituent schools and faculties (e.g. School of Computing, Faculty of Law)',
+        programTitle: 'Academic Programs',
+        programDescription: 'Conferred degrees and specialized graduate programs',
+        classTitle: 'Degree Cohorts',
+        classDescription: 'Enrolled matriculation cohorts across academic years',
+        sectionTitle: 'Cohort Sections',
+        sectionDescription: 'Instructional divisions and research groups',
+        teacherTitle: 'Faculty Advisor',
+        subjectTitle: 'Credit Courses',
+      };
+  }
+}
+
+// ==========================================
+// 6. Audit Logging
 // ==========================================
 
 export interface AuditLog {
@@ -287,7 +513,7 @@ export interface AuditLog {
 }
 
 // ==========================================
-// 6. User Session & Multi-Tenancy Context
+// 7. User Session & Multi-Tenancy Context
 // ==========================================
 
 export interface UserSessionContext {

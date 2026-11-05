@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import type { InstitutionType, Role, MembershipStatus } from '@edu-platform/types';
+import type {
+  InstitutionType,
+  Role,
+  MembershipStatus,
+  AcademicRecordStatus,
+  AcademicLevelType,
+  SubjectCategoryType,
+} from '@edu-platform/types';
 
 // ==========================================
 // 1. Authentication Schemas
@@ -247,3 +254,179 @@ export const updateMemberRoleSchema = z.object({
 });
 
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
+
+// ==========================================
+// 4. Academic Hierarchy Schemas (Milestone 2)
+// ==========================================
+
+export const academicRecordStatusEnum = z.enum([
+  'active',
+  'inactive',
+  'archived',
+]) satisfies z.ZodType<AcademicRecordStatus>;
+
+export const academicLevelTypeEnum = z.enum([
+  'primary',
+  'middle_school',
+  'secondary',
+  'higher_secondary',
+  'diploma',
+  'undergraduate',
+  'postgraduate',
+  'doctoral',
+]) satisfies z.ZodType<AcademicLevelType>;
+
+export const subjectCategoryTypeEnum = z.enum([
+  'theory',
+  'practical',
+  'lab',
+  'elective',
+  'vocational',
+  'project',
+]) satisfies z.ZodType<SubjectCategoryType>;
+
+// --- Department Schemas ---
+export const departmentCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Department name must be at least 2 characters')
+    .max(100, 'Department name cannot exceed 100 characters'),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(2, 'Department code must be 2-20 characters')
+    .max(20, 'Department code cannot exceed 20 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Code can only contain letters, numbers, hyphens and underscores'),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  campusId: z.string().uuid('Invalid campus ID').optional().nullable().or(z.literal('')),
+  parentDepartmentId: z.string().uuid('Invalid parent department ID').optional().nullable().or(z.literal('')),
+  headProfileId: z.string().uuid('Invalid head profile ID').optional().nullable().or(z.literal('')),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type DepartmentCreateInput = z.input<typeof departmentCreateSchema>;
+
+export const departmentUpdateSchema = departmentCreateSchema.partial();
+export type DepartmentUpdateInput = z.input<typeof departmentUpdateSchema>;
+
+// --- Program Schemas ---
+export const programCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Program name must be at least 2 characters')
+    .max(120, 'Program name cannot exceed 120 characters'),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(2, 'Program code must be 2-20 characters')
+    .max(20, 'Program code cannot exceed 20 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Code can only contain letters, numbers, hyphens and underscores'),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  departmentId: z.string().uuid('Invalid department ID').optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid('Invalid campus ID').optional().nullable().or(z.literal('')),
+  level: academicLevelTypeEnum.default('undergraduate'),
+  durationYears: z.coerce.number().int().min(1, 'Duration must be at least 1 year').max(10, 'Duration cannot exceed 10 years').default(4),
+  termSystem: z.enum(['semester', 'trimester', 'annual']).default('semester'),
+  totalTerms: z.coerce.number().int().min(1, 'Total terms must be at least 1').max(20, 'Total terms cannot exceed 20').default(8),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type ProgramCreateInput = z.input<typeof programCreateSchema>;
+
+export const programUpdateSchema = programCreateSchema.partial();
+export type ProgramUpdateInput = z.input<typeof programUpdateSchema>;
+
+// --- Class / Batch Schemas ---
+export const classCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Class name must be at least 2 characters')
+    .max(100, 'Class name cannot exceed 100 characters'),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(2, 'Class code must be 2-20 characters')
+    .max(20, 'Class code cannot exceed 20 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Code can only contain letters, numbers, hyphens and underscores'),
+  programId: z.string().uuid('Valid Program ID is required'),
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid campus ID').optional().nullable().or(z.literal('')),
+  levelNumber: z.coerce.number().int().min(1, 'Level number must be at least 1').max(20).default(1),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type ClassCreateInput = z.input<typeof classCreateSchema>;
+
+export const classUpdateSchema = classCreateSchema.partial();
+export type ClassUpdateInput = z.input<typeof classUpdateSchema>;
+
+// --- Section Schemas ---
+export const sectionCreateSchema = z.object({
+  classId: z.string().uuid('Valid Class ID is required'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Section name must be at least 1 character')
+    .max(50, 'Section name cannot exceed 50 characters'),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, 'Section code must be 1-10 characters')
+    .max(10, 'Section code cannot exceed 10 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Code can only contain letters, numbers, hyphens and underscores'),
+  capacity: z.coerce.number().int().min(1, 'Capacity must be at least 1').max(500, 'Capacity cannot exceed 500').default(40),
+  roomNumber: z.string().trim().max(50).optional().or(z.literal('')),
+  classTeacherProfileId: z.string().uuid('Invalid teacher profile ID').optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid('Invalid campus ID').optional().nullable().or(z.literal('')),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type SectionCreateInput = z.input<typeof sectionCreateSchema>;
+
+export const sectionUpdateSchema = sectionCreateSchema.partial();
+export type SectionUpdateInput = z.input<typeof sectionUpdateSchema>;
+
+// --- Subject Schemas ---
+export const subjectCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Subject name must be at least 2 characters')
+    .max(120, 'Subject name cannot exceed 120 characters'),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(2, 'Subject code must be 2-20 characters')
+    .max(20, 'Subject code cannot exceed 20 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Code can only contain letters, numbers, hyphens and underscores'),
+  departmentId: z.string().uuid('Invalid department ID').optional().nullable().or(z.literal('')),
+  subjectType: subjectCategoryTypeEnum.default('theory'),
+  creditHours: z.coerce.number().min(0, 'Credit hours must be positive').max(20, 'Credits cannot exceed 20').default(3),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type SubjectCreateInput = z.input<typeof subjectCreateSchema>;
+
+export const subjectUpdateSchema = subjectCreateSchema.partial();
+export type SubjectUpdateInput = z.input<typeof subjectUpdateSchema>;
+
+// --- Class Subject / Faculty Assignment Schema ---
+export const classSubjectAssignSchema = z.object({
+  classId: z.string().uuid('Valid Class ID is required'),
+  sectionId: z.string().uuid('Invalid section ID').optional().nullable().or(z.literal('')),
+  subjectId: z.string().uuid('Valid Subject ID is required'),
+  termId: z.string().uuid('Invalid term ID').optional().nullable().or(z.literal('')),
+  facultyProfileId: z.string().uuid('Invalid faculty ID').optional().nullable().or(z.literal('')),
+  status: academicRecordStatusEnum.optional().default('active'),
+});
+
+export type ClassSubjectAssignInput = z.input<typeof classSubjectAssignSchema>;

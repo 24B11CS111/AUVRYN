@@ -8,6 +8,12 @@ export const DATABASE_TABLES = {
   ACADEMIC_YEARS: 'academic_years',
   ACADEMIC_TERMS: 'academic_terms',
   AUDIT_LOGS: 'audit_logs',
+  ACADEMIC_DEPARTMENTS: 'academic_departments',
+  ACADEMIC_PROGRAMS: 'academic_programs',
+  ACADEMIC_CLASSES: 'academic_classes',
+  ACADEMIC_SECTIONS: 'academic_sections',
+  ACADEMIC_SUBJECTS: 'academic_subjects',
+  ACADEMIC_CLASS_SUBJECTS: 'academic_class_subjects',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -134,7 +140,7 @@ export interface Database {
           id?: string;
           institution_id: string;
           user_id: string;
-          role?: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
+          role: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
           permissions?: string[];
           status?: 'active' | 'invited' | 'suspended' | 'revoked';
           title?: string | null;
@@ -252,7 +258,6 @@ export interface Database {
         Row: {
           id: string;
           academic_year_id: string;
-          institution_id: string;
           name: string;
           code: string;
           start_date: string;
@@ -264,7 +269,6 @@ export interface Database {
         Insert: {
           id?: string;
           academic_year_id: string;
-          institution_id: string;
           name: string;
           code: string;
           start_date: string;
@@ -276,7 +280,6 @@ export interface Database {
         Update: {
           id?: string;
           academic_year_id?: string;
-          institution_id?: string;
           name?: string;
           code?: string;
           start_date?: string;
@@ -284,6 +287,285 @@ export interface Database {
           is_current?: boolean;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      academic_departments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          parent_department_id: string | null;
+          name: string;
+          code: string;
+          description: string | null;
+          head_profile_id: string | null;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          parent_department_id?: string | null;
+          name: string;
+          code: string;
+          description?: string | null;
+          head_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          parent_department_id?: string | null;
+          name?: string;
+          code?: string;
+          description?: string | null;
+          head_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_programs: {
+        Row: {
+          id: string;
+          institution_id: string;
+          department_id: string | null;
+          campus_id: string | null;
+          name: string;
+          code: string;
+          description: string | null;
+          level: 'primary' | 'middle_school' | 'secondary' | 'higher_secondary' | 'diploma' | 'undergraduate' | 'postgraduate' | 'doctoral';
+          duration_years: number;
+          term_system: 'semester' | 'trimester' | 'annual';
+          total_terms: number;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          department_id?: string | null;
+          campus_id?: string | null;
+          name: string;
+          code: string;
+          description?: string | null;
+          level?: 'primary' | 'middle_school' | 'secondary' | 'higher_secondary' | 'diploma' | 'undergraduate' | 'postgraduate' | 'doctoral';
+          duration_years?: number;
+          term_system?: 'semester' | 'trimester' | 'annual';
+          total_terms?: number;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          department_id?: string | null;
+          campus_id?: string | null;
+          name?: string;
+          code?: string;
+          description?: string | null;
+          level?: 'primary' | 'middle_school' | 'secondary' | 'higher_secondary' | 'diploma' | 'undergraduate' | 'postgraduate' | 'doctoral';
+          duration_years?: number;
+          term_system?: 'semester' | 'trimester' | 'annual';
+          total_terms?: number;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_classes: {
+        Row: {
+          id: string;
+          institution_id: string;
+          program_id: string;
+          academic_year_id: string;
+          campus_id: string | null;
+          name: string;
+          code: string;
+          level_number: number;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          program_id: string;
+          academic_year_id: string;
+          campus_id?: string | null;
+          name: string;
+          code: string;
+          level_number?: number;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          program_id?: string;
+          academic_year_id?: string;
+          campus_id?: string | null;
+          name?: string;
+          code?: string;
+          level_number?: number;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_sections: {
+        Row: {
+          id: string;
+          institution_id: string;
+          class_id: string;
+          campus_id: string | null;
+          name: string;
+          code: string;
+          capacity: number;
+          room_number: string | null;
+          class_teacher_profile_id: string | null;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          class_id: string;
+          campus_id?: string | null;
+          name: string;
+          code: string;
+          capacity?: number;
+          room_number?: string | null;
+          class_teacher_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          class_id?: string;
+          campus_id?: string | null;
+          name?: string;
+          code?: string;
+          capacity?: number;
+          room_number?: string | null;
+          class_teacher_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_subjects: {
+        Row: {
+          id: string;
+          institution_id: string;
+          department_id: string | null;
+          name: string;
+          code: string;
+          subject_type: 'theory' | 'practical' | 'lab' | 'elective' | 'vocational' | 'project';
+          credit_hours: number;
+          description: string | null;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          department_id?: string | null;
+          name: string;
+          code: string;
+          subject_type?: 'theory' | 'practical' | 'lab' | 'elective' | 'vocational' | 'project';
+          credit_hours?: number;
+          description?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          department_id?: string | null;
+          name?: string;
+          code?: string;
+          subject_type?: 'theory' | 'practical' | 'lab' | 'elective' | 'vocational' | 'project';
+          credit_hours?: number;
+          description?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_class_subjects: {
+        Row: {
+          id: string;
+          institution_id: string;
+          class_id: string;
+          section_id: string | null;
+          subject_id: string;
+          term_id: string | null;
+          faculty_profile_id: string | null;
+          status: 'active' | 'inactive' | 'archived';
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          class_id: string;
+          section_id?: string | null;
+          subject_id: string;
+          term_id?: string | null;
+          faculty_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          class_id?: string;
+          section_id?: string | null;
+          subject_id?: string;
+          term_id?: string | null;
+          faculty_profile_id?: string | null;
+          status?: 'active' | 'inactive' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
         };
         Relationships: [];
       };
@@ -383,6 +665,9 @@ export interface Database {
       membership_role: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
       membership_status: 'active' | 'invited' | 'suspended' | 'revoked';
       term_system: 'semester' | 'trimester' | 'annual';
+      academic_record_status: 'active' | 'inactive' | 'archived';
+      academic_level_type: 'primary' | 'middle_school' | 'secondary' | 'higher_secondary' | 'diploma' | 'undergraduate' | 'postgraduate' | 'doctoral';
+      subject_category_type: 'theory' | 'practical' | 'lab' | 'elective' | 'vocational' | 'project';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -395,3 +680,10 @@ export type CampusRow = Database['public']['Tables']['campuses']['Row'];
 export type AcademicYearRow = Database['public']['Tables']['academic_years']['Row'];
 export type AcademicTermRow = Database['public']['Tables']['academic_terms']['Row'];
 export type AuditLogRow = Database['public']['Tables']['audit_logs']['Row'];
+
+export type AcademicDepartmentRow = Database['public']['Tables']['academic_departments']['Row'];
+export type AcademicProgramRow = Database['public']['Tables']['academic_programs']['Row'];
+export type AcademicClassRow = Database['public']['Tables']['academic_classes']['Row'];
+export type AcademicSectionRow = Database['public']['Tables']['academic_sections']['Row'];
+export type AcademicSubjectRow = Database['public']['Tables']['academic_subjects']['Row'];
+export type AcademicClassSubjectRow = Database['public']['Tables']['academic_class_subjects']['Row'];

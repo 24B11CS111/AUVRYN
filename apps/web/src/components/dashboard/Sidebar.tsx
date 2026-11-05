@@ -10,7 +10,7 @@ import {
   LayoutDashboard,
   Building,
   Users,
-  CalendarDays,
+  GraduationCap,
   FileClock,
   Settings,
   Shield,
@@ -55,9 +55,9 @@ export function Sidebar({
       roles: ['owner', 'admin', 'academic_admin', 'faculty'],
     },
     {
-      label: 'Academic Calendar',
+      label: 'Academics',
       href: '/dashboard/academics',
-      icon: CalendarDays,
+      icon: GraduationCap,
       roles: ['owner', 'admin', 'academic_admin', 'faculty', 'student'],
     },
     {
