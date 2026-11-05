@@ -17,6 +17,7 @@ import {
   CalendarCheck,
   CalendarDays,
   Award,
+  CreditCard,
   FileClock,
   Settings,
   Shield,
@@ -101,6 +102,12 @@ export function Sidebar({
       href: '/dashboard/examinations',
       icon: Award,
       roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
+    },
+    {
+      label: 'Fees & Payments',
+      href: '/dashboard/fees',
+      icon: CreditCard,
+      roles: ['owner', 'admin', 'accountant', 'academic_admin', 'department_head', 'admissions_officer', 'student', 'parent'],
     },
     {
       label: 'Audit Trail',

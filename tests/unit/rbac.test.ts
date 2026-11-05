@@ -214,4 +214,54 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'revaluation:review')).toBe(false);
     }
   });
+
+  it('verifies Fees and Payments RBAC permissions and strict separation of duties', () => {
+    // Owner and Admin have complete fee management, concession approval, and refund approval authority
+    const adminRoles: Role[] = ['owner', 'admin'];
+    for (const r of adminRoles) {
+      expect(checkPermission(r, 'fees:manage')).toBe(true);
+      expect(checkPermission(r, 'fees:assign')).toBe(true);
+      expect(checkPermission(r, 'fees:collect')).toBe(true);
+      expect(checkPermission(r, 'fees:concession_apply')).toBe(true);
+      expect(checkPermission(r, 'fees:concession_approve')).toBe(true);
+      expect(checkPermission(r, 'fees:refund_request')).toBe(true);
+      expect(checkPermission(r, 'fees:refund_approve')).toBe(true);
+      expect(checkPermission(r, 'fees:reports_view')).toBe(true);
+      expect(checkPermission(r, 'fees:view')).toBe(true);
+      expect(checkPermission(r, 'receipts:view')).toBe(true);
+    }
+
+    // Accountant can collect payments, apply for concessions, request refunds, and view reports
+    expect(checkPermission('accountant', 'fees:collect')).toBe(true);
+    expect(checkPermission('accountant', 'fees:concession_apply')).toBe(true);
+    expect(checkPermission('accountant', 'fees:refund_request')).toBe(true);
+    expect(checkPermission('accountant', 'fees:reports_view')).toBe(true);
+    expect(checkPermission('accountant', 'fees:view')).toBe(true);
+    expect(checkPermission('accountant', 'receipts:view')).toBe(true);
+
+    // CRITICAL SEPARATION OF DUTIES: Accountant CANNOT approve concessions, approve refunds, or manage fee heads!
+    expect(checkPermission('accountant', 'fees:concession_approve')).toBe(false);
+    expect(checkPermission('accountant', 'fees:refund_approve')).toBe(false);
+    expect(checkPermission('accountant', 'fees:manage')).toBe(false);
+    expect(checkPermission('accountant', 'fees:assign')).toBe(false);
+
+    // Academic Admin and Admissions Officer have selective fee view rights
+    expect(checkPermission('admissions_officer', 'fees:view')).toBe(true);
+    expect(checkPermission('admissions_officer', 'receipts:view')).toBe(true);
+    expect(checkPermission('admissions_officer', 'fees:concession_approve')).toBe(false);
+    expect(checkPermission('admissions_officer', 'fees:refund_approve')).toBe(false);
+
+    // Student and Parent can view their own fees and receipts, but CANNOT manage, assign, or collect
+    const studentParentRoles: Role[] = ['student', 'parent'];
+    for (const r of studentParentRoles) {
+      expect(checkPermission(r, 'fees:view')).toBe(true);
+      expect(checkPermission(r, 'receipts:view')).toBe(true);
+      expect(checkPermission(r, 'fees:manage')).toBe(false);
+      expect(checkPermission(r, 'fees:assign')).toBe(false);
+      expect(checkPermission(r, 'fees:collect')).toBe(false);
+      expect(checkPermission(r, 'fees:concession_approve')).toBe(false);
+      expect(checkPermission(r, 'fees:refund_approve')).toBe(false);
+      expect(checkPermission(r, 'fees:reports_view')).toBe(false);
+    }
+  });
 });

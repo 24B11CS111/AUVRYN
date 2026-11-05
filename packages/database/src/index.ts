@@ -48,6 +48,22 @@ export const DATABASE_TABLES = {
   STUDENT_EXAM_RESULTS: 'student_exam_results',
   HALL_TICKETS: 'hall_tickets',
   EXAM_REVALUATIONS: 'exam_revaluations',
+  INSTITUTION_FEE_SETTINGS: 'institution_fee_settings',
+  FEE_HEADS: 'fee_heads',
+  FEE_STRUCTURES: 'fee_structures',
+  FEE_STRUCTURE_ITEMS: 'fee_structure_items',
+  FEE_STRUCTURE_INSTALLMENTS: 'fee_structure_installments',
+  STUDENT_FEE_ASSIGNMENTS: 'student_fee_assignments',
+  STUDENT_FEE_ASSIGNMENT_ITEMS: 'student_fee_assignment_items',
+  STUDENT_FEE_INSTALLMENTS: 'student_fee_installments',
+  FEE_CONCESSIONS: 'fee_concessions',
+  FEE_PAYMENTS: 'fee_payments',
+  PAYMENT_ALLOCATIONS: 'payment_allocations',
+  STUDENT_ADVANCE_BALANCES: 'student_advance_balances',
+  FINANCIAL_LEDGER_ENTRIES: 'financial_ledger_entries',
+  FEE_REFUND_REQUESTS: 'fee_refund_requests',
+  GATEWAY_ORDERS: 'gateway_orders',
+  GATEWAY_WEBHOOK_EVENTS: 'gateway_webhook_events',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -1787,6 +1803,825 @@ export interface Database {
           message?: string;
           delivery_error?: string | null;
           sent_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      institution_fee_settings: {
+        Row: {
+          id: string;
+          institution_id: string;
+          receipt_prefix: string;
+          invoice_prefix: string;
+          last_receipt_seq: number;
+          last_invoice_seq: number;
+          enable_partial_payments: boolean;
+          allow_advance_payments: boolean;
+          default_late_fee_per_day: number;
+          grace_period_days: number;
+          tax_percentage: number;
+          tax_identifier: string | null;
+          currency: string;
+          gateway_provider: string;
+          is_gateway_live: boolean;
+          gateway_merchant_id: string | null;
+          gateway_key_id: string | null;
+          gateway_secret_ciphertext: string | null;
+          webhook_secret_ciphertext: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          receipt_prefix?: string;
+          invoice_prefix?: string;
+          last_receipt_seq?: number;
+          last_invoice_seq?: number;
+          enable_partial_payments?: boolean;
+          allow_advance_payments?: boolean;
+          default_late_fee_per_day?: number;
+          grace_period_days?: number;
+          tax_percentage?: number;
+          tax_identifier?: string | null;
+          currency?: string;
+          gateway_provider?: string;
+          is_gateway_live?: boolean;
+          gateway_merchant_id?: string | null;
+          gateway_key_id?: string | null;
+          gateway_secret_ciphertext?: string | null;
+          webhook_secret_ciphertext?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          receipt_prefix?: string;
+          invoice_prefix?: string;
+          last_receipt_seq?: number;
+          last_invoice_seq?: number;
+          enable_partial_payments?: boolean;
+          allow_advance_payments?: boolean;
+          default_late_fee_per_day?: number;
+          grace_period_days?: number;
+          tax_percentage?: number;
+          tax_identifier?: string | null;
+          currency?: string;
+          gateway_provider?: string;
+          is_gateway_live?: boolean;
+          gateway_merchant_id?: string | null;
+          gateway_key_id?: string | null;
+          gateway_secret_ciphertext?: string | null;
+          webhook_secret_ciphertext?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      fee_heads: {
+        Row: {
+          id: string;
+          institution_id: string;
+          name: string;
+          code: string;
+          category: 'tuition' | 'admission' | 'registration' | 'examination' | 'laboratory' | 'library' | 'transport' | 'hostel' | 'caution_deposit' | 'fine' | 'miscellaneous';
+          description: string | null;
+          is_refundable: boolean;
+          is_optional: boolean;
+          tax_exempt: boolean;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          name: string;
+          code: string;
+          category: 'tuition' | 'admission' | 'registration' | 'examination' | 'laboratory' | 'library' | 'transport' | 'hostel' | 'caution_deposit' | 'fine' | 'miscellaneous';
+          description?: string | null;
+          is_refundable?: boolean;
+          is_optional?: boolean;
+          tax_exempt?: boolean;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          name?: string;
+          code?: string;
+          category?: 'tuition' | 'admission' | 'registration' | 'examination' | 'laboratory' | 'library' | 'transport' | 'hostel' | 'caution_deposit' | 'fine' | 'miscellaneous';
+          description?: string | null;
+          is_refundable?: boolean;
+          is_optional?: boolean;
+          tax_exempt?: boolean;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      fee_structures: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          academic_year_id: string;
+          term_id: string | null;
+          program_id: string | null;
+          class_id: string | null;
+          section_id: string | null;
+          student_category: string | null;
+          name: string;
+          code: string;
+          description: string | null;
+          total_amount: number;
+          currency: string;
+          status: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          is_template: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          academic_year_id: string;
+          term_id?: string | null;
+          program_id?: string | null;
+          class_id?: string | null;
+          section_id?: string | null;
+          student_category?: string | null;
+          name: string;
+          code: string;
+          description?: string | null;
+          total_amount?: number;
+          currency?: string;
+          status?: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          is_template?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          academic_year_id?: string;
+          term_id?: string | null;
+          program_id?: string | null;
+          class_id?: string | null;
+          section_id?: string | null;
+          student_category?: string | null;
+          name?: string;
+          code?: string;
+          description?: string | null;
+          total_amount?: number;
+          currency?: string;
+          status?: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          is_template?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      fee_structure_items: {
+        Row: {
+          id: string;
+          fee_structure_id: string;
+          fee_head_id: string;
+          amount: number;
+          is_mandatory: boolean;
+          due_date: string | null;
+          sequence_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          fee_structure_id: string;
+          fee_head_id: string;
+          amount: number;
+          is_mandatory?: boolean;
+          due_date?: string | null;
+          sequence_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          fee_structure_id?: string;
+          fee_head_id?: string;
+          amount?: number;
+          is_mandatory?: boolean;
+          due_date?: string | null;
+          sequence_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      fee_structure_installments: {
+        Row: {
+          id: string;
+          fee_structure_id: string;
+          installment_number: number;
+          name: string;
+          percentage: number;
+          due_date: string;
+          late_fee_grace_days: number;
+          late_fee_amount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          fee_structure_id: string;
+          installment_number: number;
+          name: string;
+          percentage: number;
+          due_date: string;
+          late_fee_grace_days?: number;
+          late_fee_amount?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          fee_structure_id?: string;
+          installment_number?: number;
+          name?: string;
+          percentage?: number;
+          due_date?: string;
+          late_fee_grace_days?: number;
+          late_fee_amount?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_fee_assignments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          enrollment_id: string | null;
+          fee_structure_id: string | null;
+          academic_year_id: string;
+          gross_amount: number;
+          discount_amount: number;
+          net_amount: number;
+          paid_amount: number;
+          balance_amount: number;
+          status: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          currency: string;
+          remarks: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          enrollment_id?: string | null;
+          fee_structure_id?: string | null;
+          academic_year_id: string;
+          gross_amount: number;
+          discount_amount?: number;
+          net_amount: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          status?: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          currency?: string;
+          remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          enrollment_id?: string | null;
+          fee_structure_id?: string | null;
+          academic_year_id?: string;
+          gross_amount?: number;
+          discount_amount?: number;
+          net_amount?: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          status?: 'draft' | 'assigned' | 'partially_paid' | 'paid' | 'overdue' | 'waived' | 'cancelled';
+          currency?: string;
+          remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      student_fee_assignment_items: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          fee_head_id: string;
+          base_amount: number;
+          discount_amount: number;
+          net_amount: number;
+          paid_amount: number;
+          balance_amount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          fee_head_id: string;
+          base_amount: number;
+          discount_amount?: number;
+          net_amount: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          fee_head_id?: string;
+          base_amount?: number;
+          discount_amount?: number;
+          net_amount?: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_fee_installments: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          installment_number: number;
+          name: string;
+          due_date: string;
+          amount: number;
+          paid_amount: number;
+          balance_amount: number;
+          late_fee_amount: number;
+          late_fee_paid: number;
+          status: 'pending' | 'partially_paid' | 'paid' | 'overdue' | 'waived';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          installment_number: number;
+          name: string;
+          due_date: string;
+          amount: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          late_fee_amount?: number;
+          late_fee_paid?: number;
+          status?: 'pending' | 'partially_paid' | 'paid' | 'overdue' | 'waived';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          installment_number?: number;
+          name?: string;
+          due_date?: string;
+          amount?: number;
+          paid_amount?: number;
+          balance_amount?: number;
+          late_fee_amount?: number;
+          late_fee_paid?: number;
+          status?: 'pending' | 'partially_paid' | 'paid' | 'overdue' | 'waived';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      fee_concessions: {
+        Row: {
+          id: string;
+          institution_id: string;
+          assignment_id: string;
+          student_id: string;
+          concession_type: 'scholarship' | 'sibling_discount' | 'staff_ward' | 'merit' | 'financial_aid' | 'sports_quota' | 'early_bird' | 'special_waiver' | 'custom';
+          calculation_type: 'percentage' | 'fixed_amount';
+          calculation_value: number;
+          original_amount: number;
+          approved_amount: number;
+          reason: string;
+          status: 'requested' | 'under_review' | 'approved' | 'rejected' | 'revoked';
+          requested_by: string;
+          approved_by: string | null;
+          approved_at: string | null;
+          rejection_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          assignment_id: string;
+          student_id: string;
+          concession_type: 'scholarship' | 'sibling_discount' | 'staff_ward' | 'merit' | 'financial_aid' | 'sports_quota' | 'early_bird' | 'special_waiver' | 'custom';
+          calculation_type: 'percentage' | 'fixed_amount';
+          calculation_value: number;
+          original_amount: number;
+          approved_amount?: number;
+          reason: string;
+          status?: 'requested' | 'under_review' | 'approved' | 'rejected' | 'revoked';
+          requested_by: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          rejection_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          assignment_id?: string;
+          student_id?: string;
+          concession_type?: 'scholarship' | 'sibling_discount' | 'staff_ward' | 'merit' | 'financial_aid' | 'sports_quota' | 'early_bird' | 'special_waiver' | 'custom';
+          calculation_type?: 'percentage' | 'fixed_amount';
+          calculation_value?: number;
+          original_amount?: number;
+          approved_amount?: number;
+          reason?: string;
+          status?: 'requested' | 'under_review' | 'approved' | 'rejected' | 'revoked';
+          requested_by?: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          rejection_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      fee_payments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          enrollment_id: string | null;
+          assignment_id: string | null;
+          receipt_number: string;
+          transaction_reference: string | null;
+          payment_method: 'cash' | 'upi' | 'bank_transfer' | 'card' | 'payment_gateway' | 'cheque' | 'demand_draft' | 'advance_wallet';
+          payment_status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_refunded';
+          amount_received: number;
+          allocated_amount: number;
+          advance_credit_amount: number;
+          currency: string;
+          payment_date: string;
+          notes: string | null;
+          receipt_qr_hash: string | null;
+          collected_by: string;
+          is_reversed: boolean;
+          reversal_reason: string | null;
+          reversed_by: string | null;
+          reversed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          enrollment_id?: string | null;
+          assignment_id?: string | null;
+          receipt_number: string;
+          transaction_reference?: string | null;
+          payment_method: 'cash' | 'upi' | 'bank_transfer' | 'card' | 'payment_gateway' | 'cheque' | 'demand_draft' | 'advance_wallet';
+          payment_status?: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_refunded';
+          amount_received: number;
+          allocated_amount?: number;
+          advance_credit_amount?: number;
+          currency?: string;
+          payment_date?: string;
+          notes?: string | null;
+          receipt_qr_hash?: string | null;
+          collected_by: string;
+          is_reversed?: boolean;
+          reversal_reason?: string | null;
+          reversed_by?: string | null;
+          reversed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          enrollment_id?: string | null;
+          assignment_id?: string | null;
+          receipt_number?: string;
+          transaction_reference?: string | null;
+          payment_method?: 'cash' | 'upi' | 'bank_transfer' | 'card' | 'payment_gateway' | 'cheque' | 'demand_draft' | 'advance_wallet';
+          payment_status?: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_refunded';
+          amount_received?: number;
+          allocated_amount?: number;
+          advance_credit_amount?: number;
+          currency?: string;
+          payment_date?: string;
+          notes?: string | null;
+          receipt_qr_hash?: string | null;
+          collected_by?: string;
+          is_reversed?: boolean;
+          reversal_reason?: string | null;
+          reversed_by?: string | null;
+          reversed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_allocations: {
+        Row: {
+          id: string;
+          payment_id: string;
+          assignment_id: string;
+          assignment_item_id: string | null;
+          installment_id: string | null;
+          allocated_amount: number;
+          fee_head_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          payment_id: string;
+          assignment_id: string;
+          assignment_item_id?: string | null;
+          installment_id?: string | null;
+          allocated_amount: number;
+          fee_head_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          payment_id?: string;
+          assignment_id?: string;
+          assignment_item_id?: string | null;
+          installment_id?: string | null;
+          allocated_amount?: number;
+          fee_head_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_advance_balances: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          balance_amount: number;
+          currency: string;
+          last_updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          balance_amount?: number;
+          currency?: string;
+          last_updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          balance_amount?: number;
+          currency?: string;
+          last_updated_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      financial_ledger_entries: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          entry_type: 'fee_charged' | 'fee_reversal' | 'payment_received' | 'payment_bounce' | 'concession_applied' | 'concession_revoked' | 'refund_issued' | 'advance_credit' | 'advance_debit' | 'fine_assessed' | 'fine_waived';
+          debit_amount: number;
+          credit_amount: number;
+          balance_after: number;
+          currency: string;
+          reference_type: string;
+          reference_id: string;
+          receipt_number: string | null;
+          description: string;
+          idempotency_key: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          entry_type: 'fee_charged' | 'fee_reversal' | 'payment_received' | 'payment_bounce' | 'concession_applied' | 'concession_revoked' | 'refund_issued' | 'advance_credit' | 'advance_debit' | 'fine_assessed' | 'fine_waived';
+          debit_amount?: number;
+          credit_amount?: number;
+          balance_after: number;
+          currency?: string;
+          reference_type: string;
+          reference_id: string;
+          receipt_number?: string | null;
+          description: string;
+          idempotency_key?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          entry_type?: 'fee_charged' | 'fee_reversal' | 'payment_received' | 'payment_bounce' | 'concession_applied' | 'concession_revoked' | 'refund_issued' | 'advance_credit' | 'advance_debit' | 'fine_assessed' | 'fine_waived';
+          debit_amount?: number;
+          credit_amount?: number;
+          balance_after?: number;
+          currency?: string;
+          reference_type?: string;
+          reference_id?: string;
+          receipt_number?: string | null;
+          description?: string;
+          idempotency_key?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      fee_refund_requests: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          payment_id: string;
+          refund_number: string;
+          amount_requested: number;
+          amount_approved: number | null;
+          reason: string;
+          status: 'requested' | 'under_review' | 'approved' | 'rejected' | 'processed' | 'cancelled';
+          disbursement_method: string | null;
+          disbursement_reference: string | null;
+          requested_by: string;
+          approved_by: string | null;
+          approved_at: string | null;
+          processed_by: string | null;
+          processed_at: string | null;
+          rejection_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          payment_id: string;
+          refund_number: string;
+          amount_requested: number;
+          amount_approved?: number | null;
+          reason: string;
+          status?: 'requested' | 'under_review' | 'approved' | 'rejected' | 'processed' | 'cancelled';
+          disbursement_method?: string | null;
+          disbursement_reference?: string | null;
+          requested_by: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          processed_by?: string | null;
+          processed_at?: string | null;
+          rejection_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          payment_id?: string;
+          refund_number?: string;
+          amount_requested?: number;
+          amount_approved?: number | null;
+          reason?: string;
+          status?: 'requested' | 'under_review' | 'approved' | 'rejected' | 'processed' | 'cancelled';
+          disbursement_method?: string | null;
+          disbursement_reference?: string | null;
+          requested_by?: string;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          processed_by?: string | null;
+          processed_at?: string | null;
+          rejection_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      gateway_orders: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          assignment_id: string | null;
+          order_reference: string;
+          gateway_provider: string;
+          gateway_order_id: string;
+          amount: number;
+          currency: string;
+          status: 'created' | 'attempted' | 'paid' | 'failed' | 'expired';
+          payment_id: string | null;
+          metadata: Record<string, unknown>;
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          assignment_id?: string | null;
+          order_reference: string;
+          gateway_provider: string;
+          gateway_order_id: string;
+          amount: number;
+          currency?: string;
+          status?: 'created' | 'attempted' | 'paid' | 'failed' | 'expired';
+          payment_id?: string | null;
+          metadata?: Record<string, unknown>;
+          expires_at: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          assignment_id?: string | null;
+          order_reference?: string;
+          gateway_provider?: string;
+          gateway_order_id?: string;
+          amount?: number;
+          currency?: string;
+          status?: 'created' | 'attempted' | 'paid' | 'failed' | 'expired';
+          payment_id?: string | null;
+          metadata?: Record<string, unknown>;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      gateway_webhook_events: {
+        Row: {
+          id: string;
+          institution_id: string;
+          gateway_provider: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          signature: string | null;
+          processed: boolean;
+          error_message: string | null;
+          processed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          gateway_provider: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          signature?: string | null;
+          processed?: boolean;
+          error_message?: string | null;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          gateway_provider?: string;
+          event_id?: string;
+          event_type?: string;
+          payload?: Record<string, unknown>;
+          signature?: string | null;
+          processed?: boolean;
+          error_message?: string | null;
+          processed_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

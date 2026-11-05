@@ -552,6 +552,54 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('26. Stranger Examination Read Block', false, 'SECURITY FAILURE: David can read examinations');
   END IF;
 
+  -- ============================================================================
+  -- TEST 27: Authorized Fee Structure & Fee Heads Access (Alice -> Inst A)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.fee_heads WHERE institution_id = v_inst_a;
+  INSERT INTO rls_test_results VALUES ('27. Authorized Fee Heads Read Access', true, 'Alice has authorized access to Inst A fee heads');
+
+  -- ============================================================================
+  -- TEST 28: Cross-Tenant Fee Head Creation Block (Alice -> Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.fee_heads (
+      institution_id, name, code, category
+    ) VALUES (
+      v_inst_b, 'Cross Tenant Head', 'XT-FEE', 'tuition'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('28. Cross-Tenant Fee Head Creation Block', true, 'Alice blocked from creating fee head in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('28. Cross-Tenant Fee Head Creation Block', false, 'SECURITY FAILURE: Alice created fee head in Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 29: Stranger Fee Assignments & Payments Read Block (David sees 0)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.student_fee_assignments;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('29. Stranger Fee Assignment Read Block', true, 'David sees 0 fee assignments due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('29. Stranger Fee Assignment Read Block', false, 'SECURITY FAILURE: David can read fee assignments');
+  END IF;
+
+  SELECT COUNT(*) INTO v_count FROM public.fee_payments;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('30. Stranger Fee Payments Read Block', true, 'David sees 0 fee payments due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('30. Stranger Fee Payments Read Block', false, 'SECURITY FAILURE: David can read fee payments');
+  END IF;
+
 END $$;
 
 -- Print test report

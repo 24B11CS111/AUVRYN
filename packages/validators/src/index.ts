@@ -1509,5 +1509,231 @@ export const revaluationReviewSchema = z.object({
 
 export type RevaluationReviewInput = z.input<typeof revaluationReviewSchema>;
 
+// ==============================================================================
+// Milestone 8: Universal Fees & Payments Validators
+// ==============================================================================
+
+export const feeCategoryEnum = z.enum([
+  'tuition',
+  'admission',
+  'registration',
+  'examination',
+  'laboratory',
+  'library',
+  'transport',
+  'hostel',
+  'fine',
+  'deposit',
+  'other',
+]);
+
+export const feePaymentMethodEnum = z.enum([
+  'cash',
+  'upi',
+  'bank_transfer',
+  'card',
+  'payment_gateway',
+  'cheque',
+  'demand_draft',
+  'advance_wallet',
+]);
+
+export const feePaymentStatusEnum = z.enum([
+  'pending',
+  'completed',
+  'reconciled',
+  'reversed',
+  'failed',
+]);
+
+export const feeAssignmentStatusEnum = z.enum([
+  'pending',
+  'partial',
+  'paid',
+  'overdue',
+  'waived',
+  'cancelled',
+]);
+
+export const feeInstallmentStatusEnum = z.enum([
+  'pending',
+  'partial',
+  'paid',
+  'overdue',
+  'waived',
+]);
+
+export const concessionTypeEnum = z.enum([
+  'merit_scholarship',
+  'need_based',
+  'sibling_discount',
+  'staff_child',
+  'sports_quota',
+  'institutional_waiver',
+  'custom',
+]);
+
+export const concessionCalculationTypeEnum = z.enum([
+  'percentage',
+  'fixed_amount',
+]);
+
+export const concessionStatusEnum = z.enum([
+  'requested',
+  'under_review',
+  'approved',
+  'rejected',
+  'revoked',
+]);
+
+export const refundStatusEnum = z.enum([
+  'requested',
+  'under_review',
+  'approved',
+  'rejected',
+  'processed',
+]);
+
+export const feeHeadCreateSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  code: z.string().trim().min(2, 'Code must be at least 2 characters').max(20).toUpperCase(),
+  category: feeCategoryEnum.default('tuition'),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  isRefundable: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+
+export type FeeHeadCreateInput = z.input<typeof feeHeadCreateSchema>;
+
+export const feeStructureItemSchema = z.object({
+  feeHeadId: z.string().uuid('Valid Fee Head ID is required'),
+  amount: z.coerce.number().min(0, 'Amount cannot be negative'),
+  isMandatory: z.boolean().default(true),
+  orderIndex: z.coerce.number().default(0),
+});
+
+export const feeStructureInstallmentSchema = z.object({
+  installmentNumber: z.coerce.number().min(1, 'Installment number must be at least 1'),
+  name: z.string().trim().min(2, 'Installment name is required'),
+  percentage: z.coerce.number().min(0.01).max(100, 'Percentage must be between 0.01 and 100'),
+  dueDaysOffset: z.coerce.number().min(0, 'Offset days cannot be negative').default(0),
+});
+
+export const feeStructureCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  programId: z.string().uuid('Invalid Program ID').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Invalid Class ID').optional().nullable().or(z.literal('')),
+  termId: z.string().uuid('Invalid Term ID').optional().nullable().or(z.literal('')),
+  studentCategory: z.string().trim().max(50).default('general'),
+  name: z.string().trim().min(3, 'Structure name must be at least 3 characters').max(100),
+  code: z.string().trim().min(2, 'Structure code must be at least 2 characters').max(20).toUpperCase(),
+  items: z.array(feeStructureItemSchema).min(1, 'At least one fee head item is required'),
+  installments: z.array(feeStructureInstallmentSchema).optional(),
+});
+
+export type FeeStructureCreateInput = z.input<typeof feeStructureCreateSchema>;
+
+export const studentFeeAssignmentCreateSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  enrollmentId: z.string().uuid('Valid Enrollment ID is required'),
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  feeStructureId: z.string().uuid('Valid Fee Structure ID is required'),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Due Date (YYYY-MM-DD) is required'),
+  customDiscounts: z.coerce.number().min(0).default(0),
+});
+
+export type StudentFeeAssignmentCreateInput = z.input<typeof studentFeeAssignmentCreateSchema>;
+
+export const paymentAllocationItemSchema = z.object({
+  feeHeadId: z.string().uuid('Valid Fee Head ID is required'),
+  amount: z.coerce.number().min(0.01, 'Allocation amount must be positive'),
+  installmentId: z.string().uuid().optional().nullable().or(z.literal('')),
+});
+
+export const feePaymentRecordSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  enrollmentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  assignmentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  amountReceived: z.coerce.number().min(0.01, 'Payment amount must be greater than zero'),
+  paymentMethod: feePaymentMethodEnum.default('cash'),
+  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Payment Date is required').default(() => new Date().toISOString().slice(0, 10)),
+  externalTransactionId: z.string().trim().max(100).optional().or(z.literal('')),
+  bankName: z.string().trim().max(100).optional().or(z.literal('')),
+  chequeNumber: z.string().trim().max(50).optional().or(z.literal('')),
+  chequeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().or(z.literal('')),
+  allocations: z.array(paymentAllocationItemSchema).optional(),
+});
+
+export type FeePaymentRecordInput = z.input<typeof feePaymentRecordSchema>;
+
+export const feeConcessionRequestSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  assignmentId: z.string().uuid('Valid Fee Assignment ID is required'),
+  feeHeadId: z.string().uuid().optional().nullable().or(z.literal('')),
+  concessionType: concessionTypeEnum.default('need_based'),
+  calculationType: concessionCalculationTypeEnum.default('fixed_amount'),
+  concessionValue: z.coerce.number().min(0.01, 'Concession value must be greater than zero'),
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(500),
+});
+
+export type FeeConcessionRequestInput = z.input<typeof feeConcessionRequestSchema>;
+
+export const feeConcessionApprovalSchema = z.object({
+  concessionId: z.string().uuid('Valid Concession ID is required'),
+  status: z.enum(['approved', 'rejected']),
+  rejectionReason: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type FeeConcessionApprovalInput = z.input<typeof feeConcessionApprovalSchema>;
+
+export const feeRefundRequestSchema = z.object({
+  paymentId: z.string().uuid('Valid Payment ID is required'),
+  studentId: z.string().uuid('Valid Student ID is required'),
+  assignmentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  refundAmount: z.coerce.number().min(0.01, 'Refund amount must be greater than zero'),
+  reason: z.string().trim().min(5, 'Refund reason must be at least 5 characters').max(500),
+});
+
+export type FeeRefundRequestInput = z.input<typeof feeRefundRequestSchema>;
+
+export const feeRefundProcessSchema = z.object({
+  refundId: z.string().uuid('Valid Refund ID is required'),
+  status: z.enum(['approved', 'rejected', 'processed']),
+  disbursementMethod: feePaymentMethodEnum.optional().default('bank_transfer'),
+  disbursementReference: z.string().trim().max(100).optional().or(z.literal('')),
+  reviewNotes: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type FeeRefundProcessInput = z.input<typeof feeRefundProcessSchema>;
+
+export const institutionFeeSettingsUpdateSchema = z.object({
+  currency: z.string().trim().min(1).max(10).default('INR'),
+  currencySymbol: z.string().trim().min(1).max(5).default('₹'),
+  receiptPrefix: z.string().trim().min(1).max(10).default('RCP'),
+  invoicePrefix: z.string().trim().min(1).max(10).default('INV'),
+  lateFeeEnabled: z.boolean().default(false),
+  lateFeeDailyAmount: z.coerce.number().min(0).default(0),
+  gracePeriodDays: z.coerce.number().min(0).default(0),
+  termsAndConditions: z.string().trim().max(2000).optional().or(z.literal('')),
+  gatewayProvider: z.string().trim().default('razorpay'),
+  gatewayKeyId: z.string().trim().optional().or(z.literal('')),
+  gatewayWebhookSecret: z.string().trim().optional().or(z.literal('')),
+  isGatewayEnabled: z.boolean().default(false),
+});
+
+export type InstitutionFeeSettingsUpdateInput = z.input<typeof institutionFeeSettingsUpdateSchema>;
+
+export const gatewayOrderCreateSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  assignmentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  amount: z.coerce.number().min(1, 'Amount must be at least 1.00'),
+  currency: z.string().default('INR'),
+});
+
+export type GatewayOrderCreateInput = z.input<typeof gatewayOrderCreateSchema>;
+
+
 
 

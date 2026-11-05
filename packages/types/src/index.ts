@@ -190,7 +190,17 @@ export type Permission =
   | 'results:view'
   | 'grading:manage'
   | 'revaluation:apply'
-  | 'revaluation:review';
+  | 'revaluation:review'
+  | 'fees:manage'
+  | 'fees:view'
+  | 'fees:assign'
+  | 'fees:collect'
+  | 'fees:concession_apply'
+  | 'fees:concession_approve'
+  | 'fees:refund_request'
+  | 'fees:refund_approve'
+  | 'fees:reports_view'
+  | 'receipts:view';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -238,6 +248,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'grading:manage',
     'revaluation:apply',
     'revaluation:review',
+    'fees:manage',
+    'fees:view',
+    'fees:assign',
+    'fees:collect',
+    'fees:concession_apply',
+    'fees:concession_approve',
+    'fees:refund_request',
+    'fees:refund_approve',
+    'fees:reports_view',
+    'receipts:view',
   ],
   admin: [
     'institution:manage',
@@ -283,6 +303,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'grading:manage',
     'revaluation:apply',
     'revaluation:review',
+    'fees:manage',
+    'fees:view',
+    'fees:assign',
+    'fees:collect',
+    'fees:concession_apply',
+    'fees:concession_approve',
+    'fees:refund_request',
+    'fees:refund_approve',
+    'fees:reports_view',
+    'receipts:view',
   ],
   hr_administrator: [
     'institution:view',
@@ -337,6 +367,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'grading:manage',
     'revaluation:apply',
     'revaluation:review',
+    'fees:view',
+    'fees:assign',
+    'fees:concession_apply',
+    'fees:reports_view',
+    'receipts:view',
   ],
   department_head: [
     'institution:view',
@@ -366,6 +401,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'results:view',
     'grading:manage',
     'revaluation:review',
+    'fees:view',
   ],
   admissions_officer: [
     'institution:view',
@@ -387,6 +423,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'rooms:view',
     'exams:view',
     'results:view',
+    'fees:view',
+    'receipts:view',
   ],
   faculty: [
     'institution:view',
@@ -436,6 +474,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'exams:view',
     'results:view',
     'revaluation:apply',
+    'fees:view',
+    'fees:collect',
+    'fees:concession_apply',
+    'fees:refund_request',
+    'fees:reports_view',
+    'receipts:view',
   ],
   student: [
     'institution:view',
@@ -448,6 +492,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'exams:view',
     'results:view',
     'revaluation:apply',
+    'fees:view',
+    'receipts:view',
+    'fees:concession_apply',
+    'fees:refund_request',
   ],
   parent: [
     'institution:view',
@@ -461,6 +509,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'exams:view',
     'results:view',
     'revaluation:apply',
+    'fees:view',
+    'receipts:view',
+    'fees:concession_apply',
+    'fees:refund_request',
   ],
 };
 
@@ -1925,6 +1977,419 @@ export interface ExamOverviewStats {
   revaluationsCount: number;
   totalGradingScales: number;
 }
+
+// ==============================================================================
+// Milestone 8: Universal Fees & Payments Management
+// ==============================================================================
+
+export type FeeCategory =
+  | 'tuition'
+  | 'admission'
+  | 'registration'
+  | 'examination'
+  | 'laboratory'
+  | 'library'
+  | 'transport'
+  | 'hostel'
+  | 'fine'
+  | 'deposit'
+  | 'other';
+
+export type FeePaymentMethod =
+  | 'cash'
+  | 'upi'
+  | 'bank_transfer'
+  | 'card'
+  | 'payment_gateway'
+  | 'cheque'
+  | 'demand_draft'
+  | 'advance_wallet';
+
+export type FeePaymentStatus =
+  | 'pending'
+  | 'completed'
+  | 'reconciled'
+  | 'reversed'
+  | 'failed';
+
+export type FeeAssignmentStatus =
+  | 'pending'
+  | 'partial'
+  | 'paid'
+  | 'overdue'
+  | 'waived'
+  | 'cancelled';
+
+export type FeeInstallmentStatus =
+  | 'pending'
+  | 'partial'
+  | 'paid'
+  | 'overdue'
+  | 'waived';
+
+export type ConcessionType =
+  | 'merit_scholarship'
+  | 'need_based'
+  | 'sibling_discount'
+  | 'staff_child'
+  | 'sports_quota'
+  | 'institutional_waiver'
+  | 'custom';
+
+export type ConcessionCalculationType =
+  | 'percentage'
+  | 'fixed_amount';
+
+export type ConcessionStatus =
+  | 'requested'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'revoked';
+
+export type RefundStatus =
+  | 'requested'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'processed';
+
+export type FinancialLedgerEntryType =
+  | 'charge'
+  | 'payment'
+  | 'concession'
+  | 'penalty'
+  | 'reversal'
+  | 'refund'
+  | 'advance_credit'
+  | 'advance_debit';
+
+export type GatewayOrderStatus =
+  | 'created'
+  | 'authorized'
+  | 'captured'
+  | 'failed'
+  | 'refunded'
+  | 'expired';
+
+export interface InstitutionFeeSettings {
+  id: string;
+  institutionId: string;
+  currency: string;
+  currencySymbol: string;
+  receiptPrefix: string;
+  invoicePrefix: string;
+  lastReceiptSeq: number;
+  lastInvoiceSeq: number;
+  lateFeeEnabled: boolean;
+  lateFeeDailyAmount: number;
+  gracePeriodDays: number;
+  termsAndConditions?: string | null;
+  gatewayProvider: string;
+  gatewayKeyId?: string | null;
+  gatewayWebhookSecret?: string | null;
+  isGatewayEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeeHead {
+  id: string;
+  institutionId: string;
+  name: string;
+  code: string;
+  category: FeeCategory;
+  description?: string | null;
+  isRefundable: boolean;
+  isActive: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+}
+
+export interface FeeStructureItem {
+  id: string;
+  institutionId: string;
+  feeStructureId: string;
+  feeHeadId: string;
+  amount: number;
+  isMandatory: boolean;
+  orderIndex: number;
+  createdAt: string;
+  // Joins
+  feeHead?: FeeHead;
+}
+
+export interface FeeStructureInstallment {
+  id: string;
+  institutionId: string;
+  feeStructureId: string;
+  installmentNumber: number;
+  name: string;
+  percentage: number;
+  dueDaysOffset: number;
+  createdAt: string;
+}
+
+export interface FeeStructure {
+  id: string;
+  institutionId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  programId?: string | null;
+  classId?: string | null;
+  termId?: string | null;
+  studentCategory?: string | null;
+  name: string;
+  code: string;
+  totalAmount: number;
+  isActive: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  academicYear?: AcademicYear;
+  campus?: Campus;
+  program?: AcademicProgram;
+  academicClass?: AcademicClass;
+  items?: FeeStructureItem[];
+  installments?: FeeStructureInstallment[];
+}
+
+export interface StudentFeeAssignmentItem {
+  id: string;
+  institutionId: string;
+  assignmentId: string;
+  feeHeadId: string;
+  baseAmount: number;
+  concessionAmount: number;
+  netAmount: number;
+  paidAmount: number;
+  createdAt: string;
+  // Joins
+  feeHead?: FeeHead;
+}
+
+export interface StudentFeeInstallment {
+  id: string;
+  institutionId: string;
+  assignmentId: string;
+  installmentNumber: number;
+  title: string;
+  dueDate: string;
+  amount: number;
+  paidAmount: number;
+  fineAmount: number;
+  status: FeeInstallmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentFeeAssignment {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  enrollmentId: string;
+  academicYearId: string;
+  feeStructureId?: string | null;
+  invoiceNumber: string;
+  baseAmount: number;
+  concessionAmount: number;
+  fineAmount: number;
+  netPayableAmount: number;
+  paidAmount: number;
+  outstandingBalance: number;
+  status: FeeAssignmentStatus;
+  dueDate: string;
+  assignedBy?: string | null;
+  assignedAt: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+  enrollment?: StudentEnrollment;
+  academicYear?: AcademicYear;
+  feeStructure?: FeeStructure;
+  items?: StudentFeeAssignmentItem[];
+  installments?: StudentFeeInstallment[];
+}
+
+export interface FeeConcession {
+  id: string;
+  institutionId: string;
+  concessionCode: string;
+  studentId: string;
+  assignmentId: string;
+  feeHeadId?: string | null;
+  concessionType: ConcessionType;
+  calculationType: ConcessionCalculationType;
+  concessionValue: number;
+  appliedAmount: number;
+  reason: string;
+  status: ConcessionStatus;
+  requestedBy: string;
+  requestedAt: string;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+  assignment?: StudentFeeAssignment;
+  feeHead?: FeeHead;
+  requester?: Profile;
+  approver?: Profile;
+}
+
+export interface PaymentAllocation {
+  id: string;
+  institutionId: string;
+  paymentId: string;
+  assignmentId: string;
+  installmentId?: string | null;
+  feeHeadId: string;
+  amountAllocated: number;
+  createdAt: string;
+  // Joins
+  feeHead?: FeeHead;
+}
+
+export interface FeePayment {
+  id: string;
+  institutionId: string;
+  receiptNumber: string;
+  transactionReference: string;
+  studentId: string;
+  enrollmentId?: string | null;
+  assignmentId?: string | null;
+  amountReceived: number;
+  paymentMethod: FeePaymentMethod;
+  paymentDate: string;
+  externalTransactionId?: string | null;
+  bankName?: string | null;
+  chequeNumber?: string | null;
+  chequeDate?: string | null;
+  status: FeePaymentStatus;
+  advanceBalanceGenerated: number;
+  notes?: string | null;
+  qrVerificationHash: string;
+  collectedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+  collector?: Profile;
+  assignment?: StudentFeeAssignment;
+  allocations?: PaymentAllocation[];
+}
+
+export interface StudentAdvanceBalance {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  balanceAmount: number;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+}
+
+export interface FinancialLedgerEntry {
+  id: string;
+  institutionId: string;
+  entryNumber: number;
+  transactionTimestamp: string;
+  entryType: FinancialLedgerEntryType;
+  debitAmount: number;
+  creditAmount: number;
+  balanceAfter: number;
+  studentId: string;
+  assignmentId?: string | null;
+  paymentId?: string | null;
+  refundId?: string | null;
+  description: string;
+  metadata?: Record<string, unknown>;
+  createdBy?: string | null;
+  // Joins
+  student?: Student;
+  creator?: Profile;
+}
+
+export interface FeeRefundRequest {
+  id: string;
+  institutionId: string;
+  refundNumber: string;
+  paymentId: string;
+  studentId: string;
+  assignmentId?: string | null;
+  refundAmount: number;
+  reason: string;
+  status: RefundStatus;
+  requestedBy: string;
+  requestedAt: string;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  disbursementMethod?: FeePaymentMethod | null;
+  disbursementReference?: string | null;
+  disbursedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  payment?: FeePayment;
+  student?: Student;
+  requester?: Profile;
+  reviewer?: Profile;
+}
+
+export interface GatewayOrder {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  assignmentId?: string | null;
+  provider: string;
+  providerOrderId: string;
+  amount: number;
+  currency: string;
+  status: GatewayOrderStatus;
+  paymentId?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+}
+
+export interface GatewayWebhookEvent {
+  id: string;
+  institutionId: string;
+  provider: string;
+  eventId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  signatureVerified: boolean;
+  processed: boolean;
+  processedAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export interface FeeOverviewStats {
+  totalAssigned: number;
+  totalCollected: number;
+  totalOutstanding: number;
+  totalOverdue: number;
+  totalConcessions: number;
+  totalRefunds: number;
+  activeStructuresCount: number;
+  pendingConcessionsCount: number;
+  pendingRefundsCount: number;
+}
+
 
 
 
