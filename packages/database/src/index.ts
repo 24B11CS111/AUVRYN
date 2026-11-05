@@ -21,6 +21,24 @@ export const DATABASE_TABLES = {
   ADMISSION_APPLICATIONS: 'admission_applications',
   ADMISSION_STATUS_HISTORY: 'admission_status_history',
   STUDENT_DOCUMENTS: 'student_documents',
+  STAFF_PROFILES: 'staff_profiles',
+  STAFF_EMPLOYMENTS: 'staff_employments',
+  FACULTY_ALLOCATIONS: 'faculty_allocations',
+  STAFF_DOCUMENTS: 'staff_documents',
+  STAFF_INVITATIONS: 'staff_invitations',
+  LEAVE_REQUESTS: 'leave_requests',
+  ATTENDANCE_SESSIONS: 'attendance_sessions',
+  STUDENT_ATTENDANCE_RECORDS: 'student_attendance_records',
+  ATTENDANCE_CORRECTIONS: 'attendance_corrections',
+  STAFF_ATTENDANCE_RECORDS: 'staff_attendance_records',
+  STAFF_ATTENDANCE_CORRECTIONS: 'staff_attendance_corrections',
+  ATTENDANCE_NOTIFICATIONS: 'attendance_notifications',
+  ROOMS: 'rooms',
+  TIMETABLE_STRUCTURES: 'timetable_structures',
+  TIMETABLE_PERIODS: 'timetable_periods',
+  TIMETABLE_ENTRIES: 'timetable_entries',
+  TIMETABLE_SUBSTITUTIONS: 'timetable_substitutions',
+  SCHEDULE_NOTIFICATIONS: 'schedule_notifications',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -1923,6 +1941,14 @@ export interface Database {
       leave_type: 'casual' | 'sick' | 'medical' | 'academic' | 'bereavement' | 'maternity' | 'emergency' | 'other';
       leave_status: 'pending' | 'approved' | 'rejected' | 'cancelled';
       notification_delivery_status: 'pending' | 'queued' | 'delivered' | 'failed';
+      room_type: 'classroom' | 'laboratory' | 'seminar_hall' | 'auditorium' | 'computer_lab' | 'library' | 'workshop' | 'other';
+      timetable_session_type: 'theory' | 'practical' | 'laboratory' | 'tutorial' | 'seminar';
+      day_of_week: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+      timetable_break_type: 'none' | 'short_break' | 'lunch' | 'assembly' | 'recess';
+      session_slot: 'morning' | 'afternoon' | 'evening';
+      substitution_status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+      schedule_change_type: 'substitution' | 'rescheduled' | 'cancelled' | 'room_change' | 'general';
+      schedule_notification_recipient: 'student' | 'faculty' | 'guardian' | 'class' | 'institution';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -1964,3 +1990,118 @@ export type AttendanceCorrectionRow = Database['public']['Tables']['attendance_c
 export type StaffAttendanceRecordRow = Database['public']['Tables']['staff_attendance_records']['Row'];
 export type StaffAttendanceCorrectionRow = Database['public']['Tables']['staff_attendance_corrections']['Row'];
 export type AttendanceNotificationRow = Database['public']['Tables']['attendance_notifications']['Row'];
+
+export type RoomRow = {
+  id: string;
+  institution_id: string;
+  campus_id: string | null;
+  room_number: string;
+  name: string | null;
+  building: string;
+  floor: string | null;
+  room_type: 'classroom' | 'laboratory' | 'seminar_hall' | 'auditorium' | 'computer_lab' | 'library' | 'workshop' | 'other';
+  capacity: number;
+  facilities: string[];
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type TimetableStructureRow = {
+  id: string;
+  institution_id: string;
+  academic_year_id: string;
+  campus_id: string | null;
+  program_id: string | null;
+  name: string;
+  description: string | null;
+  working_days: string[];
+  start_time: string;
+  end_time: string;
+  periods_per_day: number;
+  is_default: boolean;
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type TimetablePeriodRow = {
+  id: string;
+  institution_id: string;
+  structure_id: string;
+  period_number: number;
+  name: string;
+  start_time: string;
+  end_time: string;
+  is_break: boolean;
+  break_type: 'none' | 'short_break' | 'lunch' | 'assembly' | 'recess';
+  session_slot: 'morning' | 'afternoon' | 'evening';
+  created_at: string;
+  updated_at: string;
+};
+
+export type TimetableEntryRow = {
+  id: string;
+  institution_id: string;
+  academic_year_id: string;
+  campus_id: string | null;
+  structure_id: string | null;
+  class_id: string;
+  section_id: string | null;
+  subject_id: string;
+  faculty_id: string;
+  room_id: string | null;
+  day_of_week: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  start_time: string;
+  end_time: string;
+  period_number: number;
+  session_type: 'theory' | 'practical' | 'laboratory' | 'tutorial' | 'seminar';
+  effective_start_date: string;
+  effective_end_date: string | null;
+  is_active: boolean;
+  color_code: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type TimetableSubstitutionRow = {
+  id: string;
+  institution_id: string;
+  timetable_entry_id: string;
+  substitution_date: string;
+  original_faculty_id: string;
+  substitute_faculty_id: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  approved_by: string | null;
+  approved_at: string | null;
+  remarks: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type ScheduleNotificationRow = {
+  id: string;
+  institution_id: string;
+  recipient_type: 'student' | 'faculty' | 'guardian' | 'class' | 'institution';
+  recipient_id: string | null;
+  timetable_entry_id: string | null;
+  substitution_id: string | null;
+  title: string;
+  message: string;
+  change_type: 'substitution' | 'rescheduled' | 'cancelled' | 'room_change' | 'general';
+  effective_date: string | null;
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  created_by: string | null;
+};
+

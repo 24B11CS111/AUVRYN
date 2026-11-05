@@ -15,6 +15,7 @@ import {
   ClipboardList,
   UserCog,
   CalendarCheck,
+  CalendarDays,
   FileClock,
   Settings,
   Shield,
@@ -87,6 +88,12 @@ export function Sidebar({
       href: '/dashboard/attendance',
       icon: CalendarCheck,
       roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
+    },
+    {
+      label: 'Timetable',
+      href: '/dashboard/timetable',
+      icon: CalendarDays,
+      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant'],
     },
     {
       label: 'Audit Trail',

@@ -147,4 +147,34 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'leaves:approve')).toBe(false);
     }
   });
+
+  it('verifies Timetable and Room permissions across roles (Milestone 6)', () => {
+    // Owner, Admin, and Academic Admin can manage timetables and rooms
+    expect(checkPermission('owner', 'timetable:manage')).toBe(true);
+    expect(checkPermission('owner', 'rooms:manage')).toBe(true);
+    expect(checkPermission('admin', 'timetable:manage')).toBe(true);
+    expect(checkPermission('admin', 'rooms:manage')).toBe(true);
+    expect(checkPermission('academic_admin', 'timetable:manage')).toBe(true);
+    expect(checkPermission('academic_admin', 'rooms:manage')).toBe(true);
+
+    // Department Head can manage timetables and request/approve substitutions, view rooms
+    expect(checkPermission('department_head', 'timetable:manage')).toBe(true);
+    expect(checkPermission('department_head', 'timetable:substitute')).toBe(true);
+    expect(checkPermission('department_head', 'rooms:view')).toBe(true);
+    expect(checkPermission('department_head', 'rooms:manage')).toBe(false);
+
+    // Faculty can view timetable, request substitution, and view rooms
+    expect(checkPermission('faculty', 'timetable:view')).toBe(true);
+    expect(checkPermission('faculty', 'timetable:substitute')).toBe(true);
+    expect(checkPermission('faculty', 'rooms:view')).toBe(true);
+    expect(checkPermission('faculty', 'timetable:manage')).toBe(false);
+    expect(checkPermission('faculty', 'rooms:manage')).toBe(false);
+
+    // Students and Parents have view-only access to timetables
+    expect(checkPermission('student', 'timetable:view')).toBe(true);
+    expect(checkPermission('student', 'timetable:manage')).toBe(false);
+    expect(checkPermission('student', 'timetable:substitute')).toBe(false);
+    expect(checkPermission('parent', 'timetable:view')).toBe(true);
+    expect(checkPermission('parent', 'timetable:manage')).toBe(false);
+  });
 });

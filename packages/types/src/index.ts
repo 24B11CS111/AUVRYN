@@ -176,7 +176,12 @@ export type Permission =
   | 'attendance:reports'
   | 'leaves:apply'
   | 'leaves:approve'
-  | 'leaves:view';
+  | 'leaves:view'
+  | 'timetable:manage'
+  | 'timetable:view'
+  | 'timetable:substitute'
+  | 'rooms:manage'
+  | 'rooms:view';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -210,6 +215,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:approve',
     'leaves:view',
+    'timetable:manage',
+    'timetable:view',
+    'timetable:substitute',
+    'rooms:manage',
+    'rooms:view',
   ],
   admin: [
     'institution:manage',
@@ -241,6 +251,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:approve',
     'leaves:view',
+    'timetable:manage',
+    'timetable:view',
+    'timetable:substitute',
+    'rooms:manage',
+    'rooms:view',
   ],
   hr_administrator: [
     'institution:view',
@@ -260,6 +275,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:approve',
     'leaves:view',
+    'timetable:view',
   ],
   academic_admin: [
     'institution:view',
@@ -279,6 +295,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:approve',
     'leaves:view',
+    'timetable:manage',
+    'timetable:view',
+    'timetable:substitute',
+    'rooms:manage',
+    'rooms:view',
   ],
   department_head: [
     'institution:view',
@@ -296,6 +317,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:approve',
     'leaves:view',
+    'timetable:manage',
+    'timetable:view',
+    'timetable:substitute',
+    'rooms:view',
   ],
   admissions_officer: [
     'institution:view',
@@ -313,6 +338,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:view',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
+    'rooms:view',
   ],
   faculty: [
     'institution:view',
@@ -328,6 +355,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:reports',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
+    'timetable:substitute',
+    'rooms:view',
   ],
   staff: [
     'institution:view',
@@ -337,6 +367,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:view',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
+    'rooms:view',
   ],
   accountant: [
     'institution:view',
@@ -347,6 +379,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:reports',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
   ],
   student: [
     'institution:view',
@@ -355,6 +388,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:view',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
   ],
   parent: [
     'institution:view',
@@ -364,6 +398,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'attendance:view',
     'leaves:apply',
     'leaves:view',
+    'timetable:view',
   ],
 };
 
@@ -1325,4 +1360,229 @@ export interface StudentAttendanceMetric {
   attendancePercentage: number;
   isShortage: boolean; // < 75%
 }
+
+// ==========================================
+// 8. Timetable & Scheduling Models (Milestone 6)
+// ==========================================
+
+export type RoomType =
+  | 'classroom'
+  | 'laboratory'
+  | 'seminar_hall'
+  | 'auditorium'
+  | 'computer_lab'
+  | 'library'
+  | 'workshop'
+  | 'other';
+
+export type TimetableSessionType =
+  | 'theory'
+  | 'practical'
+  | 'laboratory'
+  | 'tutorial'
+  | 'seminar';
+
+export type DayOfWeek =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
+
+export type TimetableBreakType =
+  | 'none'
+  | 'short_break'
+  | 'lunch'
+  | 'assembly'
+  | 'recess';
+
+export type SessionSlot =
+  | 'morning'
+  | 'afternoon'
+  | 'evening';
+
+export type SubstitutionStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled';
+
+export type ScheduleChangeType =
+  | 'substitution'
+  | 'rescheduled'
+  | 'cancelled'
+  | 'room_change'
+  | 'general';
+
+export type ScheduleNotificationRecipient =
+  | 'student'
+  | 'faculty'
+  | 'guardian'
+  | 'class'
+  | 'institution';
+
+export interface Room {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  roomNumber: string;
+  name?: string | null;
+  building: string;
+  floor?: string | null;
+  roomType: RoomType;
+  capacity: number;
+  facilities: string[];
+  isActive: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  campus?: Campus;
+}
+
+export interface TimetableStructure {
+  id: string;
+  institutionId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  programId?: string | null;
+  name: string;
+  description?: string | null;
+  workingDays: DayOfWeek[];
+  startTime: string; // HH:MM:SS
+  endTime: string;   // HH:MM:SS
+  periodsPerDay: number;
+  isDefault: boolean;
+  isActive: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  academicYear?: AcademicYear;
+  campus?: Campus;
+  program?: AcademicProgram;
+  periods?: TimetablePeriod[];
+}
+
+export interface TimetablePeriod {
+  id: string;
+  institutionId: string;
+  structureId: string;
+  periodNumber: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+  isBreak: boolean;
+  breakType: TimetableBreakType;
+  sessionSlot: SessionSlot;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimetableEntry {
+  id: string;
+  institutionId: string;
+  academicYearId: string;
+  campusId?: string | null;
+  structureId?: string | null;
+  classId: string;
+  sectionId?: string | null;
+  subjectId: string;
+  facultyId: string;
+  roomId?: string | null;
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  periodNumber: number;
+  sessionType: TimetableSessionType;
+  effectiveStartDate: string;
+  effectiveEndDate?: string | null;
+  isActive: boolean;
+  colorCode?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  academicYear?: AcademicYear;
+  campus?: Campus;
+  academicClass?: AcademicClass;
+  academicSection?: AcademicSection;
+  subject?: AcademicSubject;
+  faculty?: StaffProfile;
+  room?: Room;
+}
+
+export interface TimetableSubstitution {
+  id: string;
+  institutionId: string;
+  timetableEntryId: string;
+  substitutionDate: string;
+  originalFacultyId: string;
+  substituteFacultyId: string;
+  reason: string;
+  status: SubstitutionStatus;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  remarks?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  timetableEntry?: TimetableEntry;
+  originalFaculty?: StaffProfile;
+  substituteFaculty?: StaffProfile;
+  approver?: Profile;
+}
+
+export interface ScheduleNotification {
+  id: string;
+  institutionId: string;
+  recipientType: ScheduleNotificationRecipient;
+  recipientId?: string | null;
+  timetableEntryId?: string | null;
+  substitutionId?: string | null;
+  title: string;
+  message: string;
+  changeType: ScheduleChangeType;
+  effectiveDate?: string | null;
+  isRead: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export interface TimetableConflict {
+  type: 'faculty_conflict' | 'room_conflict' | 'class_conflict' | 'timing_conflict';
+  conflictingEntryId?: string;
+  message: string;
+}
+
+export interface TimetableConflictReport {
+  hasConflict: boolean;
+  conflicts: TimetableConflict[];
+}
+
+export interface TimetableGridCell {
+  periodNumber: number;
+  periodName: string;
+  startTime: string;
+  endTime: string;
+  isBreak: boolean;
+  breakType?: TimetableBreakType;
+  entries: TimetableEntry[];
+  substitutions?: TimetableSubstitution[];
+}
+
+export interface WeeklyTimetableDay {
+  dayOfWeek: DayOfWeek;
+  dayLabel: string;
+  slots: TimetableGridCell[];
+}
+
 

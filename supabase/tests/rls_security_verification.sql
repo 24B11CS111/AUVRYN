@@ -445,6 +445,61 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('20. Stranger Attendance Read Block', false, 'SECURITY FAILURE: David can read attendance sessions');
   END IF;
 
+  -- ============================================================================
+  -- TEST 21: Authorized Room Creation (Alice -> Inst A)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.rooms (
+      institution_id, room_number, building, room_type, capacity
+    ) VALUES (
+      v_inst_a, '101', 'Block A', 'classroom', 40
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('21. Authorized Room Creation', true, 'Alice created room 101 in Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('21. Authorized Room Creation', false, 'FAILURE: Alice could not create room in Inst A');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 22: Cross-Tenant Room Creation Block (Alice -> Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.rooms (
+      institution_id, room_number, building, room_type, capacity
+    ) VALUES (
+      v_inst_b, '101', 'Block B', 'classroom', 40
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('22. Cross-Tenant Room Creation Block', true, 'Alice blocked from creating room in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('22. Cross-Tenant Room Creation Block', false, 'SECURITY FAILURE: Alice created room in Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 23: Stranger Timetable Read Block (David sees 0 rooms & entries)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.rooms;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('23. Stranger Room Read Block', true, 'David sees 0 rooms due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('23. Stranger Room Read Block', false, 'SECURITY FAILURE: David can read rooms');
+  END IF;
+
 END $$;
 
 -- Print test report

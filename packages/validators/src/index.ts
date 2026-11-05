@@ -1093,3 +1093,202 @@ export const leaveRequestReviewSchema = z.object({
 
 export type LeaveRequestReviewInput = z.input<typeof leaveRequestReviewSchema>;
 
+// ==========================================
+// 8. Timetable & Scheduling Schemas (Milestone 6)
+// ==========================================
+
+export const roomTypeEnum = z.enum([
+  'classroom',
+  'laboratory',
+  'seminar_hall',
+  'auditorium',
+  'computer_lab',
+  'library',
+  'workshop',
+  'other',
+]);
+
+export const dayOfWeekEnum = z.enum([
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+]);
+
+export const timetableSessionTypeEnum = z.enum([
+  'theory',
+  'practical',
+  'laboratory',
+  'tutorial',
+  'seminar',
+]);
+
+export const timetableBreakTypeEnum = z.enum([
+  'none',
+  'short_break',
+  'lunch',
+  'assembly',
+  'recess',
+]);
+
+export const sessionSlotEnum = z.enum([
+  'morning',
+  'afternoon',
+  'evening',
+]);
+
+export const substitutionStatusEnum = z.enum([
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
+
+export const roomCreateSchema = z.object({
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  roomNumber: z.string().trim().min(1, 'Room number is required').max(50, 'Room number cannot exceed 50 characters'),
+  name: z.string().trim().max(100, 'Room name cannot exceed 100 characters').optional().or(z.literal('')),
+  building: z.string().trim().min(1, 'Building name is required').max(100, 'Building cannot exceed 100 characters'),
+  floor: z.string().trim().max(50, 'Floor cannot exceed 50 characters').optional().or(z.literal('')),
+  roomType: roomTypeEnum.default('classroom'),
+  capacity: z.coerce.number().int().min(1, 'Capacity must be at least 1').max(2000, 'Capacity cannot exceed 2000').default(40),
+  facilities: z.array(z.string().trim().min(1)).default([]),
+  isActive: z.boolean().default(true),
+});
+
+export type RoomCreateInput = z.input<typeof roomCreateSchema>;
+
+export const roomUpdateSchema = roomCreateSchema.partial().extend({
+  id: z.string().uuid('Valid Room ID is required'),
+});
+
+export type RoomUpdateInput = z.input<typeof roomUpdateSchema>;
+
+export const timetableStructureCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  programId: z.string().uuid('Invalid Program ID').optional().nullable().or(z.literal('')),
+  name: z.string().trim().min(2, 'Schedule name must be at least 2 characters').max(100),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  workingDays: z.array(dayOfWeekEnum).min(1, 'At least one working day must be selected').default(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'Start time must be HH:MM or HH:MM:SS'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'End time must be HH:MM or HH:MM:SS'),
+  periodsPerDay: z.coerce.number().int().min(1, 'At least 1 period per day required').max(15, 'Maximum 15 periods per day allowed').default(7),
+  isDefault: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+}).refine((data) => {
+  return data.endTime > data.startTime;
+}, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
+});
+
+export type TimetableStructureCreateInput = z.input<typeof timetableStructureCreateSchema>;
+
+export const timetablePeriodItemSchema = z.object({
+  periodNumber: z.coerce.number().int().min(1, 'Period number must be positive'),
+  name: z.string().trim().min(1, 'Period name is required').max(50),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'Start time must be HH:MM or HH:MM:SS'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'End time must be HH:MM or HH:MM:SS'),
+  isBreak: z.boolean().default(false),
+  breakType: timetableBreakTypeEnum.default('none'),
+  sessionSlot: sessionSlotEnum.default('morning'),
+}).refine((data) => {
+  return data.endTime > data.startTime;
+}, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
+});
+
+export const timetablePeriodsBatchSchema = z.object({
+  structureId: z.string().uuid('Valid Structure ID is required'),
+  periods: z.array(timetablePeriodItemSchema).min(1, 'At least one period is required'),
+});
+
+export type TimetablePeriodsBatchInput = z.input<typeof timetablePeriodsBatchSchema>;
+
+export const timetableEntryCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  structureId: z.string().uuid('Invalid Structure ID').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Valid Class ID is required'),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  subjectId: z.string().uuid('Valid Subject ID is required'),
+  facultyId: z.string().uuid('Valid Faculty ID is required'),
+  roomId: z.string().uuid('Invalid Room ID').optional().nullable().or(z.literal('')),
+  dayOfWeek: dayOfWeekEnum,
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'Start time must be HH:MM or HH:MM:SS'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, 'End time must be HH:MM or HH:MM:SS'),
+  periodNumber: z.coerce.number().int().min(1, 'Period number must be positive'),
+  sessionType: timetableSessionTypeEnum.default('theory'),
+  effectiveStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Start Date (YYYY-MM-DD) is required'),
+  effectiveEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid End Date (YYYY-MM-DD) is required').optional().nullable().or(z.literal('')),
+  colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Color must be a valid hex code').default('#3b82f6'),
+  notes: z.string().trim().max(300).optional().or(z.literal('')),
+}).refine((data) => {
+  return data.endTime > data.startTime;
+}, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
+}).refine((data) => {
+  if (data.effectiveEndDate && data.effectiveEndDate.trim() !== '') {
+    return data.effectiveEndDate >= data.effectiveStartDate;
+  }
+  return true;
+}, {
+  message: 'Effective end date must be on or after effective start date',
+  path: ['effectiveEndDate'],
+});
+
+export type TimetableEntryCreateInput = z.input<typeof timetableEntryCreateSchema>;
+
+export const timetableEntryUpdateSchema = timetableEntryCreateSchema.and(
+  z.object({
+    id: z.string().uuid('Valid Entry ID is required'),
+  })
+);
+
+export type TimetableEntryUpdateInput = z.input<typeof timetableEntryUpdateSchema>;
+
+export const timetableConflictCheckSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  dayOfWeek: dayOfWeekEnum,
+  periodNumber: z.coerce.number().int().min(1),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/),
+  facultyId: z.string().uuid('Valid Faculty ID is required'),
+  roomId: z.string().uuid('Invalid Room ID').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Valid Class ID is required'),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  excludeEntryId: z.string().uuid('Invalid Exclude Entry ID').optional().nullable().or(z.literal('')),
+});
+
+export type TimetableConflictCheckInput = z.input<typeof timetableConflictCheckSchema>;
+
+export const timetableSubstitutionCreateSchema = z.object({
+  timetableEntryId: z.string().uuid('Valid Timetable Entry ID is required'),
+  substitutionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Substitution Date (YYYY-MM-DD) is required'),
+  originalFacultyId: z.string().uuid('Valid Original Faculty ID is required'),
+  substituteFacultyId: z.string().uuid('Valid Substitute Faculty ID is required'),
+  reason: z.string().trim().min(5, 'Substitution reason must be at least 5 characters').max(300),
+}).refine((data) => {
+  return data.originalFacultyId !== data.substituteFacultyId;
+}, {
+  message: 'Substitute faculty must be different from original faculty',
+  path: ['substituteFacultyId'],
+});
+
+export type TimetableSubstitutionCreateInput = z.input<typeof timetableSubstitutionCreateSchema>;
+
+export const timetableSubstitutionReviewSchema = z.object({
+  substitutionId: z.string().uuid('Valid Substitution ID is required'),
+  status: z.enum(['approved', 'rejected']),
+  remarks: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type TimetableSubstitutionReviewInput = z.input<typeof timetableSubstitutionReviewSchema>;
+
+
