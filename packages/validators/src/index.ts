@@ -721,3 +721,189 @@ export const admissionConversionSchema = z.object({
 });
 
 export type AdmissionConversionInput = z.input<typeof admissionConversionSchema>;
+
+// ==========================================
+// 8. Staff & Faculty Management Schemas (Milestone 4)
+// ==========================================
+
+export const staffCategoryEnum = z.enum([
+  'teaching',
+  'non_teaching',
+  'administrative',
+  'technical',
+  'transport',
+  'support',
+]);
+
+export const employmentTypeEnum = z.enum([
+  'full_time',
+  'part_time',
+  'contract',
+  'adjunct',
+  'visiting',
+]);
+
+export const employmentStatusEnum = z.enum([
+  'active',
+  'probation',
+  'notice_period',
+  'suspended',
+  'terminated',
+  'resigned',
+  'retired',
+]);
+
+export const staffDocumentTypeEnum = z.enum([
+  'qualification',
+  'experience',
+  'identity',
+  'contract',
+  'appointment_letter',
+  'other',
+]);
+
+export const invitationStatusEnum = z.enum([
+  'pending',
+  'accepted',
+  'expired',
+  'revoked',
+]);
+
+export const staffCreateSchema = z.object({
+  employeeId: z
+    .string()
+    .trim()
+    .min(2, 'Employee ID is required')
+    .max(30, 'Employee ID cannot exceed 30 characters'),
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(60),
+  middleName: z.string().trim().max(60).optional().or(z.literal('')),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(60),
+  photoUrl: z.string().url('Invalid photo URL').optional().or(z.literal('')),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth (YYYY-MM-DD) is required'),
+  gender: studentGenderEnum.default('prefer_not_to_say'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address'),
+  phone: z
+    .string()
+    .trim()
+    .min(5, 'Phone number is required')
+    .max(20),
+  address: z.string().trim().max(250).optional().or(z.literal('')),
+  city: z.string().trim().max(100).optional().or(z.literal('')),
+  state: z.string().trim().max(100).optional().or(z.literal('')),
+  country: z.string().trim().max(100).optional().or(z.literal('')),
+  postalCode: z.string().trim().max(20).optional().or(z.literal('')),
+  emergencyContactName: z.string().trim().max(100).optional().or(z.literal('')),
+  emergencyContactPhone: z.string().trim().max(20).optional().or(z.literal('')),
+  emergencyContactRelationship: z.string().trim().max(50).optional().or(z.literal('')),
+  joiningDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Joining Date (YYYY-MM-DD) is required'),
+  staffCategory: staffCategoryEnum.default('teaching'),
+  designation: z
+    .string()
+    .trim()
+    .min(2, 'Designation is required')
+    .max(100),
+  departmentId: z.string().uuid('Invalid Department ID').optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  employmentType: employmentTypeEnum.default('full_time'),
+  employmentStatus: employmentStatusEnum.default('active'),
+  qualification: z.string().trim().max(150).optional().or(z.literal('')),
+  yearsOfExperience: z.number().min(0).max(60).default(0),
+  userId: z.string().uuid('Invalid User Profile ID').optional().nullable().or(z.literal('')),
+});
+
+export type StaffCreateInput = z.input<typeof staffCreateSchema>;
+
+export const staffUpdateSchema = staffCreateSchema.partial();
+export type StaffUpdateInput = z.input<typeof staffUpdateSchema>;
+
+export const staffEmploymentCreateSchema = z.object({
+  staffId: z.string().uuid('Valid Staff ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  departmentId: z.string().uuid('Invalid Department ID').optional().nullable().or(z.literal('')),
+  designation: z.string().trim().min(2, 'Designation is required').max(100),
+  employmentType: employmentTypeEnum.default('full_time'),
+  employmentStatus: employmentStatusEnum.default('active'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Start Date is required'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid End Date is required').optional().nullable().or(z.literal('')),
+  reportingManagerId: z.string().uuid('Invalid Manager ID').optional().nullable().or(z.literal('')),
+  remarks: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type StaffEmploymentCreateInput = z.input<typeof staffEmploymentCreateSchema>;
+
+export const facultyAllocationCreateSchema = z.object({
+  staffId: z.string().uuid('Valid Staff ID is required'),
+  academicYearId: z.string().uuid('Academic Year is required'),
+  programId: z.string().uuid('Academic Program is required'),
+  classId: z.string().uuid('Invalid Class ID').optional().nullable().or(z.literal('')),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  subjectId: z.string().uuid('Invalid Subject ID').optional().nullable().or(z.literal('')),
+  isClassTeacher: z.boolean().default(false),
+  isCoordinator: z.boolean().default(false),
+  status: academicRecordStatusEnum.default('active'),
+});
+
+export type FacultyAllocationCreateInput = z.input<typeof facultyAllocationCreateSchema>;
+
+export const staffDocumentUploadSchema = z.object({
+  staffId: z.string().uuid('Valid Staff ID is required'),
+  documentType: staffDocumentTypeEnum,
+  title: z.string().trim().min(2, 'Document title is required').max(150),
+  fileName: z.string().trim().min(1, 'File name is required').max(200),
+  fileSize: z.number().int().min(1, 'File cannot be empty'),
+  mimeType: z.string().trim().min(1, 'MIME type is required'),
+  storagePath: z.string().trim().min(1, 'Storage path is required'),
+});
+
+export type StaffDocumentUploadInput = z.input<typeof staffDocumentUploadSchema>;
+
+export const staffDocumentVerifySchema = z.object({
+  verificationStatus: documentVerificationStatusEnum,
+  verificationNotes: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type StaffDocumentVerifyInput = z.input<typeof staffDocumentVerifySchema>;
+
+export const staffInvitationCreateSchema = z.object({
+  email: z.string().trim().min(1, 'Email is required').email('Invalid email address'),
+  firstName: z.string().trim().min(2, 'First name is required').max(60),
+  lastName: z.string().trim().min(1, 'Last name is required').max(60),
+  role: z.enum([
+    'owner',
+    'admin',
+    'hr_administrator',
+    'academic_admin',
+    'department_head',
+    'admissions_officer',
+    'faculty',
+    'staff',
+    'accountant',
+  ]),
+  departmentId: z.string().uuid('Invalid Department ID').optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  staffId: z.string().uuid('Invalid Staff Profile ID').optional().nullable().or(z.literal('')),
+});
+
+export type StaffInvitationCreateInput = z.input<typeof staffInvitationCreateSchema>;
+
+export const staffInvitationAcceptSchema = z.object({
+  invitationToken: z.string().trim().min(8, 'Valid invitation token is required'),
+});
+
+export type StaffInvitationAcceptInput = z.input<typeof staffInvitationAcceptSchema>;

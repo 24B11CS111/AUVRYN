@@ -79,4 +79,40 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
     expect(checkPermission('accountant', 'admissions:manage')).toBe(false);
     expect(checkPermission('accountant', 'members:manage')).toBe(false);
   });
+
+  it('verifies HR Administrator has full staff, onboarding invitation, and document verification authority', () => {
+    expect(checkPermission('hr_administrator', 'staff:manage')).toBe(true);
+    expect(checkPermission('hr_administrator', 'staff:view')).toBe(true);
+    expect(checkPermission('hr_administrator', 'invitations:manage')).toBe(true);
+    expect(checkPermission('hr_administrator', 'invitations:view')).toBe(true);
+    expect(checkPermission('hr_administrator', 'documents:manage')).toBe(true);
+    expect(checkPermission('hr_administrator', 'documents:verify')).toBe(true);
+    expect(checkPermission('hr_administrator', 'members:view')).toBe(true);
+    expect(checkPermission('hr_administrator', 'members:manage')).toBe(true);
+    // HR Admin cannot view audit logs, modify institution billing or curricula
+    expect(checkPermission('hr_administrator', 'audit:view')).toBe(false);
+    expect(checkPermission('hr_administrator', 'billing:manage')).toBe(false);
+    expect(checkPermission('hr_administrator', 'academics:manage')).toBe(false);
+  });
+
+  it('verifies Department Head can assign faculty and view staff and academics, but cannot alter HR records', () => {
+    expect(checkPermission('department_head', 'staff:view')).toBe(true);
+    expect(checkPermission('department_head', 'faculty:assign')).toBe(true);
+    expect(checkPermission('department_head', 'academics:view')).toBe(true);
+    expect(checkPermission('department_head', 'students:view')).toBe(true);
+    expect(checkPermission('department_head', 'staff:manage')).toBe(false);
+    expect(checkPermission('department_head', 'invitations:manage')).toBe(false);
+    expect(checkPermission('department_head', 'billing:manage')).toBe(false);
+  });
+
+  it('verifies Faculty and Staff cannot manage staff profiles, change roles, or invite members', () => {
+    const roles: Role[] = ['faculty', 'staff'];
+    for (const r of roles) {
+      expect(checkPermission(r, 'staff:manage')).toBe(false);
+      expect(checkPermission(r, 'invitations:manage')).toBe(false);
+      expect(checkPermission(r, 'billing:manage')).toBe(false);
+      expect(checkPermission(r, 'members:manage')).toBe(false);
+      expect(checkPermission(r, 'institution:manage')).toBe(false);
+    }
+  });
 });

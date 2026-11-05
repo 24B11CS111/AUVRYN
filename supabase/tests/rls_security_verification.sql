@@ -323,6 +323,70 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('14. Authorized Admission Submission', false, 'FAILURE: Authorized user could not submit admission');
   END IF;
 
+  -- ============================================================================
+  -- TEST 15: Staff Profile Creation in Inst A (Owner/Admin)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.staff_profiles (
+      institution_id, employee_id, first_name, last_name, date_of_birth,
+      gender, email, phone, joining_date, designation, staff_category,
+      employment_type, employment_status
+    ) VALUES (
+      v_inst_a, 'EMP-TEST-001', 'Prof', 'Sharma', '1980-05-15',
+      'male', 'prof.sharma@test.edu', '9123456789', '2026-01-01', 'Professor of Physics',
+      'teaching', 'full_time', 'active'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('15. Authorized Staff Profile Creation', true, 'Alice successfully created staff profile in Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('15. Authorized Staff Profile Creation', false, 'FAILURE: Alice could not create staff profile in Inst A');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 16: Cross-Tenant Staff Profile Write Block (Alice -> Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.staff_profiles (
+      institution_id, employee_id, first_name, last_name, date_of_birth,
+      gender, email, phone, joining_date, designation, staff_category,
+      employment_type, employment_status
+    ) VALUES (
+      v_inst_b, 'EMP-TEST-ROGUE', 'Rogue', 'Staff', '1985-01-01',
+      'female', 'rogue@test.edu', '9123456788', '2026-01-01', 'Lecturer',
+      'teaching', 'full_time', 'active'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('16. Cross-Tenant Staff Write Block', true, 'Alice blocked from creating staff profile in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('16. Cross-Tenant Staff Write Block', false, 'SECURITY FAILURE: Alice inserted staff profile into Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 17: Stranger Staff Read Block (David sees 0 staff records)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.staff_profiles;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('17. Stranger Staff Read Block', true, 'David sees 0 staff profiles due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('17. Stranger Staff Read Block', false, 'SECURITY FAILURE: David can read staff profiles across institutions');
+  END IF;
+
 END $$;
 
 -- Print test report

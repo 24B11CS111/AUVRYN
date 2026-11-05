@@ -13,6 +13,7 @@ import {
   GraduationCap,
   UserCheck,
   ClipboardList,
+  UserCog,
   FileClock,
   Settings,
   Shield,
@@ -73,6 +74,12 @@ export function Sidebar({
       href: '/dashboard/admissions',
       icon: ClipboardList,
       roles: ['owner', 'admin', 'academic_admin', 'admissions_officer'],
+    },
+    {
+      label: 'Staff & Faculty',
+      href: '/dashboard/staff',
+      icon: UserCog,
+      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'accountant', 'staff'],
     },
     {
       label: 'Audit Trail',

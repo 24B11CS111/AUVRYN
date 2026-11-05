@@ -130,7 +130,9 @@ export interface Profile {
 export type Role =
   | 'owner'
   | 'admin'
+  | 'hr_administrator'
   | 'academic_admin'
+  | 'department_head'
   | 'admissions_officer'
   | 'faculty'
   | 'staff'
@@ -159,6 +161,11 @@ export type Permission =
   | 'guardians:view'
   | 'admissions:manage'
   | 'admissions:view'
+  | 'staff:manage'
+  | 'staff:view'
+  | 'faculty:assign'
+  | 'invitations:manage'
+  | 'invitations:view'
   | 'documents:manage'
   | 'documents:verify'
   | 'audit:view'
@@ -180,6 +187,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'guardians:view',
     'admissions:manage',
     'admissions:view',
+    'staff:manage',
+    'staff:view',
+    'faculty:assign',
+    'invitations:manage',
+    'invitations:view',
     'documents:manage',
     'documents:verify',
     'audit:view',
@@ -200,9 +212,27 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'guardians:view',
     'admissions:manage',
     'admissions:view',
+    'staff:manage',
+    'staff:view',
+    'faculty:assign',
+    'invitations:manage',
+    'invitations:view',
     'documents:manage',
     'documents:verify',
     'audit:view',
+  ],
+  hr_administrator: [
+    'institution:view',
+    'members:manage',
+    'members:view',
+    'campuses:view',
+    'staff:manage',
+    'staff:view',
+    'invitations:manage',
+    'invitations:view',
+    'documents:manage',
+    'documents:verify',
+    'students:view',
   ],
   academic_admin: [
     'institution:view',
@@ -210,8 +240,21 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'campuses:view',
     'academics:manage',
     'academics:view',
+    'students:manage',
     'students:view',
     'guardians:view',
+    'staff:view',
+    'faculty:assign',
+  ],
+  department_head: [
+    'institution:view',
+    'members:view',
+    'campuses:view',
+    'academics:view',
+    'students:view',
+    'guardians:view',
+    'staff:view',
+    'faculty:assign',
   ],
   admissions_officer: [
     'institution:view',
@@ -234,15 +277,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'academics:view',
     'students:view',
     'guardians:view',
+    'staff:view',
   ],
   staff: [
     'institution:view',
     'campuses:view',
     'students:view',
+    'staff:view',
   ],
   accountant: [
     'institution:view',
     'students:view',
+    'staff:view',
     'billing:manage',
   ],
   student: [
@@ -794,4 +840,178 @@ export interface UserSessionContext {
   memberships: InstitutionMembership[];
   activeInstitutionId: string | null;
   activeMembership: InstitutionMembership | null;
+}
+
+// ==========================================
+// 9. Staff & Faculty Management (Milestone 4)
+// ==========================================
+
+export type StaffCategory =
+  | 'teaching'
+  | 'non_teaching'
+  | 'administrative'
+  | 'technical'
+  | 'transport'
+  | 'support';
+
+export type EmploymentType =
+  | 'full_time'
+  | 'part_time'
+  | 'contract'
+  | 'adjunct'
+  | 'visiting';
+
+export type EmploymentStatus =
+  | 'active'
+  | 'probation'
+  | 'notice_period'
+  | 'suspended'
+  | 'terminated'
+  | 'resigned'
+  | 'retired';
+
+export type StaffDocumentType =
+  | 'qualification'
+  | 'experience'
+  | 'identity'
+  | 'contract'
+  | 'appointment_letter'
+  | 'other';
+
+export type InvitationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'expired'
+  | 'revoked';
+
+export interface StaffProfile {
+  id: string;
+  institutionId: string;
+  employeeId: string;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  photoUrl?: string | null;
+  dateOfBirth: string;
+  gender: StudentGender;
+  email: string;
+  phone: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
+  joiningDate: string;
+  staffCategory: StaffCategory;
+  designation: string;
+  departmentId?: string | null;
+  campusId?: string | null;
+  employmentType: EmploymentType;
+  employmentStatus: EmploymentStatus;
+  qualification?: string | null;
+  yearsOfExperience?: number;
+  userId?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Relational Joins
+  department?: AcademicDepartment | null;
+  campus?: Campus | null;
+  userProfile?: Profile | null;
+  employments?: StaffEmployment[];
+  allocations?: FacultyAllocation[];
+  documents?: StaffDocument[];
+}
+
+export interface StaffEmployment {
+  id: string;
+  institutionId: string;
+  staffId: string;
+  campusId?: string | null;
+  departmentId?: string | null;
+  designation: string;
+  employmentType: EmploymentType;
+  employmentStatus: EmploymentStatus;
+  startDate: string;
+  endDate?: string | null;
+  reportingManagerId?: string | null;
+  remarks?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  campus?: Campus | null;
+  department?: AcademicDepartment | null;
+  reportingManager?: StaffProfile | null;
+}
+
+export interface FacultyAllocation {
+  id: string;
+  institutionId: string;
+  staffId: string;
+  academicYearId: string;
+  programId: string;
+  classId?: string | null;
+  sectionId?: string | null;
+  subjectId?: string | null;
+  isClassTeacher: boolean;
+  isCoordinator: boolean;
+  status: AcademicRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  staff?: StaffProfile;
+  academicYear?: AcademicYear;
+  program?: AcademicProgram;
+  academicClass?: AcademicClass | null;
+  section?: AcademicSection | null;
+  subject?: AcademicSubject | null;
+}
+
+export interface StaffDocument {
+  id: string;
+  institutionId: string;
+  staffId: string;
+  documentType: StaffDocumentType;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storagePath: string;
+  verificationStatus: DocumentVerificationStatus;
+  verificationNotes?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  uploadedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffInvitation {
+  id: string;
+  institutionId: string;
+  staffId?: string | null;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  departmentId?: string | null;
+  campusId?: string | null;
+  invitationToken: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  acceptedAt?: string | null;
+  invitedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  department?: AcademicDepartment | null;
+  campus?: Campus | null;
+  staff?: StaffProfile | null;
+  inviter?: Profile | null;
 }
