@@ -39,6 +39,15 @@ export const DATABASE_TABLES = {
   TIMETABLE_ENTRIES: 'timetable_entries',
   TIMETABLE_SUBSTITUTIONS: 'timetable_substitutions',
   SCHEDULE_NOTIFICATIONS: 'schedule_notifications',
+  GRADING_SCALES: 'grading_scales',
+  GRADING_SCALE_RULES: 'grading_scale_rules',
+  EXAMINATIONS: 'examinations',
+  EXAM_SUBJECTS: 'exam_subjects',
+  STUDENT_EXAM_MARKS: 'student_exam_marks',
+  MARKS_ENTRY_CORRECTIONS: 'marks_entry_corrections',
+  STUDENT_EXAM_RESULTS: 'student_exam_results',
+  HALL_TICKETS: 'hall_tickets',
+  EXAM_REVALUATIONS: 'exam_revaluations',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -1912,6 +1921,84 @@ export interface Database {
           new_status: string;
         };
       };
+      check_exam_schedule_conflicts: {
+        Args: {
+          p_institution_id: string;
+          p_exam_subject_id?: string | null;
+          p_exam_date: string;
+          p_start_time: string;
+          p_end_time: string;
+          p_room_id?: string | null;
+          p_invigilator_id?: string | null;
+        };
+        Returns: {
+          has_conflict: boolean;
+          conflicts: Array<{
+            conflict_type: string;
+            message: string;
+            exam_subject_id: string;
+            subject_name: string;
+            start_time: string;
+            end_time: string;
+          }>;
+        };
+      };
+      record_student_marks_batch: {
+        Args: {
+          p_institution_id: string;
+          p_exam_subject_id: string;
+          p_records: Array<{
+            student_id: string;
+            enrollment_id?: string | null;
+            marks_obtained?: number | null;
+            is_absent?: boolean;
+            is_exempted?: boolean;
+            remarks?: string | null;
+          }>;
+          p_status?: 'draft' | 'submitted' | 'verified' | 'locked';
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          total_records: number;
+          submitted_count: number;
+          absent_count: number;
+          exam_subject_id: string;
+        };
+      };
+      correct_student_exam_mark: {
+        Args: {
+          p_institution_id: string;
+          p_mark_id: string;
+          p_new_marks: number;
+          p_is_absent: boolean;
+          p_reason: string;
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          mark_id: string;
+          previous_marks: number | null;
+          new_marks: number;
+          correction_id: string;
+        };
+      };
+      publish_examination_results: {
+        Args: {
+          p_institution_id: string;
+          p_examination_id: string;
+          p_user_id: string;
+        };
+        Returns: {
+          success: boolean;
+          examination_id: string;
+          total_results: number;
+          pass_count: number;
+          fail_count: number;
+          distinction_count: number;
+          withheld_count: number;
+        };
+      };
     };
     Enums: {
       institution_type: 'school' | 'junior_college' | 'degree_college' | 'engineering_college' | 'university';
@@ -1949,6 +2036,15 @@ export interface Database {
       substitution_status: 'pending' | 'approved' | 'rejected' | 'cancelled';
       schedule_change_type: 'substitution' | 'rescheduled' | 'cancelled' | 'room_change' | 'general';
       schedule_notification_recipient: 'student' | 'faculty' | 'guardian' | 'class' | 'institution';
+      exam_type: 'internal_assessment' | 'unit_test' | 'midterm' | 'semester_exam' | 'annual_exam' | 'practical_exam' | 'laboratory_exam' | 'assignment' | 'project' | 'viva' | 'final_exam';
+      exam_status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'published' | 'cancelled';
+      exam_publication_status: 'unpublished' | 'under_review' | 'published' | 'withdrawn';
+      assessment_type: 'theory' | 'practical' | 'laboratory' | 'internal_assessment' | 'external_assessment' | 'viva' | 'project';
+      exam_subject_status: 'scheduled' | 'completed' | 'cancelled';
+      grading_calculation_type: 'gpa_10_point' | 'gpa_4_point' | 'letter_grade_percentage' | 'marks_based' | 'pass_fail';
+      marks_entry_status: 'draft' | 'submitted' | 'verified' | 'locked';
+      exam_result_status: 'pass' | 'fail' | 'distinction' | 'promoted_with_backlog' | 'withheld';
+      revaluation_status: 'applied' | 'assigned' | 'under_review' | 'completed' | 'rejected';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -2104,4 +2200,169 @@ export type ScheduleNotificationRow = {
   created_at: string;
   created_by: string | null;
 };
+
+export type GradingScaleRow = {
+  id: string;
+  institution_id: string;
+  name: string;
+  description: string | null;
+  calculation_type: 'gpa_10_point' | 'gpa_4_point' | 'letter_grade_percentage' | 'marks_based' | 'pass_fail';
+  is_credit_based: boolean;
+  version: number;
+  is_default: boolean;
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type GradingScaleRuleRow = {
+  id: string;
+  grading_scale_id: string;
+  grade: string;
+  grade_point: number;
+  min_percentage: number;
+  max_percentage: number;
+  description: string | null;
+  is_passing: boolean;
+  created_at: string;
+};
+
+export type ExaminationRow = {
+  id: string;
+  institution_id: string;
+  campus_id: string | null;
+  academic_year_id: string;
+  term_id: string | null;
+  program_id: string | null;
+  class_id: string | null;
+  name: string;
+  exam_type: 'internal_assessment' | 'unit_test' | 'midterm' | 'semester_exam' | 'annual_exam' | 'practical_exam' | 'laboratory_exam' | 'assignment' | 'project' | 'viva' | 'final_exam';
+  start_date: string;
+  end_date: string;
+  max_marks: number;
+  passing_marks: number;
+  weightage_percentage: number;
+  grading_scale_id: string | null;
+  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'published' | 'cancelled';
+  publication_status: 'unpublished' | 'under_review' | 'published' | 'withdrawn';
+  published_at: string | null;
+  published_by: string | null;
+  instructions: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type ExamSubjectRow = {
+  id: string;
+  institution_id: string;
+  examination_id: string;
+  subject_id: string;
+  assessment_type: 'theory' | 'practical' | 'laboratory' | 'internal_assessment' | 'external_assessment' | 'viva' | 'project';
+  max_marks: number;
+  passing_marks: number;
+  credits: number;
+  exam_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  room_id: string | null;
+  invigilator_staff_id: string | null;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudentExamMarkRow = {
+  id: string;
+  institution_id: string;
+  examination_id: string;
+  exam_subject_id: string;
+  student_id: string;
+  enrollment_id: string | null;
+  marks_obtained: number | null;
+  is_absent: boolean;
+  is_exempted: boolean;
+  grade: string | null;
+  grade_point: number | null;
+  status: 'draft' | 'submitted' | 'verified' | 'locked';
+  remarks: string | null;
+  entered_by_staff_id: string | null;
+  submitted_at: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MarksEntryCorrectionRow = {
+  id: string;
+  institution_id: string;
+  student_exam_mark_id: string;
+  previous_marks: number | null;
+  new_marks: number;
+  previous_status: 'draft' | 'submitted' | 'verified' | 'locked';
+  new_status: 'draft' | 'submitted' | 'verified' | 'locked';
+  reason: string;
+  corrected_by: string;
+  corrected_at: string;
+};
+
+export type StudentExamResultRow = {
+  id: string;
+  institution_id: string;
+  examination_id: string;
+  student_id: string;
+  academic_year_id: string;
+  class_id: string;
+  section_id: string | null;
+  grading_scale_id: string | null;
+  grading_scale_version: number;
+  total_max_marks: number;
+  total_obtained_marks: number;
+  percentage: number;
+  gpa: number | null;
+  cgpa: number | null;
+  final_grade: string | null;
+  result_status: 'pass' | 'fail' | 'distinction' | 'promoted_with_backlog' | 'withheld';
+  backlog_count: number;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HallTicketRow = {
+  id: string;
+  institution_id: string;
+  examination_id: string;
+  student_id: string;
+  ticket_number: string;
+  is_eligible: boolean;
+  ineligibility_reason: string | null;
+  qr_code_hash: string;
+  generated_at: string;
+  generated_by: string | null;
+};
+
+export type ExamRevaluationRow = {
+  id: string;
+  institution_id: string;
+  student_exam_mark_id: string;
+  student_id: string;
+  examination_id: string;
+  subject_id: string;
+  original_marks: number;
+  revised_marks: number | null;
+  status: 'applied' | 'assigned' | 'under_review' | 'completed' | 'rejected';
+  reason: string;
+  reviewer_staff_id: string | null;
+  review_notes: string | null;
+  applied_at: string;
+  completed_at: string | null;
+  reviewed_by: string | null;
+};
+
 

@@ -177,4 +177,41 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
     expect(checkPermission('parent', 'timetable:view')).toBe(true);
     expect(checkPermission('parent', 'timetable:manage')).toBe(false);
   });
+
+  it('verifies Examination, Marks Entry, Results, and Revaluation permissions (Milestone 7)', () => {
+    // Owner, Admin, and Academic Admin can manage examinations, grading schemes, and publish results
+    const adminRoles: Role[] = ['owner', 'admin', 'academic_admin'];
+    for (const r of adminRoles) {
+      expect(checkPermission(r, 'exams:manage')).toBe(true);
+      expect(checkPermission(r, 'exams:view')).toBe(true);
+      expect(checkPermission(r, 'grading:manage')).toBe(true);
+      expect(checkPermission(r, 'results:publish')).toBe(true);
+      expect(checkPermission(r, 'results:view')).toBe(true);
+      expect(checkPermission(r, 'marks:verify')).toBe(true);
+      expect(checkPermission(r, 'revaluation:review')).toBe(true);
+    }
+
+    // Faculty can enter marks, view exams and results, review revaluations, but CANNOT publish results or manage grading
+    expect(checkPermission('faculty', 'exams:view')).toBe(true);
+    expect(checkPermission('faculty', 'marks:enter')).toBe(true);
+    expect(checkPermission('faculty', 'results:view')).toBe(true);
+    expect(checkPermission('faculty', 'revaluation:review')).toBe(true);
+    expect(checkPermission('faculty', 'exams:manage')).toBe(false);
+    expect(checkPermission('faculty', 'results:publish')).toBe(false);
+    expect(checkPermission('faculty', 'grading:manage')).toBe(false);
+
+    // Students and Parents can view published results, view exams, and apply for revaluation
+    const studentFamilyRoles: Role[] = ['student', 'parent'];
+    for (const r of studentFamilyRoles) {
+      expect(checkPermission(r, 'exams:view')).toBe(true);
+      expect(checkPermission(r, 'results:view')).toBe(true);
+      expect(checkPermission(r, 'revaluation:apply')).toBe(true);
+      expect(checkPermission(r, 'exams:manage')).toBe(false);
+      expect(checkPermission(r, 'marks:enter')).toBe(false);
+      expect(checkPermission(r, 'marks:verify')).toBe(false);
+      expect(checkPermission(r, 'results:publish')).toBe(false);
+      expect(checkPermission(r, 'grading:manage')).toBe(false);
+      expect(checkPermission(r, 'revaluation:review')).toBe(false);
+    }
+  });
 });

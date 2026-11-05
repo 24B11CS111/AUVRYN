@@ -1291,4 +1291,223 @@ export const timetableSubstitutionReviewSchema = z.object({
 
 export type TimetableSubstitutionReviewInput = z.input<typeof timetableSubstitutionReviewSchema>;
 
+// ==========================================
+// 9. Examination & Results Schemas (Milestone 7)
+// ==========================================
+
+export const examTypeEnum = z.enum([
+  'internal_assessment',
+  'unit_test',
+  'midterm',
+  'semester_exam',
+  'annual_exam',
+  'practical_exam',
+  'laboratory_exam',
+  'assignment',
+  'project',
+  'viva',
+  'final_exam',
+]);
+
+export const examStatusEnum = z.enum([
+  'draft',
+  'scheduled',
+  'in_progress',
+  'completed',
+  'published',
+  'cancelled',
+]);
+
+export const examPublicationStatusEnum = z.enum([
+  'unpublished',
+  'under_review',
+  'published',
+  'withdrawn',
+]);
+
+export const assessmentTypeEnum = z.enum([
+  'theory',
+  'practical',
+  'laboratory',
+  'internal_assessment',
+  'external_assessment',
+  'viva',
+  'project',
+]);
+
+export const examSubjectStatusEnum = z.enum([
+  'scheduled',
+  'completed',
+  'cancelled',
+]);
+
+export const gradingCalculationTypeEnum = z.enum([
+  'gpa_10_point',
+  'gpa_4_point',
+  'letter_grade_percentage',
+  'marks_based',
+  'pass_fail',
+]);
+
+export const marksEntryStatusEnum = z.enum([
+  'draft',
+  'submitted',
+  'verified',
+  'locked',
+]);
+
+export const examResultStatusEnum = z.enum([
+  'pass',
+  'fail',
+  'distinction',
+  'promoted_with_backlog',
+  'withheld',
+]);
+
+export const revaluationStatusEnum = z.enum([
+  'applied',
+  'assigned',
+  'under_review',
+  'completed',
+  'rejected',
+]);
+
+export const gradingScaleRuleSchema = z.object({
+  grade: z.string().trim().min(1, 'Grade symbol required').max(10),
+  gradePoint: z.coerce.number().min(0).max(10).default(0),
+  minPercentage: z.coerce.number().min(0).max(100),
+  maxPercentage: z.coerce.number().min(0).max(100),
+  description: z.string().trim().max(100).optional().or(z.literal('')),
+  isPassing: z.boolean().default(true),
+}).refine((data) => data.maxPercentage >= data.minPercentage, {
+  message: 'Max percentage must be greater than or equal to min percentage',
+  path: ['maxPercentage'],
+});
+
+export const gradingScaleCreateSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  description: z.string().trim().max(300).optional().or(z.literal('')),
+  calculationType: gradingCalculationTypeEnum.default('letter_grade_percentage'),
+  isCreditBased: z.boolean().default(false),
+  isDefault: z.boolean().default(false),
+  rules: z.array(gradingScaleRuleSchema).min(1, 'At least one grade tier rule required'),
+});
+
+export type GradingScaleCreateInput = z.input<typeof gradingScaleCreateSchema>;
+
+export const examinationCreateSchema = z.object({
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  termId: z.string().uuid('Invalid Term ID').optional().nullable().or(z.literal('')),
+  programId: z.string().uuid('Invalid Program ID').optional().nullable().or(z.literal('')),
+  classId: z.string().uuid('Invalid Class ID').optional().nullable().or(z.literal('')),
+  name: z.string().trim().min(2, 'Examination name must be at least 2 characters').max(100),
+  examType: examTypeEnum.default('midterm'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Start Date (YYYY-MM-DD) is required'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid End Date (YYYY-MM-DD) is required'),
+  maxMarks: z.coerce.number().min(1, 'Maximum marks must be at least 1').max(1000).default(100),
+  passingMarks: z.coerce.number().min(0).max(1000).default(40),
+  weightagePercentage: z.coerce.number().min(1).max(100).default(100),
+  gradingScaleId: z.string().uuid('Invalid Grading Scale ID').optional().nullable().or(z.literal('')),
+  status: examStatusEnum.optional().default('scheduled'),
+  instructions: z.string().trim().max(1000).optional().or(z.literal('')),
+}).refine((data) => data.endDate >= data.startDate, {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
+}).refine((data) => data.passingMarks <= data.maxMarks, {
+  message: 'Passing marks cannot exceed maximum marks',
+  path: ['passingMarks'],
+});
+
+export type ExaminationCreateInput = z.input<typeof examinationCreateSchema>;
+
+export const examSubjectCreateSchema = z.object({
+  examinationId: z.string().uuid('Valid Examination ID is required'),
+  subjectId: z.string().uuid('Valid Subject ID is required'),
+  assessmentType: assessmentTypeEnum.default('theory'),
+  maxMarks: z.coerce.number().min(1, 'Maximum marks must be at least 1').max(1000).default(100),
+  passingMarks: z.coerce.number().min(0).max(1000).default(40),
+  credits: z.coerce.number().min(0).max(30).default(3),
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Exam Date is required').optional().nullable().or(z.literal('')),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/).optional().nullable().or(z.literal('')),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/).optional().nullable().or(z.literal('')),
+  roomId: z.string().uuid('Invalid Room ID').optional().nullable().or(z.literal('')),
+  invigilatorStaffId: z.string().uuid('Invalid Staff ID').optional().nullable().or(z.literal('')),
+  status: examSubjectStatusEnum.optional().default('scheduled'),
+}).refine((data) => data.passingMarks <= data.maxMarks, {
+  message: 'Passing marks cannot exceed maximum marks',
+  path: ['passingMarks'],
+}).refine((data) => {
+  if (data.startTime && data.endTime && data.startTime.trim() !== '' && data.endTime.trim() !== '') {
+    return data.endTime > data.startTime;
+  }
+  return true;
+}, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
+});
+
+export type ExamSubjectCreateInput = z.input<typeof examSubjectCreateSchema>;
+
+export const studentMarkEntryItemSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  enrollmentId: z.string().uuid().optional().nullable(),
+  marksObtained: z.coerce.number().min(0, 'Marks cannot be negative').optional().nullable(),
+  isAbsent: z.boolean().default(false),
+  isExempted: z.boolean().default(false),
+  remarks: z.string().trim().max(250).optional().or(z.literal('')),
+});
+
+export const studentMarksBatchSchema = z.object({
+  examinationId: z.string().uuid('Valid Examination ID is required').optional(),
+  examSubjectId: z.string().uuid('Valid Exam Subject ID is required'),
+  status: marksEntryStatusEnum.optional().default('submitted'),
+  records: z.array(studentMarkEntryItemSchema).min(1, 'At least one student mark entry is required'),
+});
+
+export type StudentMarksBatchInput = z.input<typeof studentMarksBatchSchema>;
+
+export const markCorrectionSchema = z.object({
+  studentExamMarkId: z.string().uuid('Valid Mark ID is required').optional(),
+  markId: z.string().uuid('Valid Mark ID is required').optional(),
+  newMarks: z.coerce.number().min(0, 'Revised marks cannot be negative'),
+  isAbsent: z.boolean().default(false).optional(),
+  reason: z.string().trim().min(5, 'Correction reason must be at least 5 characters').max(300),
+}).refine((data) => data.studentExamMarkId || data.markId, {
+  message: 'Either studentExamMarkId or markId is required',
+});
+
+export type MarkCorrectionInput = z.input<typeof markCorrectionSchema>;
+
+export const publishResultsSchema = z.object({
+  examinationId: z.string().uuid('Valid Examination ID is required'),
+});
+
+export type PublishResultsInput = z.input<typeof publishResultsSchema>;
+
+export const hallTicketGenerateSchema = z.object({
+  examinationId: z.string().uuid('Valid Examination ID is required'),
+  classId: z.string().uuid('Invalid Class ID').optional().nullable().or(z.literal('')),
+  studentIds: z.array(z.string().uuid()).optional(),
+});
+
+export type HallTicketGenerateInput = z.input<typeof hallTicketGenerateSchema>;
+
+export const revaluationRequestSchema = z.object({
+  studentExamMarkId: z.string().uuid('Valid Mark ID is required'),
+  reason: z.string().trim().min(10, 'Revaluation reason must be at least 10 characters').max(500),
+});
+
+export type RevaluationRequestInput = z.input<typeof revaluationRequestSchema>;
+
+export const revaluationReviewSchema = z.object({
+  revaluationId: z.string().uuid('Valid Revaluation ID is required'),
+  status: z.enum(['completed', 'rejected', 'under_review', 'assigned']),
+  revisedMarks: z.coerce.number().min(0).optional().nullable(),
+  reviewNotes: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type RevaluationReviewInput = z.input<typeof revaluationReviewSchema>;
+
+
 

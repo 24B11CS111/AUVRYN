@@ -181,7 +181,16 @@ export type Permission =
   | 'timetable:view'
   | 'timetable:substitute'
   | 'rooms:manage'
-  | 'rooms:view';
+  | 'rooms:view'
+  | 'exams:manage'
+  | 'exams:view'
+  | 'marks:enter'
+  | 'marks:verify'
+  | 'results:publish'
+  | 'results:view'
+  | 'grading:manage'
+  | 'revaluation:apply'
+  | 'revaluation:review';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -220,6 +229,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'timetable:substitute',
     'rooms:manage',
     'rooms:view',
+    'exams:manage',
+    'exams:view',
+    'marks:enter',
+    'marks:verify',
+    'results:publish',
+    'results:view',
+    'grading:manage',
+    'revaluation:apply',
+    'revaluation:review',
   ],
   admin: [
     'institution:manage',
@@ -256,6 +274,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'timetable:substitute',
     'rooms:manage',
     'rooms:view',
+    'exams:manage',
+    'exams:view',
+    'marks:enter',
+    'marks:verify',
+    'results:publish',
+    'results:view',
+    'grading:manage',
+    'revaluation:apply',
+    'revaluation:review',
   ],
   hr_administrator: [
     'institution:view',
@@ -276,6 +303,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:approve',
     'leaves:view',
     'timetable:view',
+    'exams:view',
   ],
   academic_admin: [
     'institution:view',
@@ -300,6 +328,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'timetable:substitute',
     'rooms:manage',
     'rooms:view',
+    'exams:manage',
+    'exams:view',
+    'marks:enter',
+    'marks:verify',
+    'results:publish',
+    'results:view',
+    'grading:manage',
+    'revaluation:apply',
+    'revaluation:review',
   ],
   department_head: [
     'institution:view',
@@ -321,6 +358,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'timetable:view',
     'timetable:substitute',
     'rooms:view',
+    'exams:manage',
+    'exams:view',
+    'marks:enter',
+    'marks:verify',
+    'results:publish',
+    'results:view',
+    'grading:manage',
+    'revaluation:review',
   ],
   admissions_officer: [
     'institution:view',
@@ -340,6 +385,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:view',
     'timetable:view',
     'rooms:view',
+    'exams:view',
+    'results:view',
   ],
   faculty: [
     'institution:view',
@@ -358,6 +405,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'timetable:view',
     'timetable:substitute',
     'rooms:view',
+    'exams:view',
+    'marks:enter',
+    'results:view',
+    'revaluation:review',
   ],
   staff: [
     'institution:view',
@@ -369,6 +420,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:view',
     'timetable:view',
     'rooms:view',
+    'exams:view',
+    'results:view',
   ],
   accountant: [
     'institution:view',
@@ -380,6 +433,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:view',
     'timetable:view',
+    'exams:view',
+    'results:view',
+    'revaluation:apply',
   ],
   student: [
     'institution:view',
@@ -389,6 +445,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:view',
     'timetable:view',
+    'exams:view',
+    'results:view',
+    'revaluation:apply',
   ],
   parent: [
     'institution:view',
@@ -399,6 +458,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leaves:apply',
     'leaves:view',
     'timetable:view',
+    'exams:view',
+    'results:view',
+    'revaluation:apply',
   ],
 };
 
@@ -1584,5 +1646,285 @@ export interface WeeklyTimetableDay {
   dayLabel: string;
   slots: TimetableGridCell[];
 }
+
+// ==========================================
+// 9. Examination & Results Management (Milestone 7)
+// ==========================================
+
+export type ExamType =
+  | 'internal_assessment'
+  | 'unit_test'
+  | 'midterm'
+  | 'semester_exam'
+  | 'annual_exam'
+  | 'practical_exam'
+  | 'laboratory_exam'
+  | 'assignment'
+  | 'project'
+  | 'viva'
+  | 'final_exam';
+
+export type ExamStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'published'
+  | 'cancelled';
+
+export type ExamPublicationStatus =
+  | 'unpublished'
+  | 'under_review'
+  | 'published'
+  | 'withdrawn';
+
+export type AssessmentType =
+  | 'theory'
+  | 'practical'
+  | 'laboratory'
+  | 'internal_assessment'
+  | 'external_assessment'
+  | 'viva'
+  | 'project';
+
+export type ExamSubjectStatus =
+  | 'scheduled'
+  | 'completed'
+  | 'cancelled';
+
+export type GradingCalculationType =
+  | 'gpa_10_point'
+  | 'gpa_4_point'
+  | 'letter_grade_percentage'
+  | 'marks_based'
+  | 'pass_fail';
+
+export type MarksEntryStatus =
+  | 'draft'
+  | 'submitted'
+  | 'verified'
+  | 'locked';
+
+export type ExamResultStatus =
+  | 'pass'
+  | 'fail'
+  | 'distinction'
+  | 'promoted_with_backlog'
+  | 'withheld';
+
+export type RevaluationStatus =
+  | 'applied'
+  | 'assigned'
+  | 'under_review'
+  | 'completed'
+  | 'rejected';
+
+export interface GradingScaleRule {
+  id: string;
+  gradingScaleId: string;
+  grade: string;
+  gradePoint: number;
+  minPercentage: number;
+  maxPercentage: number;
+  description?: string | null;
+  isPassing: boolean;
+  createdAt: string;
+}
+
+export interface GradingScale {
+  id: string;
+  institutionId: string;
+  name: string;
+  description?: string | null;
+  calculationType: GradingCalculationType;
+  isCreditBased: boolean;
+  version: number;
+  isDefault: boolean;
+  isActive: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  rules?: GradingScaleRule[];
+}
+
+export interface Examination {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  academicYearId: string;
+  termId?: string | null;
+  programId?: string | null;
+  classId?: string | null;
+  name: string;
+  examType: ExamType;
+  startDate: string;
+  endDate: string;
+  maxMarks: number;
+  passingMarks: number;
+  weightagePercentage: number;
+  gradingScaleId?: string | null;
+  status: ExamStatus;
+  publicationStatus: ExamPublicationStatus;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  instructions?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  academicYear?: AcademicYear;
+  campus?: Campus;
+  academicClass?: AcademicClass;
+  program?: AcademicProgram;
+  gradingScale?: GradingScale;
+  subjects?: ExamSubject[];
+}
+
+export interface ExamSubject {
+  id: string;
+  institutionId: string;
+  examinationId: string;
+  subjectId: string;
+  assessmentType: AssessmentType;
+  maxMarks: number;
+  passingMarks: number;
+  credits: number;
+  examDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  roomId?: string | null;
+  invigilatorStaffId?: string | null;
+  status: ExamSubjectStatus;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  subject?: AcademicSubject;
+  room?: Room;
+  invigilator?: StaffProfile;
+  examination?: Examination;
+}
+
+export interface StudentExamMark {
+  id: string;
+  institutionId: string;
+  examinationId: string;
+  examSubjectId: string;
+  studentId: string;
+  enrollmentId?: string | null;
+  marksObtained?: number | null;
+  isAbsent: boolean;
+  isExempted: boolean;
+  grade?: string | null;
+  gradePoint?: number | null;
+  status: MarksEntryStatus;
+  remarks?: string | null;
+  enteredByStaffId?: string | null;
+  submittedAt?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+  examSubject?: ExamSubject;
+  examination?: Examination;
+  enteredByStaff?: StaffProfile;
+}
+
+export interface MarksEntryCorrection {
+  id: string;
+  institutionId: string;
+  studentExamMarkId: string;
+  previousMarks?: number | null;
+  newMarks: number;
+  previousStatus: MarksEntryStatus;
+  newStatus: MarksEntryStatus;
+  reason: string;
+  correctedBy: string;
+  correctedAt: string;
+  // Joins
+  corrector?: Profile;
+}
+
+export interface StudentExamResult {
+  id: string;
+  institutionId: string;
+  examinationId: string;
+  studentId: string;
+  academicYearId: string;
+  classId: string;
+  sectionId?: string | null;
+  gradingScaleId?: string | null;
+  gradingScaleVersion: number;
+  totalMaxMarks: number;
+  totalObtainedMarks: number;
+  percentage: number;
+  gpa?: number | null;
+  cgpa?: number | null;
+  finalGrade?: string | null;
+  resultStatus: ExamResultStatus;
+  backlogCount: number;
+  isPublished: boolean;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Joins
+  student?: Student;
+  examination?: Examination;
+  academicClass?: AcademicClass;
+  academicSection?: AcademicSection;
+  gradingScale?: GradingScale;
+}
+
+export interface HallTicket {
+  id: string;
+  institutionId: string;
+  examinationId: string;
+  studentId: string;
+  ticketNumber: string;
+  isEligible: boolean;
+  ineligibilityReason?: string | null;
+  qrCodeHash: string;
+  generatedAt: string;
+  generatedBy?: string | null;
+  // Joins
+  student?: Student;
+  examination?: Examination;
+}
+
+export interface ExamRevaluation {
+  id: string;
+  institutionId: string;
+  studentExamMarkId: string;
+  studentId: string;
+  examinationId: string;
+  subjectId: string;
+  originalMarks: number;
+  revisedMarks?: number | null;
+  status: RevaluationStatus;
+  reason: string;
+  reviewerStaffId?: string | null;
+  reviewNotes?: string | null;
+  appliedAt: string;
+  completedAt?: string | null;
+  reviewedBy?: string | null;
+  // Joins
+  student?: Student;
+  examination?: Examination;
+  subject?: AcademicSubject;
+  reviewer?: StaffProfile;
+}
+
+export interface ExamOverviewStats {
+  totalExams: number;
+  activeExams: number;
+  publishedExams: number;
+  pendingReviews: number;
+  revaluationsCount: number;
+  totalGradingScales: number;
+}
+
 
 

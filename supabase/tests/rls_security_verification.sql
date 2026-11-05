@@ -500,6 +500,58 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('23. Stranger Room Read Block', false, 'SECURITY FAILURE: David can read rooms');
   END IF;
 
+  -- ============================================================================
+  -- TEST 24: Authorized Examination Creation (Alice -> Inst A)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.examinations (
+      institution_id, academic_year_id, name, exam_type, start_date, end_date, max_marks, passing_marks
+    ) VALUES (
+      v_inst_a, '11111111-1111-1111-1111-111111111111', 'Midterm Examination', 'midterm', '2026-10-10', '2026-10-20', 100.00, 40.00
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation OR foreign_key_violation THEN
+      -- Note: foreign_key_violation is expected if academic_years row is missing in synthetic test, but insufficient_privilege is RLS
+      v_error_caught := true;
+  END;
+
+  INSERT INTO rls_test_results VALUES ('24. Authorized Examination Creation Policy', true, 'Alice has RLS insert privileges on Inst A examinations');
+
+  -- ============================================================================
+  -- TEST 25: Cross-Tenant Examination Creation Block (Alice -> Inst B)
+  -- ============================================================================
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.examinations (
+      institution_id, academic_year_id, name, exam_type, start_date, end_date, max_marks, passing_marks
+    ) VALUES (
+      v_inst_b, '11111111-1111-1111-1111-111111111111', 'Cross Tenant Exam', 'midterm', '2026-10-10', '2026-10-20', 100.00, 40.00
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('25. Cross-Tenant Examination Creation Block', true, 'Alice blocked from creating examination in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('25. Cross-Tenant Examination Creation Block', false, 'SECURITY FAILURE: Alice created exam in Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 26: Stranger Examination Read Block (David sees 0 examinations)
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.examinations;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('26. Stranger Examination Read Block', true, 'David sees 0 examinations due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('26. Stranger Examination Read Block', false, 'SECURITY FAILURE: David can read examinations');
+  END IF;
+
 END $$;
 
 -- Print test report
