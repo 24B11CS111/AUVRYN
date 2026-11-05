@@ -11,6 +11,8 @@ import {
   Building,
   Users,
   GraduationCap,
+  UserCheck,
+  ClipboardList,
   FileClock,
   Settings,
   Shield,
@@ -59,6 +61,18 @@ export function Sidebar({
       href: '/dashboard/academics',
       icon: GraduationCap,
       roles: ['owner', 'admin', 'academic_admin', 'faculty', 'student'],
+    },
+    {
+      label: 'Students',
+      href: '/dashboard/students',
+      icon: UserCheck,
+      roles: ['owner', 'admin', 'academic_admin', 'admissions_officer', 'faculty', 'staff', 'student', 'parent'],
+    },
+    {
+      label: 'Admissions',
+      href: '/dashboard/admissions',
+      icon: ClipboardList,
+      roles: ['owner', 'admin', 'academic_admin', 'admissions_officer'],
     },
     {
       label: 'Audit Trail',

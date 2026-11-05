@@ -131,8 +131,10 @@ export type Role =
   | 'owner'
   | 'admin'
   | 'academic_admin'
+  | 'admissions_officer'
   | 'faculty'
   | 'staff'
+  | 'accountant'
   | 'student'
   | 'parent';
 
@@ -151,6 +153,14 @@ export type Permission =
   | 'campuses:view'
   | 'academics:manage'
   | 'academics:view'
+  | 'students:manage'
+  | 'students:view'
+  | 'guardians:manage'
+  | 'guardians:view'
+  | 'admissions:manage'
+  | 'admissions:view'
+  | 'documents:manage'
+  | 'documents:verify'
   | 'audit:view'
   | 'billing:manage';
 
@@ -164,6 +174,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'campuses:view',
     'academics:manage',
     'academics:view',
+    'students:manage',
+    'students:view',
+    'guardians:manage',
+    'guardians:view',
+    'admissions:manage',
+    'admissions:view',
+    'documents:manage',
+    'documents:verify',
     'audit:view',
     'billing:manage',
   ],
@@ -176,6 +194,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'campuses:view',
     'academics:manage',
     'academics:view',
+    'students:manage',
+    'students:view',
+    'guardians:manage',
+    'guardians:view',
+    'admissions:manage',
+    'admissions:view',
+    'documents:manage',
+    'documents:verify',
     'audit:view',
   ],
   academic_admin: [
@@ -184,24 +210,51 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'campuses:view',
     'academics:manage',
     'academics:view',
+    'students:view',
+    'guardians:view',
+  ],
+  admissions_officer: [
+    'institution:view',
+    'members:view',
+    'campuses:view',
+    'academics:view',
+    'students:manage',
+    'students:view',
+    'guardians:manage',
+    'guardians:view',
+    'admissions:manage',
+    'admissions:view',
+    'documents:manage',
+    'documents:verify',
   ],
   faculty: [
     'institution:view',
     'members:view',
     'campuses:view',
     'academics:view',
+    'students:view',
+    'guardians:view',
   ],
   staff: [
     'institution:view',
     'campuses:view',
+    'students:view',
+  ],
+  accountant: [
+    'institution:view',
+    'students:view',
+    'billing:manage',
   ],
   student: [
     'institution:view',
     'academics:view',
+    'students:view',
   ],
   parent: [
     'institution:view',
     'academics:view',
+    'students:view',
+    'guardians:view',
   ],
 };
 
@@ -304,7 +357,6 @@ export interface AcademicDepartment {
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   headProfile?: Profile | null;
   campus?: Campus | null;
   parentDepartment?: AcademicDepartment | null;
@@ -326,7 +378,6 @@ export interface AcademicProgram {
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   department?: AcademicDepartment | null;
   campus?: Campus | null;
 }
@@ -339,12 +390,11 @@ export interface AcademicClass {
   campusId?: string | null;
   name: string;
   code: string;
-  levelNumber: number; // e.g. Grade 1-12, or Year 1-4
+  levelNumber: number;
   status: AcademicRecordStatus;
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   program?: AcademicProgram | null;
   academicYear?: AcademicYear | null;
   campus?: Campus | null;
@@ -365,7 +415,6 @@ export interface AcademicSection {
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   academicClass?: AcademicClass | null;
   classTeacher?: Profile | null;
   campus?: Campus | null;
@@ -384,7 +433,6 @@ export interface AcademicSubject {
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   department?: AcademicDepartment | null;
 }
 
@@ -400,7 +448,6 @@ export interface AcademicClassSubject {
   createdAt: string;
   updatedAt: string;
   createdBy?: string | null;
-  // Join extensions
   academicClass?: AcademicClass | null;
   section?: AcademicSection | null;
   subject?: AcademicSubject | null;
@@ -408,18 +455,17 @@ export interface AcademicClassSubject {
   faculty?: Profile | null;
 }
 
-// Dynamic terminology mapping helper
 export interface AcademicTerminology {
-  departmentTitle: string; // e.g., "Wings / Divisions", "Streams", "Departments", "Faculties"
+  departmentTitle: string;
   departmentDescription: string;
-  programTitle: string;    // e.g., "Curriculums", "Stream Tracks", "Programs / Degrees", "Degrees"
+  programTitle: string;
   programDescription: string;
-  classTitle: string;      // e.g., "Grades / Classes", "Year Batches", "Batches / Cohorts"
+  classTitle: string;
   classDescription: string;
-  sectionTitle: string;    // e.g., "Sections", "Divisions", "Lab Batches / Sections"
+  sectionTitle: string;
   sectionDescription: string;
-  teacherTitle: string;    // e.g., "Class Teacher", "Stream Mentor", "Faculty Advisor / Proctor"
-  subjectTitle: string;    // e.g., "Subjects", "Subjects", "Course Modules", "Courses"
+  teacherTitle: string;
+  subjectTitle: string;
 }
 
 export function getAcademicTerminology(type: InstitutionType): AcademicTerminology {
@@ -494,7 +540,231 @@ export function getAcademicTerminology(type: InstitutionType): AcademicTerminolo
 }
 
 // ==========================================
-// 6. Audit Logging
+// 6. Student & Admissions Management (Milestone 3)
+// ==========================================
+
+export type StudentStatus =
+  | 'active'
+  | 'inactive'
+  | 'suspended'
+  | 'alumni'
+  | 'withdrawn'
+  | 'transferred';
+
+export type StudentGender =
+  | 'male'
+  | 'female'
+  | 'other'
+  | 'prefer_not_to_say';
+
+export type EnrollmentStatus =
+  | 'enrolled'
+  | 'promoted'
+  | 'retained'
+  | 'transferred'
+  | 'graduated'
+  | 'dropped';
+
+export type DocumentType =
+  | 'photo'
+  | 'birth_certificate'
+  | 'previous_record'
+  | 'transfer_certificate'
+  | 'national_id'
+  | 'medical_record'
+  | 'other';
+
+export type DocumentVerificationStatus =
+  | 'pending'
+  | 'verified'
+  | 'rejected';
+
+export type AdmissionStatus =
+  | 'submitted'
+  | 'received'
+  | 'documents_pending'
+  | 'under_verification'
+  | 'approved'
+  | 'rejected'
+  | 'waitlisted'
+  | 'confirmed'
+  | 'enrolled';
+
+export interface Student {
+  id: string;
+  institutionId: string;
+  admissionNumber: string;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  gender: StudentGender;
+  bloodGroup?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  photoUrl?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  nationality: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
+  status: StudentStatus;
+  dateOfJoining: string;
+  userId?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  currentEnrollment?: StudentEnrollment | null;
+  guardians?: StudentGuardianJoin[];
+}
+
+export interface Guardian {
+  id: string;
+  institutionId: string;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone: string;
+  relationshipDefault?: string | null;
+  occupation?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  userId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+}
+
+export interface StudentGuardian {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  guardianId: string;
+  relationship: string;
+  isPrimary: boolean;
+  isEmergencyContact: boolean;
+  canPickup: boolean;
+  createdAt: string;
+}
+
+export interface StudentGuardianJoin extends StudentGuardian {
+  guardian?: Guardian;
+}
+
+export interface StudentEnrollment {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  campusId?: string | null;
+  academicYearId: string;
+  programId: string;
+  classId: string;
+  sectionId?: string | null;
+  rollNumber?: string | null;
+  status: EnrollmentStatus;
+  enrollmentDate: string;
+  exitDate?: string | null;
+  exitReason?: string | null;
+  remarks?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  campus?: Campus | null;
+  academicYear?: AcademicYear | null;
+  program?: AcademicProgram | null;
+  academicClass?: AcademicClass | null;
+  section?: AcademicSection | null;
+}
+
+export interface StudentDocument {
+  id: string;
+  institutionId: string;
+  studentId?: string | null;
+  applicationId?: string | null;
+  documentType: DocumentType;
+  title: string;
+  storagePath: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  verificationStatus: DocumentVerificationStatus;
+  verificationNotes?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  uploadedBy?: string | null;
+}
+
+export interface AdmissionApplication {
+  id: string;
+  institutionId: string;
+  applicationNumber: string;
+  campusId?: string | null;
+  academicYearId: string;
+  programId: string;
+  classId?: string | null;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  gender: StudentGender;
+  bloodGroup?: string | null;
+  email?: string | null;
+  phone: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  nationality: string;
+  previousSchoolName?: string | null;
+  previousGradeOrScore?: string | null;
+  primaryGuardianName: string;
+  primaryGuardianRelationship: string;
+  primaryGuardianPhone: string;
+  primaryGuardianEmail?: string | null;
+  primaryGuardianOccupation?: string | null;
+  secondaryGuardianName?: string | null;
+  secondaryGuardianRelationship?: string | null;
+  secondaryGuardianPhone?: string | null;
+  secondaryGuardianEmail?: string | null;
+  status: AdmissionStatus;
+  internalRemarks?: string | null;
+  convertedStudentId?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joins
+  campus?: Campus | null;
+  academicYear?: AcademicYear | null;
+  program?: AcademicProgram | null;
+  academicClass?: AcademicClass | null;
+  documents?: StudentDocument[];
+}
+
+export interface AdmissionStatusHistory {
+  id: string;
+  applicationId: string;
+  fromStatus?: AdmissionStatus | null;
+  toStatus: AdmissionStatus;
+  remarks?: string | null;
+  changedBy?: string | null;
+  createdAt: string;
+}
+
+// ==========================================
+// 7. Audit Logging
 // ==========================================
 
 export interface AuditLog {
@@ -508,12 +778,11 @@ export interface AuditLog {
   ipAddress?: string | null;
   userAgent?: string | null;
   createdAt: string;
-  // Join extensions
   actorProfile?: Profile | null;
 }
 
 // ==========================================
-// 7. User Session & Multi-Tenancy Context
+// 8. User Session & Multi-Tenancy Context
 // ==========================================
 
 export interface UserSessionContext {

@@ -245,6 +245,84 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('10. Authorized Academic Creation', false, 'FAILURE: Authorized Bob could not create department in Inst B');
   END IF;
 
+  -- ============================================================================
+  -- TEST 11: Student Creation & Cross-Tenant Isolation
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  -- Alice creates a student in Inst A
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.students (institution_id, admission_number, first_name, last_name, date_of_birth, gender, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship)
+    VALUES (v_inst_a, 'ADM-TEST-001', 'Test', 'Student', '2012-01-01', 'male', 'Parent Test', '9999999999', 'Father');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('11. Authorized Student Creation', true, 'Alice successfully inserted student into Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('11. Authorized Student Creation', false, 'FAILURE: Alice could not create student in Inst A');
+  END IF;
+
+  -- Alice tries to insert student into Inst B
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.students (institution_id, admission_number, first_name, last_name, date_of_birth, gender, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship)
+    VALUES (v_inst_b, 'ADM-TEST-X', 'Rogue', 'Student', '2012-01-01', 'female', 'Parent X', '9999999999', 'Mother');
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('12. Cross-Tenant Student Write Block', true, 'Alice blocked from creating student in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('12. Cross-Tenant Student Write Block', false, 'SECURITY FAILURE: Alice inserted student into Inst B');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 13: Stranger Student Access Blocked
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.students;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('13. Stranger Student Read Block', true, 'David sees 0 students due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('13. Stranger Student Read Block', false, 'SECURITY FAILURE: David can read students across institutions');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 14: Admissions Officer / Admin Application Creation
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_bob::text, true);
+
+  v_error_caught := false;
+  BEGIN
+    INSERT INTO public.admission_applications (
+      institution_id, application_number, academic_year_id, program_id,
+      first_name, last_name, date_of_birth, gender, phone,
+      primary_guardian_name, primary_guardian_relationship, primary_guardian_phone,
+      status
+    ) VALUES (
+      v_inst_b, 'APP-TEST-999', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333',
+      'Admit', 'Candidate', '2011-03-10', 'female', '9888888888',
+      'Guardian One', 'Mother', '9888888888',
+      'submitted'
+    );
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation THEN
+      v_error_caught := true;
+  END;
+
+  IF NOT v_error_caught THEN
+    INSERT INTO rls_test_results VALUES ('14. Authorized Admission Submission', true, 'Authorized user created admission application in Inst B');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('14. Authorized Admission Submission', false, 'FAILURE: Authorized user could not submit admission');
+  END IF;
+
 END $$;
 
 -- Print test report

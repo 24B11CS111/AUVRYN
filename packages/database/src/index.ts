@@ -14,6 +14,13 @@ export const DATABASE_TABLES = {
   ACADEMIC_SECTIONS: 'academic_sections',
   ACADEMIC_SUBJECTS: 'academic_subjects',
   ACADEMIC_CLASS_SUBJECTS: 'academic_class_subjects',
+  STUDENTS: 'students',
+  GUARDIANS: 'guardians',
+  STUDENT_GUARDIANS: 'student_guardians',
+  STUDENT_ENROLLMENTS: 'student_enrollments',
+  ADMISSION_APPLICATIONS: 'admission_applications',
+  ADMISSION_STATUS_HISTORY: 'admission_status_history',
+  STUDENT_DOCUMENTS: 'student_documents',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -127,7 +134,7 @@ export interface Database {
           id: string;
           institution_id: string;
           user_id: string;
-          role: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
+          role: 'owner' | 'admin' | 'academic_admin' | 'admissions_officer' | 'faculty' | 'staff' | 'accountant' | 'student' | 'parent';
           permissions: string[];
           status: 'active' | 'invited' | 'suspended' | 'revoked';
           title: string | null;
@@ -140,7 +147,7 @@ export interface Database {
           id?: string;
           institution_id: string;
           user_id: string;
-          role: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
+          role: 'owner' | 'admin' | 'academic_admin' | 'admissions_officer' | 'faculty' | 'staff' | 'accountant' | 'student' | 'parent';
           permissions?: string[];
           status?: 'active' | 'invited' | 'suspended' | 'revoked';
           title?: string | null;
@@ -153,7 +160,7 @@ export interface Database {
           id?: string;
           institution_id?: string;
           user_id?: string;
-          role?: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
+          role?: 'owner' | 'admin' | 'academic_admin' | 'admissions_officer' | 'faculty' | 'staff' | 'accountant' | 'student' | 'parent';
           permissions?: string[];
           status?: 'active' | 'invited' | 'suspended' | 'revoked';
           title?: string | null;
@@ -569,6 +576,468 @@ export interface Database {
         };
         Relationships: [];
       };
+      students: {
+        Row: {
+          id: string;
+          institution_id: string;
+          admission_number: string;
+          first_name: string;
+          middle_name: string | null;
+          last_name: string;
+          date_of_birth: string;
+          gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group: string | null;
+          email: string | null;
+          phone: string | null;
+          photo_url: string | null;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          country: string | null;
+          postal_code: string | null;
+          nationality: string;
+          emergency_contact_name: string;
+          emergency_contact_phone: string;
+          emergency_contact_relationship: string;
+          status: 'active' | 'inactive' | 'suspended' | 'alumni' | 'withdrawn' | 'transferred';
+          date_of_joining: string;
+          user_id: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          admission_number: string;
+          first_name: string;
+          middle_name?: string | null;
+          last_name: string;
+          date_of_birth: string;
+          gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          photo_url?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          postal_code?: string | null;
+          nationality?: string;
+          emergency_contact_name: string;
+          emergency_contact_phone: string;
+          emergency_contact_relationship: string;
+          status?: 'active' | 'inactive' | 'suspended' | 'alumni' | 'withdrawn' | 'transferred';
+          date_of_joining?: string;
+          user_id?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          admission_number?: string;
+          first_name?: string;
+          middle_name?: string | null;
+          last_name?: string;
+          date_of_birth?: string;
+          gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          photo_url?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          postal_code?: string | null;
+          nationality?: string;
+          emergency_contact_name?: string;
+          emergency_contact_phone?: string;
+          emergency_contact_relationship?: string;
+          status?: 'active' | 'inactive' | 'suspended' | 'alumni' | 'withdrawn' | 'transferred';
+          date_of_joining?: string;
+          user_id?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      guardians: {
+        Row: {
+          id: string;
+          institution_id: string;
+          first_name: string;
+          last_name: string;
+          email: string | null;
+          phone: string;
+          relationship_default: string | null;
+          occupation: string | null;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          country: string | null;
+          user_id: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          first_name: string;
+          last_name: string;
+          email?: string | null;
+          phone: string;
+          relationship_default?: string | null;
+          occupation?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          first_name?: string;
+          last_name?: string;
+          email?: string | null;
+          phone?: string;
+          relationship_default?: string | null;
+          occupation?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      student_guardians: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          guardian_id: string;
+          relationship: string;
+          is_primary: boolean;
+          is_emergency_contact: boolean;
+          can_pickup: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          guardian_id: string;
+          relationship: string;
+          is_primary?: boolean;
+          is_emergency_contact?: boolean;
+          can_pickup?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          guardian_id?: string;
+          relationship?: string;
+          is_primary?: boolean;
+          is_emergency_contact?: boolean;
+          can_pickup?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_enrollments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          campus_id: string | null;
+          academic_year_id: string;
+          program_id: string;
+          class_id: string;
+          section_id: string | null;
+          roll_number: string | null;
+          status: 'enrolled' | 'promoted' | 'retained' | 'transferred' | 'graduated' | 'dropped';
+          enrollment_date: string;
+          exit_date: string | null;
+          exit_reason: string | null;
+          remarks: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          campus_id?: string | null;
+          academic_year_id: string;
+          program_id: string;
+          class_id: string;
+          section_id?: string | null;
+          roll_number?: string | null;
+          status?: 'enrolled' | 'promoted' | 'retained' | 'transferred' | 'graduated' | 'dropped';
+          enrollment_date?: string;
+          exit_date?: string | null;
+          exit_reason?: string | null;
+          remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          campus_id?: string | null;
+          academic_year_id?: string;
+          program_id?: string;
+          class_id?: string;
+          section_id?: string | null;
+          roll_number?: string | null;
+          status?: 'enrolled' | 'promoted' | 'retained' | 'transferred' | 'graduated' | 'dropped';
+          enrollment_date?: string;
+          exit_date?: string | null;
+          exit_reason?: string | null;
+          remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      admission_applications: {
+        Row: {
+          id: string;
+          institution_id: string;
+          application_number: string;
+          campus_id: string | null;
+          academic_year_id: string;
+          program_id: string;
+          class_id: string | null;
+          first_name: string;
+          middle_name: string | null;
+          last_name: string;
+          date_of_birth: string;
+          gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group: string | null;
+          email: string | null;
+          phone: string;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          country: string | null;
+          postal_code: string | null;
+          nationality: string;
+          previous_school_name: string | null;
+          previous_grade_or_score: string | null;
+          primary_guardian_name: string;
+          primary_guardian_relationship: string;
+          primary_guardian_phone: string;
+          primary_guardian_email: string | null;
+          primary_guardian_occupation: string | null;
+          secondary_guardian_name: string | null;
+          secondary_guardian_relationship: string | null;
+          secondary_guardian_phone: string | null;
+          secondary_guardian_email: string | null;
+          status: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          internal_remarks: string | null;
+          converted_student_id: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          application_number: string;
+          campus_id?: string | null;
+          academic_year_id: string;
+          program_id: string;
+          class_id?: string | null;
+          first_name: string;
+          middle_name?: string | null;
+          last_name: string;
+          date_of_birth: string;
+          gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group?: string | null;
+          email?: string | null;
+          phone: string;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          postal_code?: string | null;
+          nationality?: string;
+          previous_school_name?: string | null;
+          previous_grade_or_score?: string | null;
+          primary_guardian_name: string;
+          primary_guardian_relationship: string;
+          primary_guardian_phone: string;
+          primary_guardian_email?: string | null;
+          primary_guardian_occupation?: string | null;
+          secondary_guardian_name?: string | null;
+          secondary_guardian_relationship?: string | null;
+          secondary_guardian_phone?: string | null;
+          secondary_guardian_email?: string | null;
+          status?: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          internal_remarks?: string | null;
+          converted_student_id?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          application_number?: string;
+          campus_id?: string | null;
+          academic_year_id?: string;
+          program_id?: string;
+          class_id?: string | null;
+          first_name?: string;
+          middle_name?: string | null;
+          last_name?: string;
+          date_of_birth?: string;
+          gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+          blood_group?: string | null;
+          email?: string | null;
+          phone?: string;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          postal_code?: string | null;
+          nationality?: string;
+          previous_school_name?: string | null;
+          previous_grade_or_score?: string | null;
+          primary_guardian_name?: string;
+          primary_guardian_relationship?: string;
+          primary_guardian_phone?: string;
+          primary_guardian_email?: string | null;
+          primary_guardian_occupation?: string | null;
+          secondary_guardian_name?: string | null;
+          secondary_guardian_relationship?: string | null;
+          secondary_guardian_phone?: string | null;
+          secondary_guardian_email?: string | null;
+          status?: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          internal_remarks?: string | null;
+          converted_student_id?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      admission_status_history: {
+        Row: {
+          id: string;
+          application_id: string;
+          from_status: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled' | null;
+          to_status: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          remarks: string | null;
+          changed_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          from_status?: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled' | null;
+          to_status: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          remarks?: string | null;
+          changed_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          from_status?: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled' | null;
+          to_status?: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
+          remarks?: string | null;
+          changed_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_documents: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string | null;
+          application_id: string | null;
+          document_type: 'photo' | 'birth_certificate' | 'previous_record' | 'transfer_certificate' | 'national_id' | 'medical_record' | 'other';
+          title: string;
+          storage_path: string;
+          file_name: string;
+          file_size: number;
+          mime_type: string;
+          verification_status: 'pending' | 'verified' | 'rejected';
+          verification_notes: string | null;
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+          updated_at: string;
+          uploaded_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id?: string | null;
+          application_id?: string | null;
+          document_type?: 'photo' | 'birth_certificate' | 'previous_record' | 'transfer_certificate' | 'national_id' | 'medical_record' | 'other';
+          title: string;
+          storage_path: string;
+          file_name: string;
+          file_size: number;
+          mime_type: string;
+          verification_status?: 'pending' | 'verified' | 'rejected';
+          verification_notes?: string | null;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string | null;
+          application_id?: string | null;
+          document_type?: 'photo' | 'birth_certificate' | 'previous_record' | 'transfer_certificate' | 'national_id' | 'medical_record' | 'other';
+          title?: string;
+          storage_path?: string;
+          file_name?: string;
+          file_size?: number;
+          mime_type?: string;
+          verification_status?: 'pending' | 'verified' | 'rejected';
+          verification_notes?: string | null;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          uploaded_by?: string | null;
+        };
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;
@@ -641,6 +1110,19 @@ export interface Database {
           academic_year_id: string;
         };
       };
+      convert_admission_to_student: {
+        Args: {
+          p_application_id: string;
+          p_admission_number: string;
+          p_section_id?: string | null;
+          p_roll_number?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          student_id: string;
+          admission_number: string;
+        };
+      };
       get_user_institution_ids: {
         Args: Record<string, never>;
         Returns: { institution_id: string }[];
@@ -658,16 +1140,28 @@ export interface Database {
         };
         Returns: boolean;
       };
+      is_guardian_of_student: {
+        Args: {
+          p_student_id: string;
+        };
+        Returns: boolean;
+      };
     };
     Enums: {
       institution_type: 'school' | 'junior_college' | 'degree_college' | 'engineering_college' | 'university';
       institution_status: 'active' | 'pending_verification' | 'suspended' | 'archived';
-      membership_role: 'owner' | 'admin' | 'academic_admin' | 'faculty' | 'staff' | 'student' | 'parent';
+      membership_role: 'owner' | 'admin' | 'academic_admin' | 'admissions_officer' | 'faculty' | 'staff' | 'accountant' | 'student' | 'parent';
       membership_status: 'active' | 'invited' | 'suspended' | 'revoked';
       term_system: 'semester' | 'trimester' | 'annual';
       academic_record_status: 'active' | 'inactive' | 'archived';
       academic_level_type: 'primary' | 'middle_school' | 'secondary' | 'higher_secondary' | 'diploma' | 'undergraduate' | 'postgraduate' | 'doctoral';
       subject_category_type: 'theory' | 'practical' | 'lab' | 'elective' | 'vocational' | 'project';
+      student_status: 'active' | 'inactive' | 'suspended' | 'alumni' | 'withdrawn' | 'transferred';
+      student_gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+      enrollment_status: 'enrolled' | 'promoted' | 'retained' | 'transferred' | 'graduated' | 'dropped';
+      document_type: 'photo' | 'birth_certificate' | 'previous_record' | 'transfer_certificate' | 'national_id' | 'medical_record' | 'other';
+      document_verification_status: 'pending' | 'verified' | 'rejected';
+      admission_status: 'submitted' | 'received' | 'documents_pending' | 'under_verification' | 'approved' | 'rejected' | 'waitlisted' | 'confirmed' | 'enrolled';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -687,3 +1181,11 @@ export type AcademicClassRow = Database['public']['Tables']['academic_classes'][
 export type AcademicSectionRow = Database['public']['Tables']['academic_sections']['Row'];
 export type AcademicSubjectRow = Database['public']['Tables']['academic_subjects']['Row'];
 export type AcademicClassSubjectRow = Database['public']['Tables']['academic_class_subjects']['Row'];
+
+export type StudentRow = Database['public']['Tables']['students']['Row'];
+export type GuardianRow = Database['public']['Tables']['guardians']['Row'];
+export type StudentGuardianRow = Database['public']['Tables']['student_guardians']['Row'];
+export type StudentEnrollmentRow = Database['public']['Tables']['student_enrollments']['Row'];
+export type AdmissionApplicationRow = Database['public']['Tables']['admission_applications']['Row'];
+export type AdmissionStatusHistoryRow = Database['public']['Tables']['admission_status_history']['Row'];
+export type StudentDocumentRow = Database['public']['Tables']['student_documents']['Row'];

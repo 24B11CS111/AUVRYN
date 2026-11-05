@@ -56,6 +56,27 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'academics:manage')).toBe(false);
       expect(checkPermission(r, 'audit:view')).toBe(false);
       expect(checkPermission(r, 'billing:manage')).toBe(false);
+      expect(checkPermission(r, 'students:manage')).toBe(false);
+      expect(checkPermission(r, 'admissions:manage')).toBe(false);
     }
+  });
+
+  it('verifies Admissions Officer can manage admissions and students, but cannot manage billing or members', () => {
+    expect(checkPermission('admissions_officer', 'admissions:manage')).toBe(true);
+    expect(checkPermission('admissions_officer', 'admissions:view')).toBe(true);
+    expect(checkPermission('admissions_officer', 'students:manage')).toBe(true);
+    expect(checkPermission('admissions_officer', 'students:view')).toBe(true);
+    expect(checkPermission('admissions_officer', 'billing:manage')).toBe(false);
+    expect(checkPermission('admissions_officer', 'members:manage')).toBe(false);
+    expect(checkPermission('admissions_officer', 'institution:manage')).toBe(false);
+  });
+
+  it('verifies Accountant can manage billing and view students, but cannot manage admissions', () => {
+    expect(checkPermission('accountant', 'billing:manage')).toBe(true);
+    expect(checkPermission('accountant', 'institution:view')).toBe(true);
+    expect(checkPermission('accountant', 'students:view')).toBe(true);
+    expect(checkPermission('accountant', 'students:manage')).toBe(false);
+    expect(checkPermission('accountant', 'admissions:manage')).toBe(false);
+    expect(checkPermission('accountant', 'members:manage')).toBe(false);
   });
 });

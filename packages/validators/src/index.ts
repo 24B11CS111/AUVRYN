@@ -6,6 +6,12 @@ import type {
   AcademicRecordStatus,
   AcademicLevelType,
   SubjectCategoryType,
+  StudentStatus,
+  StudentGender,
+  EnrollmentStatus,
+  DocumentType,
+  DocumentVerificationStatus,
+  AdmissionStatus,
 } from '@edu-platform/types';
 
 // ==========================================
@@ -222,8 +228,10 @@ export const roleEnum = z.enum([
   'owner',
   'admin',
   'academic_admin',
+  'admissions_officer',
   'faculty',
   'staff',
+  'accountant',
   'student',
   'parent',
 ]) satisfies z.ZodType<Role>;
@@ -430,3 +438,286 @@ export const classSubjectAssignSchema = z.object({
 });
 
 export type ClassSubjectAssignInput = z.input<typeof classSubjectAssignSchema>;
+
+// ==========================================
+// 5. Student & Admissions Schemas (Milestone 3)
+// ==========================================
+
+export const studentStatusEnum = z.enum([
+  'active',
+  'inactive',
+  'suspended',
+  'alumni',
+  'withdrawn',
+  'transferred',
+]) satisfies z.ZodType<StudentStatus>;
+
+export const studentGenderEnum = z.enum([
+  'male',
+  'female',
+  'other',
+  'prefer_not_to_say',
+]) satisfies z.ZodType<StudentGender>;
+
+export const enrollmentStatusEnum = z.enum([
+  'enrolled',
+  'promoted',
+  'retained',
+  'transferred',
+  'graduated',
+  'dropped',
+]) satisfies z.ZodType<EnrollmentStatus>;
+
+export const documentTypeEnum = z.enum([
+  'photo',
+  'birth_certificate',
+  'previous_record',
+  'transfer_certificate',
+  'national_id',
+  'medical_record',
+  'other',
+]) satisfies z.ZodType<DocumentType>;
+
+export const documentVerificationStatusEnum = z.enum([
+  'pending',
+  'verified',
+  'rejected',
+]) satisfies z.ZodType<DocumentVerificationStatus>;
+
+export const admissionStatusEnum = z.enum([
+  'submitted',
+  'received',
+  'documents_pending',
+  'under_verification',
+  'approved',
+  'rejected',
+  'waitlisted',
+  'confirmed',
+  'enrolled',
+]) satisfies z.ZodType<AdmissionStatus>;
+
+// --- Student Schemas ---
+export const studentCreateSchema = z.object({
+  admissionNumber: z
+    .string()
+    .trim()
+    .min(2, 'Admission number is required')
+    .max(30, 'Admission number cannot exceed 30 characters'),
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(60, 'First name cannot exceed 60 characters'),
+  middleName: z.string().trim().max(60).optional().or(z.literal('')),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(60, 'Last name cannot exceed 60 characters'),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth (YYYY-MM-DD) is required'),
+  gender: studentGenderEnum.default('prefer_not_to_say'),
+  bloodGroup: z.string().trim().max(10).optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().trim().max(20).optional().or(z.literal('')),
+  photoUrl: z.string().url('Invalid photo URL').optional().or(z.literal('')),
+  address: z.string().trim().max(250).optional().or(z.literal('')),
+  city: z.string().trim().max(100).optional().or(z.literal('')),
+  state: z.string().trim().max(100).optional().or(z.literal('')),
+  country: z.string().trim().max(100).optional().or(z.literal('')),
+  postalCode: z.string().trim().max(20).optional().or(z.literal('')),
+  nationality: z.string().trim().max(60).default('Domestic'),
+  emergencyContactName: z
+    .string()
+    .trim()
+    .min(2, 'Emergency contact name is required')
+    .max(100),
+  emergencyContactPhone: z
+    .string()
+    .trim()
+    .min(5, 'Emergency contact phone is required')
+    .max(20),
+  emergencyContactRelationship: z
+    .string()
+    .trim()
+    .min(2, 'Emergency contact relationship is required')
+    .max(50),
+  dateOfJoining: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid date of joining is required')
+    .optional(),
+  status: studentStatusEnum.optional().default('active'),
+});
+
+export type StudentCreateInput = z.input<typeof studentCreateSchema>;
+
+export const studentUpdateSchema = studentCreateSchema.partial();
+export type StudentUpdateInput = z.input<typeof studentUpdateSchema>;
+
+// --- Guardian Schemas ---
+export const guardianCreateSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(60),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(60),
+  email: z.string().trim().email('Invalid email address').optional().or(z.literal('')),
+  phone: z
+    .string()
+    .trim()
+    .min(5, 'Phone number is required')
+    .max(20),
+  relationshipDefault: z.string().trim().max(50).optional().or(z.literal('')),
+  occupation: z.string().trim().max(100).optional().or(z.literal('')),
+  address: z.string().trim().max(250).optional().or(z.literal('')),
+  city: z.string().trim().max(100).optional().or(z.literal('')),
+  state: z.string().trim().max(100).optional().or(z.literal('')),
+  country: z.string().trim().max(100).optional().or(z.literal('')),
+});
+
+export type GuardianCreateInput = z.input<typeof guardianCreateSchema>;
+
+export const guardianUpdateSchema = guardianCreateSchema.partial();
+export type GuardianUpdateInput = z.input<typeof guardianUpdateSchema>;
+
+export const linkGuardianSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID required'),
+  guardianId: z.string().uuid('Valid Guardian ID required'),
+  relationship: z.string().trim().min(2, 'Relationship is required').max(50),
+  isPrimary: z.boolean().default(false),
+  isEmergencyContact: z.boolean().default(false),
+  canPickup: z.boolean().default(true),
+});
+
+export type LinkGuardianInput = z.input<typeof linkGuardianSchema>;
+
+// --- Student Enrollment Schemas ---
+export const studentEnrollmentCreateSchema = z.object({
+  studentId: z.string().uuid('Valid Student ID is required'),
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  programId: z.string().uuid('Valid Program ID is required'),
+  classId: z.string().uuid('Valid Class ID is required'),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  rollNumber: z.string().trim().max(30).optional().or(z.literal('')),
+  status: enrollmentStatusEnum.default('enrolled'),
+  enrollmentDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid enrollment date required')
+    .optional(),
+  remarks: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type StudentEnrollmentCreateInput = z.input<typeof studentEnrollmentCreateSchema>;
+
+// --- Student Document Schemas ---
+export const studentDocumentUploadSchema = z.object({
+  studentId: z.string().uuid('Invalid Student ID').optional().nullable().or(z.literal('')),
+  applicationId: z.string().uuid('Invalid Application ID').optional().nullable().or(z.literal('')),
+  documentType: documentTypeEnum.default('other'),
+  title: z
+    .string()
+    .trim()
+    .min(2, 'Document title is required')
+    .max(120),
+  storagePath: z.string().min(3, 'Storage path is required'),
+  fileName: z.string().min(1, 'File name is required'),
+  fileSize: z.coerce.number().min(1, 'File size must be positive'),
+  mimeType: z.string().min(3, 'Valid MIME type required'),
+});
+
+export type StudentDocumentUploadInput = z.input<typeof studentDocumentUploadSchema>;
+
+export const studentDocumentVerifySchema = z.object({
+  verificationStatus: documentVerificationStatusEnum,
+  verificationNotes: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type StudentDocumentVerifyInput = z.input<typeof studentDocumentVerifySchema>;
+
+// --- Admission Application Schemas ---
+export const admissionApplicationCreateSchema = z.object({
+  campusId: z.string().uuid('Invalid Campus ID').optional().nullable().or(z.literal('')),
+  academicYearId: z.string().uuid('Valid Academic Year ID is required'),
+  programId: z.string().uuid('Valid Program ID is required'),
+  classId: z.string().uuid('Invalid Class ID').optional().nullable().or(z.literal('')),
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(60),
+  middleName: z.string().trim().max(60).optional().or(z.literal('')),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(60),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth is required'),
+  gender: studentGenderEnum.default('prefer_not_to_say'),
+  bloodGroup: z.string().trim().max(10).optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email').optional().or(z.literal('')),
+  phone: z
+    .string()
+    .trim()
+    .min(5, 'Applicant phone is required')
+    .max(20),
+  address: z.string().trim().max(250).optional().or(z.literal('')),
+  city: z.string().trim().max(100).optional().or(z.literal('')),
+  state: z.string().trim().max(100).optional().or(z.literal('')),
+  country: z.string().trim().max(100).optional().or(z.literal('')),
+  postalCode: z.string().trim().max(20).optional().or(z.literal('')),
+  nationality: z.string().trim().max(60).default('Domestic'),
+  previousSchoolName: z.string().trim().max(150).optional().or(z.literal('')),
+  previousGradeOrScore: z.string().trim().max(50).optional().or(z.literal('')),
+  primaryGuardianName: z
+    .string()
+    .trim()
+    .min(2, 'Primary guardian name is required')
+    .max(100),
+  primaryGuardianRelationship: z
+    .string()
+    .trim()
+    .min(2, 'Guardian relationship is required')
+    .max(50),
+  primaryGuardianPhone: z
+    .string()
+    .trim()
+    .min(5, 'Primary guardian phone is required')
+    .max(20),
+  primaryGuardianEmail: z.string().trim().email('Invalid guardian email').optional().or(z.literal('')),
+  primaryGuardianOccupation: z.string().trim().max(100).optional().or(z.literal('')),
+  secondaryGuardianName: z.string().trim().max(100).optional().or(z.literal('')),
+  secondaryGuardianRelationship: z.string().trim().max(50).optional().or(z.literal('')),
+  secondaryGuardianPhone: z.string().trim().max(20).optional().or(z.literal('')),
+  secondaryGuardianEmail: z.string().trim().email('Invalid email').optional().or(z.literal('')),
+});
+
+export type AdmissionApplicationCreateInput = z.input<typeof admissionApplicationCreateSchema>;
+
+export const admissionStatusUpdateSchema = z.object({
+  status: admissionStatusEnum,
+  remarks: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type AdmissionStatusUpdateInput = z.input<typeof admissionStatusUpdateSchema>;
+
+export const admissionConversionSchema = z.object({
+  applicationId: z.string().uuid('Valid Application ID is required'),
+  admissionNumber: z
+    .string()
+    .trim()
+    .min(2, 'Admission number is required')
+    .max(30),
+  sectionId: z.string().uuid('Invalid Section ID').optional().nullable().or(z.literal('')),
+  rollNumber: z.string().trim().max(30).optional().or(z.literal('')),
+});
+
+export type AdmissionConversionInput = z.input<typeof admissionConversionSchema>;
