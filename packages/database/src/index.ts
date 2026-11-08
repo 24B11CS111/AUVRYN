@@ -76,6 +76,21 @@ export const DATABASE_TABLES = {
   COMMUNICATION_THREADS: 'communication_threads',
   COMMUNICATION_PARTICIPANTS: 'communication_participants',
   COMMUNICATION_MESSAGES: 'communication_messages',
+  TRANSPORT_VEHICLES: 'transport_vehicles',
+  VEHICLE_DOCUMENTS: 'vehicle_documents',
+  VEHICLE_MAINTENANCE_RECORDS: 'vehicle_maintenance_records',
+  TRANSPORT_STAFF_PROFILES: 'transport_staff_profiles',
+  TRANSPORT_STOPS: 'transport_stops',
+  TRANSPORT_ROUTES: 'transport_routes',
+  ROUTE_STOPS: 'route_stops',
+  STUDENT_TRANSPORT_ASSIGNMENTS: 'student_transport_assignments',
+  TRANSPORT_JOURNEYS: 'transport_journeys',
+  JOURNEY_STOP_EVENTS: 'journey_stop_events',
+  VEHICLE_LIVE_LOCATIONS: 'vehicle_live_locations',
+  VEHICLE_LOCATION_HISTORY: 'vehicle_location_history',
+  STUDENT_BOARDING_EVENTS: 'student_boarding_events',
+  TRANSPORT_CHANGE_REQUESTS: 'transport_change_requests',
+  TRANSPORT_SETTINGS: 'transport_settings',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -3202,6 +3217,822 @@ export interface Database {
         };
         Relationships: [];
       };
+      transport_vehicles: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          registration_number: string;
+          vehicle_model: string;
+          vehicle_type: string;
+          seating_capacity: number;
+          standing_capacity: number;
+          fuel_type: string | null;
+          ownership_type: string;
+          status: 'active' | 'inactive' | 'under_maintenance' | 'retired';
+          gps_device_id: string | null;
+          make_year: number | null;
+          color: string | null;
+          chassis_number: string | null;
+          engine_number: string | null;
+          notes: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          registration_number: string;
+          vehicle_model: string;
+          vehicle_type?: string;
+          seating_capacity: number;
+          standing_capacity?: number;
+          fuel_type?: string | null;
+          ownership_type?: string;
+          status?: 'active' | 'inactive' | 'under_maintenance' | 'retired';
+          gps_device_id?: string | null;
+          make_year?: number | null;
+          color?: string | null;
+          chassis_number?: string | null;
+          engine_number?: string | null;
+          notes?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          registration_number?: string;
+          vehicle_model?: string;
+          vehicle_type?: string;
+          seating_capacity?: number;
+          standing_capacity?: number;
+          fuel_type?: string | null;
+          ownership_type?: string;
+          status?: 'active' | 'inactive' | 'under_maintenance' | 'retired';
+          gps_device_id?: string | null;
+          make_year?: number | null;
+          color?: string | null;
+          chassis_number?: string | null;
+          engine_number?: string | null;
+          notes?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vehicle_documents: {
+        Row: {
+          id: string;
+          institution_id: string;
+          vehicle_id: string;
+          document_type: 'insurance' | 'permit' | 'fitness_certificate' | 'pollution_certificate' | 'road_tax' | 'other';
+          document_number: string;
+          issued_date: string;
+          expiry_date: string;
+          issuing_authority: string | null;
+          file_url: string | null;
+          status: 'valid' | 'expiring_soon' | 'expired';
+          notes: string | null;
+          verified_by: string | null;
+          verified_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          vehicle_id: string;
+          document_type: 'insurance' | 'permit' | 'fitness_certificate' | 'pollution_certificate' | 'road_tax' | 'other';
+          document_number: string;
+          issued_date: string;
+          expiry_date: string;
+          issuing_authority?: string | null;
+          file_url?: string | null;
+          status?: 'valid' | 'expiring_soon' | 'expired';
+          notes?: string | null;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          vehicle_id?: string;
+          document_type?: 'insurance' | 'permit' | 'fitness_certificate' | 'pollution_certificate' | 'road_tax' | 'other';
+          document_number?: string;
+          issued_date?: string;
+          expiry_date?: string;
+          issuing_authority?: string | null;
+          file_url?: string | null;
+          status?: 'valid' | 'expiring_soon' | 'expired';
+          notes?: string | null;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vehicle_maintenance_records: {
+        Row: {
+          id: string;
+          institution_id: string;
+          vehicle_id: string;
+          maintenance_type: 'routine_service' | 'repair' | 'inspection' | 'emergency_breakdown' | 'tire_replacement' | 'other';
+          description: string;
+          odometer_reading: number | null;
+          cost: number;
+          service_center: string | null;
+          start_date: string;
+          completion_date: string | null;
+          status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+          performed_by: string | null;
+          invoice_url: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          vehicle_id: string;
+          maintenance_type: 'routine_service' | 'repair' | 'inspection' | 'emergency_breakdown' | 'tire_replacement' | 'other';
+          description: string;
+          odometer_reading?: number | null;
+          cost?: number;
+          service_center?: string | null;
+          start_date: string;
+          completion_date?: string | null;
+          status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+          performed_by?: string | null;
+          invoice_url?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          vehicle_id?: string;
+          maintenance_type?: 'routine_service' | 'repair' | 'inspection' | 'emergency_breakdown' | 'tire_replacement' | 'other';
+          description?: string;
+          odometer_reading?: number | null;
+          cost?: number;
+          service_center?: string | null;
+          start_date?: string;
+          completion_date?: string | null;
+          status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+          performed_by?: string | null;
+          invoice_url?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_staff_profiles: {
+        Row: {
+          id: string;
+          institution_id: string;
+          staff_profile_id: string;
+          role_type: 'driver' | 'attendant' | 'both';
+          license_number: string | null;
+          license_type: string | null;
+          license_expiry: string | null;
+          badge_number: string | null;
+          police_verification_status: string;
+          police_verification_date: string | null;
+          medical_fitness_expiry: string | null;
+          emergency_contact_name: string | null;
+          emergency_contact_phone: string | null;
+          is_active: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          staff_profile_id: string;
+          role_type?: 'driver' | 'attendant' | 'both';
+          license_number?: string | null;
+          license_type?: string | null;
+          license_expiry?: string | null;
+          badge_number?: string | null;
+          police_verification_status?: string;
+          police_verification_date?: string | null;
+          medical_fitness_expiry?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
+          is_active?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          staff_profile_id?: string;
+          role_type?: 'driver' | 'attendant' | 'both';
+          license_number?: string | null;
+          license_type?: string | null;
+          license_expiry?: string | null;
+          badge_number?: string | null;
+          police_verification_status?: string;
+          police_verification_date?: string | null;
+          medical_fitness_expiry?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
+          is_active?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_stops: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          name: string;
+          code: string | null;
+          address: string | null;
+          latitude: number;
+          longitude: number;
+          geofence_radius_meters: number;
+          landmark: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          name: string;
+          code?: string | null;
+          address?: string | null;
+          latitude: number;
+          longitude: number;
+          geofence_radius_meters?: number;
+          landmark?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          name?: string;
+          code?: string | null;
+          address?: string | null;
+          latitude?: number;
+          longitude?: number;
+          geofence_radius_meters?: number;
+          landmark?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_routes: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          academic_year_id: string;
+          route_name: string;
+          route_code: string;
+          start_location: string;
+          destination: string;
+          route_type: 'morning_pickup' | 'evening_dropoff' | 'both' | 'shuttle';
+          shift: 'morning' | 'afternoon' | 'evening' | 'general';
+          assigned_vehicle_id: string | null;
+          assigned_driver_id: string | null;
+          assigned_attendant_id: string | null;
+          total_distance_km: number;
+          estimated_duration_mins: number;
+          status: string;
+          description: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          academic_year_id: string;
+          route_name: string;
+          route_code: string;
+          start_location: string;
+          destination: string;
+          route_type?: 'morning_pickup' | 'evening_dropoff' | 'both' | 'shuttle';
+          shift?: 'morning' | 'afternoon' | 'evening' | 'general';
+          assigned_vehicle_id?: string | null;
+          assigned_driver_id?: string | null;
+          assigned_attendant_id?: string | null;
+          total_distance_km?: number;
+          estimated_duration_mins?: number;
+          status?: string;
+          description?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          academic_year_id?: string;
+          route_name?: string;
+          route_code?: string;
+          start_location?: string;
+          destination?: string;
+          route_type?: 'morning_pickup' | 'evening_dropoff' | 'both' | 'shuttle';
+          shift?: 'morning' | 'afternoon' | 'evening' | 'general';
+          assigned_vehicle_id?: string | null;
+          assigned_driver_id?: string | null;
+          assigned_attendant_id?: string | null;
+          total_distance_km?: number;
+          estimated_duration_mins?: number;
+          status?: string;
+          description?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      route_stops: {
+        Row: {
+          id: string;
+          institution_id: string;
+          route_id: string;
+          stop_id: string;
+          stop_order: number;
+          scheduled_arrival_time: string;
+          scheduled_departure_time: string;
+          pickup_allowed: boolean;
+          dropoff_allowed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          route_id: string;
+          stop_id: string;
+          stop_order: number;
+          scheduled_arrival_time: string;
+          scheduled_departure_time: string;
+          pickup_allowed?: boolean;
+          dropoff_allowed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          route_id?: string;
+          stop_id?: string;
+          stop_order?: number;
+          scheduled_arrival_time?: string;
+          scheduled_departure_time?: string;
+          pickup_allowed?: boolean;
+          dropoff_allowed?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_transport_assignments: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          academic_year_id: string;
+          route_id: string;
+          pickup_stop_id: string;
+          dropoff_stop_id: string;
+          fee_structure_id: string | null;
+          status: 'active' | 'suspended' | 'withdrawn' | 'pending_approval';
+          parent_confirmed: boolean;
+          effective_start_date: string;
+          effective_end_date: string | null;
+          cancellation_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          academic_year_id: string;
+          route_id: string;
+          pickup_stop_id: string;
+          dropoff_stop_id: string;
+          fee_structure_id?: string | null;
+          status?: 'active' | 'suspended' | 'withdrawn' | 'pending_approval';
+          parent_confirmed?: boolean;
+          effective_start_date?: string;
+          effective_end_date?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          academic_year_id?: string;
+          route_id?: string;
+          pickup_stop_id?: string;
+          dropoff_stop_id?: string;
+          fee_structure_id?: string | null;
+          status?: 'active' | 'suspended' | 'withdrawn' | 'pending_approval';
+          parent_confirmed?: boolean;
+          effective_start_date?: string;
+          effective_end_date?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_journeys: {
+        Row: {
+          id: string;
+          institution_id: string;
+          route_id: string;
+          vehicle_id: string;
+          driver_id: string;
+          attendant_id: string | null;
+          journey_date: string;
+          shift: 'morning' | 'afternoon' | 'evening' | 'general';
+          journey_type: 'pickup' | 'dropoff' | 'shuttle';
+          status: 'scheduled' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | 'emergency';
+          scheduled_start_time: string | null;
+          actual_start_time: string | null;
+          scheduled_end_time: string | null;
+          actual_end_time: string | null;
+          current_stop_id: string | null;
+          delay_minutes: number;
+          delay_reason: string | null;
+          emergency_reason: string | null;
+          emergency_reported_at: string | null;
+          cancellation_reason: string | null;
+          notes: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          route_id: string;
+          vehicle_id: string;
+          driver_id: string;
+          attendant_id?: string | null;
+          journey_date?: string;
+          shift?: 'morning' | 'afternoon' | 'evening' | 'general';
+          journey_type?: 'pickup' | 'dropoff' | 'shuttle';
+          status?: 'scheduled' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | 'emergency';
+          scheduled_start_time?: string | null;
+          actual_start_time?: string | null;
+          scheduled_end_time?: string | null;
+          actual_end_time?: string | null;
+          current_stop_id?: string | null;
+          delay_minutes?: number;
+          delay_reason?: string | null;
+          emergency_reason?: string | null;
+          emergency_reported_at?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          route_id?: string;
+          vehicle_id?: string;
+          driver_id?: string;
+          attendant_id?: string | null;
+          journey_date?: string;
+          shift?: 'morning' | 'afternoon' | 'evening' | 'general';
+          journey_type?: 'pickup' | 'dropoff' | 'shuttle';
+          status?: 'scheduled' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | 'emergency';
+          scheduled_start_time?: string | null;
+          actual_start_time?: string | null;
+          scheduled_end_time?: string | null;
+          actual_end_time?: string | null;
+          current_stop_id?: string | null;
+          delay_minutes?: number;
+          delay_reason?: string | null;
+          emergency_reason?: string | null;
+          emergency_reported_at?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      journey_stop_events: {
+        Row: {
+          id: string;
+          institution_id: string;
+          journey_id: string;
+          stop_id: string;
+          stop_order: number;
+          scheduled_arrival_time: string | null;
+          actual_arrival_time: string | null;
+          actual_departure_time: string | null;
+          status: 'pending' | 'arrived' | 'departed' | 'skipped';
+          skipped_reason: string | null;
+          students_expected: number;
+          students_boarded: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          journey_id: string;
+          stop_id: string;
+          stop_order: number;
+          scheduled_arrival_time?: string | null;
+          actual_arrival_time?: string | null;
+          actual_departure_time?: string | null;
+          status?: 'pending' | 'arrived' | 'departed' | 'skipped';
+          skipped_reason?: string | null;
+          students_expected?: number;
+          students_boarded?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          journey_id?: string;
+          stop_id?: string;
+          stop_order?: number;
+          scheduled_arrival_time?: string | null;
+          actual_arrival_time?: string | null;
+          actual_departure_time?: string | null;
+          status?: 'pending' | 'arrived' | 'departed' | 'skipped';
+          skipped_reason?: string | null;
+          students_expected?: number;
+          students_boarded?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      vehicle_live_locations: {
+        Row: {
+          vehicle_id: string;
+          institution_id: string;
+          journey_id: string | null;
+          latitude: number;
+          longitude: number;
+          speed_kmh: number;
+          heading: number;
+          accuracy_meters: number;
+          battery_level: number | null;
+          provider: string;
+          recorded_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          vehicle_id: string;
+          institution_id: string;
+          journey_id?: string | null;
+          latitude: number;
+          longitude: number;
+          speed_kmh?: number;
+          heading?: number;
+          accuracy_meters?: number;
+          battery_level?: number | null;
+          provider?: string;
+          recorded_at: string;
+          updated_at?: string;
+        };
+        Update: {
+          vehicle_id?: string;
+          institution_id?: string;
+          journey_id?: string | null;
+          latitude?: number;
+          longitude?: number;
+          speed_kmh?: number;
+          heading?: number;
+          accuracy_meters?: number;
+          battery_level?: number | null;
+          provider?: string;
+          recorded_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vehicle_location_history: {
+        Row: {
+          id: string;
+          institution_id: string;
+          vehicle_id: string;
+          journey_id: string;
+          latitude: number;
+          longitude: number;
+          speed_kmh: number;
+          heading: number;
+          recorded_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          vehicle_id: string;
+          journey_id: string;
+          latitude: number;
+          longitude: number;
+          speed_kmh?: number;
+          heading?: number;
+          recorded_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          vehicle_id?: string;
+          journey_id?: string;
+          latitude?: number;
+          longitude?: number;
+          speed_kmh?: number;
+          heading?: number;
+          recorded_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      student_boarding_events: {
+        Row: {
+          id: string;
+          institution_id: string;
+          journey_id: string;
+          student_id: string;
+          stop_id: string;
+          event_type: 'pickup' | 'dropoff';
+          timestamp: string;
+          verification_method: 'driver_manual' | 'attendant_manual' | 'qr_scan' | 'nfc' | 'rfid' | 'other';
+          verified_by: string | null;
+          is_corrected: boolean;
+          correction_reason: string | null;
+          corrected_by: string | null;
+          corrected_at: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          journey_id: string;
+          student_id: string;
+          stop_id: string;
+          event_type: 'pickup' | 'dropoff';
+          timestamp?: string;
+          verification_method?: 'driver_manual' | 'attendant_manual' | 'qr_scan' | 'nfc' | 'rfid' | 'other';
+          verified_by?: string | null;
+          is_corrected?: boolean;
+          correction_reason?: string | null;
+          corrected_by?: string | null;
+          corrected_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          journey_id?: string;
+          student_id?: string;
+          stop_id?: string;
+          event_type?: 'pickup' | 'dropoff';
+          timestamp?: string;
+          verification_method?: 'driver_manual' | 'attendant_manual' | 'qr_scan' | 'nfc' | 'rfid' | 'other';
+          verified_by?: string | null;
+          is_corrected?: boolean;
+          correction_reason?: string | null;
+          corrected_by?: string | null;
+          corrected_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_change_requests: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          requested_by_user_id: string;
+          request_type: 'new_enrollment' | 'route_change' | 'stop_change' | 'temporary_suspension' | 'withdrawal';
+          target_route_id: string | null;
+          target_pickup_stop_id: string | null;
+          target_dropoff_stop_id: string | null;
+          reason: string;
+          status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          requested_by_user_id: string;
+          request_type: 'new_enrollment' | 'route_change' | 'stop_change' | 'temporary_suspension' | 'withdrawal';
+          target_route_id?: string | null;
+          target_pickup_stop_id?: string | null;
+          target_dropoff_stop_id?: string | null;
+          reason: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          requested_by_user_id?: string;
+          request_type?: 'new_enrollment' | 'route_change' | 'stop_change' | 'temporary_suspension' | 'withdrawal';
+          target_route_id?: string | null;
+          target_pickup_stop_id?: string | null;
+          target_dropoff_stop_id?: string | null;
+          reason?: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_settings: {
+        Row: {
+          id: string;
+          institution_id: string;
+          gps_provider: string;
+          gps_update_interval_seconds: number;
+          location_retention_days: number;
+          approaching_stop_distance_meters: number;
+          allow_parent_tracking: boolean;
+          require_parent_change_approval: boolean;
+          prevent_overcapacity_assignment: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          gps_provider?: string;
+          gps_update_interval_seconds?: number;
+          location_retention_days?: number;
+          approaching_stop_distance_meters?: number;
+          allow_parent_tracking?: boolean;
+          require_parent_change_approval?: boolean;
+          prevent_overcapacity_assignment?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          gps_provider?: string;
+          gps_update_interval_seconds?: number;
+          location_retention_days?: number;
+          approaching_stop_distance_meters?: number;
+          allow_parent_tracking?: boolean;
+          require_parent_change_approval?: boolean;
+          prevent_overcapacity_assignment?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -3457,6 +4288,86 @@ export interface Database {
           status: string;
         };
       };
+      assign_student_transport_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_student_id: string;
+          p_academic_year_id: string;
+          p_route_id: string;
+          p_pickup_stop_id: string;
+          p_dropoff_stop_id: string;
+          p_fee_structure_id?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          assignment_id: string;
+          route_name: string;
+        };
+      };
+      update_journey_status_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_journey_id: string;
+          p_new_status: 'scheduled' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | 'emergency';
+          p_delay_minutes?: number;
+          p_delay_reason?: string | null;
+          p_emergency_reason?: string | null;
+          p_cancellation_reason?: string | null;
+          p_updated_by?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          journey_id: string;
+          status: string;
+        };
+      };
+      record_vehicle_gps_location_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_vehicle_id: string;
+          p_journey_id?: string | null;
+          p_latitude: number;
+          p_longitude: number;
+          p_speed_kmh?: number;
+          p_heading?: number;
+          p_accuracy_meters?: number;
+          p_battery_level?: number | null;
+          p_provider?: string;
+          p_recorded_at?: string;
+        };
+        Returns: {
+          success: boolean;
+          vehicle_id?: string;
+          recorded_at?: string;
+          reason?: string;
+        };
+      };
+      record_student_boarding_atomic: {
+        Args: {
+          p_institution_id: string;
+          p_journey_id: string;
+          p_student_id: string;
+          p_stop_id: string;
+          p_event_type: 'pickup' | 'dropoff';
+          p_verification_method?: 'driver_manual' | 'attendant_manual' | 'qr_scan' | 'nfc' | 'rfid' | 'other';
+          p_verified_by?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          event_id: string;
+          student_name: string;
+          event_type: string;
+          stop_name: string;
+        };
+      };
+      purge_expired_location_history: {
+        Args: {
+          p_institution_id?: string | null;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       institution_type: 'school' | 'junior_college' | 'degree_college' | 'engineering_college' | 'university';
@@ -3511,6 +4422,22 @@ export interface Database {
       announcement_status: 'draft' | 'scheduled' | 'published' | 'archived';
       assignment_submission_status: 'pending' | 'submitted' | 'late' | 'graded' | 'resubmit_requested';
       conversation_type: 'parent_teacher' | 'student_faculty' | 'admin_broadcast' | 'staff_internal';
+      transport_vehicle_status: 'active' | 'inactive' | 'under_maintenance' | 'retired';
+      vehicle_document_type: 'insurance' | 'permit' | 'fitness_certificate' | 'pollution_certificate' | 'road_tax' | 'other';
+      vehicle_document_status: 'valid' | 'expiring_soon' | 'expired';
+      transport_maintenance_type: 'routine_service' | 'repair' | 'inspection' | 'emergency_breakdown' | 'tire_replacement' | 'other';
+      transport_maintenance_status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+      transport_staff_role: 'driver' | 'attendant' | 'both';
+      transport_route_type: 'morning_pickup' | 'evening_dropoff' | 'both' | 'shuttle';
+      transport_route_shift: 'morning' | 'afternoon' | 'evening' | 'general';
+      student_transport_status: 'active' | 'suspended' | 'withdrawn' | 'pending_approval';
+      transport_journey_status: 'scheduled' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | 'emergency';
+      transport_journey_type: 'pickup' | 'dropoff' | 'shuttle';
+      journey_stop_status: 'pending' | 'arrived' | 'departed' | 'skipped';
+      boarding_event_type: 'pickup' | 'dropoff';
+      boarding_verification_method: 'driver_manual' | 'attendant_manual' | 'qr_scan' | 'nfc' | 'rfid' | 'other';
+      transport_change_request_type: 'new_enrollment' | 'route_change' | 'stop_change' | 'temporary_suspension' | 'withdrawal';
+      transport_change_request_status: 'pending' | 'approved' | 'rejected' | 'cancelled';
     };
     CompositeTypes: Record<string, never>;
   };
@@ -3843,6 +4770,23 @@ export type HomeworkSubmissionRow = Database['public']['Tables']['homework_submi
 export type CommunicationThreadRow = Database['public']['Tables']['communication_threads']['Row'];
 export type CommunicationParticipantRow = Database['public']['Tables']['communication_participants']['Row'];
 export type CommunicationMessageRow = Database['public']['Tables']['communication_messages']['Row'];
+
+export type TransportVehicleRow = Database['public']['Tables']['transport_vehicles']['Row'];
+export type VehicleDocumentRow = Database['public']['Tables']['vehicle_documents']['Row'];
+export type VehicleMaintenanceRecordRow = Database['public']['Tables']['vehicle_maintenance_records']['Row'];
+export type TransportStaffProfileRow = Database['public']['Tables']['transport_staff_profiles']['Row'];
+export type TransportStopRow = Database['public']['Tables']['transport_stops']['Row'];
+export type TransportRouteRow = Database['public']['Tables']['transport_routes']['Row'];
+export type RouteStopRow = Database['public']['Tables']['route_stops']['Row'];
+export type StudentTransportAssignmentRow = Database['public']['Tables']['student_transport_assignments']['Row'];
+export type TransportJourneyRow = Database['public']['Tables']['transport_journeys']['Row'];
+export type JourneyStopEventRow = Database['public']['Tables']['journey_stop_events']['Row'];
+export type VehicleLiveLocationRow = Database['public']['Tables']['vehicle_live_locations']['Row'];
+export type VehicleLocationHistoryRow = Database['public']['Tables']['vehicle_location_history']['Row'];
+export type StudentBoardingEventRow = Database['public']['Tables']['student_boarding_events']['Row'];
+export type TransportChangeRequestRow = Database['public']['Tables']['transport_change_requests']['Row'];
+export type TransportSettingsRow = Database['public']['Tables']['transport_settings']['Row'];
+
 
 
 

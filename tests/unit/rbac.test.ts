@@ -305,4 +305,43 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
     expect(checkPermission('parent', 'announcements:publish')).toBe(false);
     expect(checkPermission('parent', 'messages:moderate')).toBe(false);
   });
+
+  it('correctly maps Milestone 10 Transport & Tracking permissions across roles', () => {
+    // Owners and Admins have full transport permissions
+    for (const r of ['owner', 'admin'] as const) {
+      expect(checkPermission(r, 'transport:manage')).toBe(true);
+      expect(checkPermission(r, 'transport:view')).toBe(true);
+      expect(checkPermission(r, 'transport:assign')).toBe(true);
+      expect(checkPermission(r, 'transport:journey_manage')).toBe(true);
+      expect(checkPermission(r, 'transport:track')).toBe(true);
+      expect(checkPermission(r, 'transport:board')).toBe(true);
+      expect(checkPermission(r, 'transport:driver')).toBe(true);
+    }
+
+    // Staff have driver and operational permissions but cannot alter root transport policies
+    expect(checkPermission('staff', 'transport:view')).toBe(true);
+    expect(checkPermission('staff', 'transport:assign')).toBe(true);
+    expect(checkPermission('staff', 'transport:journey_manage')).toBe(true);
+    expect(checkPermission('staff', 'transport:track')).toBe(true);
+    expect(checkPermission('staff', 'transport:board')).toBe(true);
+    expect(checkPermission('staff', 'transport:driver')).toBe(true);
+    expect(checkPermission('staff', 'transport:manage')).toBe(false);
+
+    // Faculty can view and mark boarding but cannot manage journeys or drive
+    expect(checkPermission('faculty', 'transport:view')).toBe(true);
+    expect(checkPermission('faculty', 'transport:board')).toBe(true);
+    expect(checkPermission('faculty', 'transport:manage')).toBe(false);
+    expect(checkPermission('faculty', 'transport:driver')).toBe(false);
+
+    // Students and Parents can view and track routes, but cannot manage, assign, or drive
+    for (const r of ['student', 'parent'] as const) {
+      expect(checkPermission(r, 'transport:view')).toBe(true);
+      expect(checkPermission(r, 'transport:track')).toBe(true);
+      expect(checkPermission(r, 'transport:manage')).toBe(false);
+      expect(checkPermission(r, 'transport:assign')).toBe(false);
+      expect(checkPermission(r, 'transport:journey_manage')).toBe(false);
+      expect(checkPermission(r, 'transport:board')).toBe(false);
+      expect(checkPermission(r, 'transport:driver')).toBe(false);
+    }
+  });
 });

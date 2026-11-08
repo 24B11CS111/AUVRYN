@@ -660,6 +660,82 @@ BEGIN
     INSERT INTO rls_test_results VALUES ('35. Notification Recipient Isolation', false, 'SECURITY FAILURE: David can view other users notifications');
   END IF;
 
+  -- ============================================================================
+  -- TEST 36: Transport Vehicle Creation & Tenant Isolation
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  INSERT INTO public.transport_vehicles (
+    id, institution_id, registration_number, vehicle_model, seating_capacity, status
+  ) VALUES (
+    '88888888-8888-8888-8888-888888888881', v_inst_a, 'DL-01-AB-9999', 'Tata Starbus', 40, 'active'
+  );
+
+  SELECT COUNT(*) INTO v_count FROM public.transport_vehicles WHERE institution_id = v_inst_a;
+  IF v_count >= 1 THEN
+    INSERT INTO rls_test_results VALUES ('36. Authorized Vehicle Registration', true, 'Alice can register vehicles in Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('36. Authorized Vehicle Registration', false, 'FAILURE: Alice cannot register vehicles');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 37: Stranger Vehicle Read Block
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.transport_vehicles WHERE institution_id = v_inst_a;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('37. Stranger Vehicle Read Block', true, 'David cannot read vehicles in Inst A due to RLS');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('37. Stranger Vehicle Read Block', false, 'SECURITY FAILURE: David can read Inst A vehicles');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 38: Transport Route Configuration
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_alice::text, true);
+
+  INSERT INTO public.transport_routes (
+    id, institution_id, academic_year_id, route_name, route_code, start_location, destination
+  ) VALUES (
+    '88888888-8888-8888-8888-888888888882', v_inst_a, v_ay_a, 'Express Route 1', 'EXP-01', 'Depot', 'Campus'
+  );
+
+  SELECT COUNT(*) INTO v_count FROM public.transport_routes WHERE id = '88888888-8888-8888-8888-888888888882';
+  IF v_count = 1 THEN
+    INSERT INTO rls_test_results VALUES ('38. Route Creation & Tenant Scope', true, 'Alice successfully created route EXP-01');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('38. Route Creation & Tenant Scope', false, 'FAILURE: Alice cannot create route');
+  END IF;
+
+  -- ============================================================================
+  -- TEST 39: Stranger Route Creation Block
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  BEGIN
+    INSERT INTO public.transport_routes (
+      institution_id, academic_year_id, route_name, route_code, start_location, destination
+    ) VALUES (
+      v_inst_a, v_ay_a, 'Hacked Route', 'HACK-01', 'Nowhere', 'Nowhere'
+    );
+    INSERT INTO rls_test_results VALUES ('39. Stranger Route Creation Block', false, 'SECURITY FAILURE: David inserted route into Inst A');
+  EXCEPTION WHEN OTHERS THEN
+    INSERT INTO rls_test_results VALUES ('39. Stranger Route Creation Block', true, 'David cannot create routes in Inst A due to RLS');
+  END;
+
+  -- ============================================================================
+  -- TEST 40: Live Vehicle Telemetry Privacy
+  -- ============================================================================
+  PERFORM set_config('request.jwt.claim.sub', v_user_david::text, true);
+
+  SELECT COUNT(*) INTO v_count FROM public.vehicle_live_locations WHERE institution_id = v_inst_a;
+  IF v_count = 0 THEN
+    INSERT INTO rls_test_results VALUES ('40. Live Telemetry Privacy Block', true, 'David cannot spy on live vehicle locations of Inst A');
+  ELSE
+    INSERT INTO rls_test_results VALUES ('40. Live Telemetry Privacy Block', false, 'SECURITY FAILURE: David can query live vehicle coordinates');
+  END IF;
+
 END $$;
 
 -- Print test report

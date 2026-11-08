@@ -1971,6 +1971,323 @@ export const parentChildLeaveRequestSchema = z.object({
 
 export type ParentChildLeaveRequestInput = z.input<typeof parentChildLeaveRequestSchema>;
 
+// ==========================================
+// 12. Transport Management & Tracking Schemas
+// ==========================================
+
+export const transportVehicleStatusEnum = z.enum([
+  'active',
+  'inactive',
+  'under_maintenance',
+  'retired',
+]);
+
+export const vehicleDocumentTypeEnum = z.enum([
+  'insurance',
+  'permit',
+  'fitness_certificate',
+  'pollution_certificate',
+  'road_tax',
+  'other',
+]);
+
+export const vehicleDocumentStatusEnum = z.enum([
+  'valid',
+  'expiring_soon',
+  'expired',
+]);
+
+export const transportMaintenanceTypeEnum = z.enum([
+  'routine_service',
+  'repair',
+  'inspection',
+  'emergency_breakdown',
+  'tire_replacement',
+  'other',
+]);
+
+export const transportMaintenanceStatusEnum = z.enum([
+  'scheduled',
+  'in_progress',
+  'completed',
+  'cancelled',
+]);
+
+export const transportStaffRoleEnum = z.enum([
+  'driver',
+  'attendant',
+  'both',
+]);
+
+export const transportRouteTypeEnum = z.enum([
+  'morning_pickup',
+  'evening_dropoff',
+  'both',
+  'shuttle',
+]);
+
+export const transportRouteShiftEnum = z.enum([
+  'morning',
+  'afternoon',
+  'evening',
+  'general',
+]);
+
+export const studentTransportStatusEnum = z.enum([
+  'active',
+  'suspended',
+  'withdrawn',
+  'pending_approval',
+]);
+
+export const transportJourneyStatusEnum = z.enum([
+  'scheduled',
+  'in_progress',
+  'completed',
+  'delayed',
+  'cancelled',
+  'emergency',
+]);
+
+export const transportJourneyTypeEnum = z.enum([
+  'pickup',
+  'dropoff',
+  'shuttle',
+]);
+
+export const journeyStopStatusEnum = z.enum([
+  'pending',
+  'arrived',
+  'departed',
+  'skipped',
+]);
+
+export const boardingEventTypeEnum = z.enum([
+  'pickup',
+  'dropoff',
+]);
+
+export const boardingVerificationMethodEnum = z.enum([
+  'driver_manual',
+  'attendant_manual',
+  'qr_scan',
+  'nfc',
+  'rfid',
+  'other',
+]);
+
+export const transportChangeRequestTypeEnum = z.enum([
+  'new_enrollment',
+  'route_change',
+  'stop_change',
+  'temporary_suspension',
+  'withdrawal',
+]);
+
+export const transportChangeRequestStatusEnum = z.enum([
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
+
+export const createVehicleSchema = z.object({
+  registrationNumber: z.string().trim().min(3, 'Registration number must be at least 3 characters').max(30),
+  vehicleModel: z.string().trim().min(2, 'Vehicle model must be at least 2 characters').max(100),
+  vehicleType: z.string().trim().min(2).max(50).default('school_bus'),
+  seatingCapacity: z.coerce.number().int().positive('Seating capacity must be greater than 0'),
+  standingCapacity: z.coerce.number().int().min(0, 'Standing capacity cannot be negative').default(0),
+  fuelType: z.string().trim().max(30).optional().nullable().or(z.literal('')),
+  ownershipType: z.string().trim().default('institution_owned'),
+  status: transportVehicleStatusEnum.default('active'),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+  gpsDeviceId: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  makeYear: z.coerce.number().int().min(1980).max(2100).optional().nullable(),
+  color: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  chassisNumber: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  engineNumber: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(1000).optional().nullable().or(z.literal('')),
+});
+
+export type CreateVehicleInput = z.input<typeof createVehicleSchema>;
+
+export const createVehicleDocumentSchema = z.object({
+  vehicleId: z.string().uuid('Valid vehicle ID is required'),
+  documentType: vehicleDocumentTypeEnum,
+  documentNumber: z.string().trim().min(2, 'Document number is required').max(100),
+  issuedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issued date must be in YYYY-MM-DD format'),
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expiry date must be in YYYY-MM-DD format'),
+  issuingAuthority: z.string().trim().max(150).optional().nullable().or(z.literal('')),
+  fileUrl: z.string().url('Must be a valid URL').optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+}).refine(data => data.expiryDate >= data.issuedDate, {
+  message: 'Expiry date must be on or after issued date',
+  path: ['expiryDate'],
+});
+
+export type CreateVehicleDocumentInput = z.input<typeof createVehicleDocumentSchema>;
+
+export const createMaintenanceRecordSchema = z.object({
+  vehicleId: z.string().uuid('Valid vehicle ID is required'),
+  maintenanceType: transportMaintenanceTypeEnum,
+  description: z.string().trim().min(3, 'Description is required').max(1000),
+  odometerReading: z.coerce.number().int().min(0).optional().nullable(),
+  cost: z.coerce.number().min(0, 'Cost cannot be negative').default(0),
+  serviceCenter: z.string().trim().max(150).optional().nullable().or(z.literal('')),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
+  completionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Completion date must be in YYYY-MM-DD format').optional().nullable().or(z.literal('')),
+  status: transportMaintenanceStatusEnum.default('scheduled'),
+  performedBy: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type CreateMaintenanceRecordInput = z.input<typeof createMaintenanceRecordSchema>;
+
+export const transportStaffProfileSchema = z.object({
+  staffProfileId: z.string().uuid('Valid staff profile ID is required'),
+  roleType: transportStaffRoleEnum.default('driver'),
+  licenseNumber: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  licenseType: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  licenseExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional().nullable().or(z.literal('')),
+  badgeNumber: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  policeVerificationStatus: z.string().trim().default('verified'),
+  policeVerificationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional().nullable().or(z.literal('')),
+  medicalFitnessExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional().nullable().or(z.literal('')),
+  emergencyContactName: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  emergencyContactPhone: z.string().trim().max(30).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type TransportStaffProfileInput = z.input<typeof transportStaffProfileSchema>;
+
+export const createTransportStopSchema = z.object({
+  name: z.string().trim().min(2, 'Stop name must be at least 2 characters').max(150),
+  code: z.string().trim().max(30).optional().nullable().or(z.literal('')),
+  address: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+  latitude: z.coerce.number().min(-90, 'Latitude must be >= -90').max(90, 'Latitude must be <= 90'),
+  longitude: z.coerce.number().min(-180, 'Longitude must be >= -180').max(180, 'Longitude must be <= 180'),
+  geofenceRadiusMeters: z.coerce.number().int().min(10, 'Geofence radius must be at least 10m').max(1000).default(50),
+  landmark: z.string().trim().max(200).optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+});
+
+export type CreateTransportStopInput = z.input<typeof createTransportStopSchema>;
+
+export const createTransportRouteSchema = z.object({
+  routeName: z.string().trim().min(2, 'Route name must be at least 2 characters').max(150),
+  routeCode: z.string().trim().min(2, 'Route code must be at least 2 characters').max(50),
+  startLocation: z.string().trim().min(2, 'Start location is required').max(200),
+  destination: z.string().trim().min(2, 'Destination is required').max(200),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+  academicYearId: z.string().uuid('Academic Year is required'),
+  routeType: transportRouteTypeEnum.default('both'),
+  shift: transportRouteShiftEnum.default('general'),
+  assignedVehicleId: z.string().uuid().optional().nullable().or(z.literal('')),
+  assignedDriverId: z.string().uuid().optional().nullable().or(z.literal('')),
+  assignedAttendantId: z.string().uuid().optional().nullable().or(z.literal('')),
+  totalDistanceKm: z.coerce.number().min(0).default(0),
+  estimatedDurationMins: z.coerce.number().int().min(1).default(45),
+  description: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type CreateTransportRouteInput = z.input<typeof createTransportRouteSchema>;
+
+export const assignRouteStopsSchema = z.object({
+  routeId: z.string().uuid('Valid route ID is required'),
+  stops: z.array(
+    z.object({
+      stopId: z.string().uuid('Valid stop ID is required'),
+      stopOrder: z.coerce.number().int().min(1, 'Stop order must start at 1'),
+      scheduledArrivalTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, 'Format must be HH:MM or HH:MM:SS'),
+      scheduledDepartureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, 'Format must be HH:MM or HH:MM:SS'),
+      pickupAllowed: z.boolean().default(true),
+      dropoffAllowed: z.boolean().default(true),
+    })
+  ).min(1, 'At least one stop must be assigned to the route'),
+});
+
+export type AssignRouteStopsInput = z.input<typeof assignRouteStopsSchema>;
+
+export const assignStudentTransportSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  academicYearId: z.string().uuid('Valid academic year ID is required'),
+  routeId: z.string().uuid('Valid route ID is required'),
+  pickupStopId: z.string().uuid('Valid pickup stop is required'),
+  dropoffStopId: z.string().uuid('Valid dropoff stop is required'),
+  feeStructureId: z.string().uuid().optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type AssignStudentTransportInput = z.input<typeof assignStudentTransportSchema>;
+
+export const updateJourneyStatusSchema = z.object({
+  journeyId: z.string().uuid('Valid journey ID is required'),
+  newStatus: transportJourneyStatusEnum,
+  delayMinutes: z.coerce.number().int().min(0).default(0),
+  delayReason: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+  emergencyReason: z.string().trim().max(1000).optional().nullable().or(z.literal('')),
+  cancellationReason: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type UpdateJourneyStatusInput = z.input<typeof updateJourneyStatusSchema>;
+
+export const recordGpsLocationSchema = z.object({
+  vehicleId: z.string().uuid('Valid vehicle ID is required'),
+  journeyId: z.string().uuid().optional().nullable().or(z.literal('')),
+  latitude: z.coerce.number().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+  longitude: z.coerce.number().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+  speedKmh: z.coerce.number().min(0).default(0),
+  heading: z.coerce.number().min(0).max(360).default(0),
+  accuracyMeters: z.coerce.number().min(0).default(5),
+  batteryLevel: z.coerce.number().min(0).max(100).optional().nullable(),
+  provider: z.string().trim().default('driver_mobile_app'),
+  recordedAt: z.string().datetime().optional(),
+});
+
+export type RecordGpsLocationInput = z.input<typeof recordGpsLocationSchema>;
+
+export const studentBoardingEventSchema = z.object({
+  journeyId: z.string().uuid('Valid journey ID is required'),
+  studentId: z.string().uuid('Valid student ID is required'),
+  stopId: z.string().uuid('Valid stop ID is required'),
+  eventType: boardingEventTypeEnum,
+  verificationMethod: boardingVerificationMethodEnum.default('driver_manual'),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type StudentBoardingEventInput = z.input<typeof studentBoardingEventSchema>;
+
+export const correctBoardingEventSchema = z.object({
+  eventId: z.string().uuid('Valid event ID is required'),
+  correctionReason: z.string().trim().min(3, 'Correction reason must be at least 3 characters').max(500),
+});
+
+export type CorrectBoardingEventInput = z.input<typeof correctBoardingEventSchema>;
+
+export const transportChangeRequestSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  requestType: transportChangeRequestTypeEnum,
+  targetRouteId: z.string().uuid().optional().nullable().or(z.literal('')),
+  targetPickupStopId: z.string().uuid().optional().nullable().or(z.literal('')),
+  targetDropoffStopId: z.string().uuid().optional().nullable().or(z.literal('')),
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(1000),
+});
+
+export type TransportChangeRequestInput = z.input<typeof transportChangeRequestSchema>;
+
+export const transportSettingsUpdateSchema = z.object({
+  gpsProvider: z.string().trim().min(2).max(50).default('driver_mobile_app'),
+  gpsUpdateIntervalSeconds: z.coerce.number().int().min(5, 'Update interval must be at least 5s').max(300),
+  locationRetentionDays: z.coerce.number().int().min(1, 'Retention must be at least 1 day').max(365),
+  approachingStopDistanceMeters: z.coerce.number().int().min(100, 'Distance must be at least 100m').max(5000),
+  allowParentTracking: z.boolean().default(true),
+  requireParentChangeApproval: z.boolean().default(true),
+  preventOvercapacityAssignment: z.boolean().default(true),
+});
+
+export type TransportSettingsUpdateInput = z.input<typeof transportSettingsUpdateSchema>;
+
+
 
 
 

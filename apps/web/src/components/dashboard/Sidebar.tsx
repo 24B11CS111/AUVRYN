@@ -27,6 +27,7 @@ import {
   CalendarOff,
   User,
   HeartHandshake,
+  Bus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -131,6 +132,12 @@ export function Sidebar({
       href: '/dashboard/leave',
       icon: CalendarOff,
       roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+    },
+    {
+      label: 'Transport',
+      href: '/dashboard/transport',
+      icon: Bus,
+      roles: ['owner', 'admin', 'academic_admin', 'staff', 'faculty', 'student', 'parent'],
     },
     {
       label: 'Parent Portal',

@@ -12,7 +12,8 @@ import { supabase } from '../lib/supabase';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { loginSchema } from '@edu-platform/validators';
-import { formatSupabaseError } from '@edu-platform/supabase-client';
+import { formatMobileAuthError } from '../lib/authErrors';
+import { supabaseConfigError } from '../lib/supabase';
 
 interface LoginScreenProps {
   onNavigateToRegister: () => void;
@@ -26,6 +27,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 
   const handleLogin = async () => {
     setErrorMessage(null);
+
+    if (!supabase) {
+      setErrorMessage(supabaseConfigError);
+      return;
+    }
 
     // Validate using shared schema
     const validation = loginSchema.safeParse({ email, password });
@@ -42,14 +48,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
       });
 
       if (error) {
-        setErrorMessage(formatSupabaseError(error));
+        setErrorMessage(formatMobileAuthError(error, 'sign-in'));
       }
     } catch (err) {
-      setErrorMessage(formatSupabaseError(err));
+      setErrorMessage(formatMobileAuthError(err, 'sign-in'));
     } finally {
       setIsLoading(false);
     }
   };
+
+  const displayedError = errorMessage ?? supabaseConfigError;
 
   return (
     <KeyboardAvoidingView
@@ -65,9 +73,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           <Text style={styles.subtitle}>Sign in to your institution account</Text>
         </View>
 
-        {errorMessage ? (
+        {displayedError ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
+            <Text style={styles.errorText}>{displayedError}</Text>
           </View>
         ) : null}
 
@@ -92,6 +100,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           <Button
             title="Sign In"
             onPress={handleLogin}
+            disabled={!supabase}
             isLoading={isLoading}
             style={styles.submitBtn}
           />

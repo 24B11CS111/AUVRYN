@@ -23,8 +23,11 @@ export const registerPushDeviceToken = async (
   token: string,
   platform: 'ios' | 'android' | 'web'
 ) => {
+  const client = supabase;
+  if (!client) return;
+
   try {
-    await supabase.from('push_device_tokens').upsert(
+    await client.from('push_device_tokens').upsert(
       {
         user_id: userId,
         token,
@@ -49,10 +52,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
   const [notifications, setNotifications] = useState<any[]>([]);
   const [studentSummary, setStudentSummary] = useState<any | null>(null);
 
+  // Driver Experience State
+  const [driverProfile, setDriverProfile] = useState<any | null>(null);
+  const [driverJourneys, setDriverJourneys] = useState<any[]>([]);
+  const [isGpsSharingActive, setIsGpsSharingActive] = useState<boolean>(false);
+  const [offlineEventQueue, setOfflineEventQueue] = useState<any[]>([]);
+
   const fetchData = async () => {
+    const client = supabase;
+    if (!client) {
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Fetch memberships with institutions
-      const { data: mems } = await supabase
+      const { data: mems } = await client
         .from('institution_memberships')
         .select(`
           id,
@@ -91,22 +106,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
 
       if (activeInstId) {
         const [{ data: camps }, { data: ays }, { data: anns }, { data: notifs }] = await Promise.all([
-          supabase
+          client
             .from('campuses')
             .select('*')
             .eq('institution_id', activeInstId),
-          supabase
+          client
             .from('academic_years')
             .select('*')
             .eq('institution_id', activeInstId),
-          supabase
+          client
             .from('announcements')
             .select('id, title, content, priority, published_at')
             .eq('institution_id', activeInstId)
             .eq('status', 'published')
             .order('published_at', { ascending: false })
             .limit(4),
-          supabase
+          client
             .from('notifications')
             .select('id, title, body, category, is_read, created_at')
             .eq('institution_id', activeInstId)
@@ -123,7 +138,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
 
         // If student role, fetch summary
         if (userRole === 'student') {
-          const { data: st } = await supabase
+          const { data: st } = await client
             .from('students')
             .select('id, admission_number, first_name, last_name')
             .eq('institution_id', activeInstId)
@@ -132,8 +147,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
 
           if (st) {
             const [{ data: att }, { count: hwCount }] = await Promise.all([
-              supabase.from('student_attendance_records').select('status').eq('student_id', st.id),
-              supabase.from('homework_assignments').select('*', { count: 'exact', head: true }).eq('institution_id', activeInstId).eq('status', 'published'),
+              client.from('student_attendance_records').select('status').eq('student_id', st.id),
+              client.from('homework_assignments').select('*', { count: 'exact', head: true }).eq('institution_id', activeInstId).eq('status', 'published'),
             ]);
 
             const total = att?.length || 0;
@@ -145,6 +160,40 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
               attendancePct: pct,
               pendingHomework: hwCount || 0,
             });
+          }
+        }
+
+        // If staff, check if assigned as driver for today's journeys
+        const { data: staffMember } = await client
+          .from('staff_profiles')
+          .select('id, first_name, last_name')
+          .eq('institution_id', activeInstId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (staffMember) {
+          setDriverProfile(staffMember);
+          const todayStr = (new Date().toISOString().split('T')[0])!;
+          const { data: journeys } = await client
+            .from('transport_journeys')
+            .select(`
+              id,
+              status,
+              shift,
+              journey_type,
+              delay_minutes,
+              route:transport_routes(id, route_name, route_code),
+              vehicle:transport_vehicles(id, registration_number, vehicle_model)
+            `)
+            .eq('institution_id', activeInstId)
+            .eq('driver_id', staffMember.id)
+            .eq('journey_date', todayStr);
+
+          const list = journeys || [];
+          setDriverJourneys(list);
+          const active = list.find((j: any) => j.status === 'in_progress');
+          if (active) {
+            setIsGpsSharingActive(true);
           }
         }
       }
@@ -166,7 +215,65 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    const client = supabase;
+    if (!client) return;
+    await client.auth.signOut();
+  };
+
+  const handleStartDriverJourney = async (journey: any) => {
+    const client = supabase;
+    if (!client) return;
+
+    try {
+      await client
+        .from('transport_journeys')
+        .update({
+          status: 'in_progress',
+          actual_start_time: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', journey.id);
+
+      setIsGpsSharingActive(true);
+      setDriverJourneys((prev) =>
+        prev.map((j) => (j.id === journey.id ? { ...j, status: 'in_progress' } : j))
+      );
+    } catch (err) {
+      console.error('Failed to start journey:', err);
+    }
+  };
+
+  const handleEndDriverJourney = async (journeyId: string) => {
+    const client = supabase;
+    if (!client) return;
+
+    try {
+      await client
+        .from('transport_journeys')
+        .update({
+          status: 'completed',
+          actual_end_time: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', journeyId);
+
+      setIsGpsSharingActive(false);
+      setDriverJourneys((prev) =>
+        prev.map((j) => (j.id === journeyId ? { ...j, status: 'completed' } : j))
+      );
+    } catch (err) {
+      console.error('Failed to complete journey:', err);
+    }
+  };
+
+  const handleRecordOfflineStopArrival = (stopName: string) => {
+    const event = {
+      type: 'stop_arrival',
+      stopName,
+      timestamp: new Date().toISOString(),
+      synced: false,
+    };
+    setOfflineEventQueue((prev) => [event, ...prev]);
   };
 
   if (loading) {
@@ -262,6 +369,102 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
               <Text style={styles.statLabel}>Assignments</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Driver Operations Hub if driver */}
+      {driverJourneys.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Driver Transport Operations</Text>
+          {driverProfile && (
+            <Text style={styles.entitySubtitle}>
+              Assigned Staff: {driverProfile.first_name} {driverProfile.last_name}
+            </Text>
+          )}
+
+          {/* Location Sharing Disclosure & Banner */}
+          <View
+            style={[
+              styles.gpsBanner,
+              isGpsSharingActive ? styles.gpsActiveBanner : styles.gpsInactiveBanner,
+            ]}
+          >
+            <Text style={styles.gpsBannerTitle}>
+              {isGpsSharingActive
+                ? 'GPS Location Sharing: ACTIVE'
+                : 'GPS Tracking: STANDBY'}
+            </Text>
+            <Text style={styles.gpsBannerSubtitle}>
+              {isGpsSharingActive
+                ? 'Transmitting vehicle coordinates strictly for current authorized journey. Tracking terminates automatically upon completion.'
+                : 'Location is not shared while journeys are in standby or completed.'}
+            </Text>
+          </View>
+
+          {/* Assigned Journeys */}
+          {driverJourneys.map((dj) => (
+            <View key={dj.id} style={styles.driverJourneyCard}>
+              <View style={styles.journeyHeader}>
+                <View>
+                  <Text style={styles.journeyTitle}>
+                    {dj.route?.route_name || 'Route'} ({dj.route?.route_code})
+                  </Text>
+                  <Text style={styles.journeySub}>
+                    Bus: {dj.vehicle?.registration_number} • Shift: {dj.shift}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.journeyBadge,
+                    dj.status === 'in_progress'
+                      ? styles.badgeLive
+                      : styles.badgeScheduled,
+                  ]}
+                >
+                  <Text style={styles.journeyBadgeText}>
+                    {dj.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.journeyActions}>
+                {dj.status === 'scheduled' && (
+                  <Button
+                    title="Start Authorized Journey"
+                    onPress={() => handleStartDriverJourney(dj)}
+                    style={styles.actionBtnStart}
+                    textStyle={styles.actionBtnText}
+                  />
+                )}
+                {dj.status === 'in_progress' && (
+                  <View style={styles.inProgressActionRow}>
+                    <Button
+                      title="Mark Next Stop"
+                      variant="outline"
+                      onPress={() => handleRecordOfflineStopArrival('Next Scheduled Stop')}
+                      style={styles.actionBtnStop}
+                      textStyle={styles.actionBtnStopText}
+                    />
+                    <Button
+                      title="End Journey"
+                      onPress={() => handleEndDriverJourney(dj.id)}
+                      style={styles.actionBtnEnd}
+                      textStyle={styles.actionBtnText}
+                    />
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
+
+          {/* Offline Sync Status */}
+          {offlineEventQueue.length > 0 && (
+            <View style={styles.offlineBox}>
+              <Text style={styles.offlineTitle}>
+                Offline Event Queue: {offlineEventQueue.length} events pending sync
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -578,5 +781,112 @@ const styles = StyleSheet.create({
   annContent: {
     fontSize: 11,
     color: '#64748b',
+  },
+  gpsBanner: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  gpsActiveBanner: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+  },
+  gpsInactiveBanner: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  gpsBannerTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#065f46',
+  },
+  gpsBannerSubtitle: {
+    fontSize: 10,
+    color: '#047857',
+    marginTop: 2,
+  },
+  driverJourneyCard: {
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 10,
+  },
+  journeyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  journeyTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  journeySub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  journeyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeLive: {
+    backgroundColor: '#d1fae5',
+  },
+  badgeScheduled: {
+    backgroundColor: '#f1f5f9',
+  },
+  journeyBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#065f46',
+  },
+  journeyActions: {
+    marginTop: 6,
+  },
+  actionBtnStart: {
+    height: 38,
+    backgroundColor: '#059669',
+  },
+  inProgressActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtnStop: {
+    flex: 1,
+    height: 36,
+    borderColor: '#cbd5e1',
+  },
+  actionBtnStopText: {
+    fontSize: 11,
+    color: '#334155',
+  },
+  actionBtnEnd: {
+    flex: 1,
+    height: 36,
+    backgroundColor: '#0f172a',
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  offlineBox: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef3c7',
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  offlineTitle: {
+    fontSize: 11,
+    color: '#92400e',
+    fontWeight: '600',
   },
 });

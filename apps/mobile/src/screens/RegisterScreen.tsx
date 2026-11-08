@@ -12,7 +12,9 @@ import { supabase } from '../lib/supabase';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { registerSchema } from '@edu-platform/validators';
-import { formatSupabaseError } from '@edu-platform/supabase-client';
+import { formatMobileAuthError } from '../lib/authErrors';
+import { registerAdminAccount } from '../lib/registration';
+import { supabaseConfigError } from '../lib/supabase';
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -31,6 +33,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    if (!supabase) {
+      setErrorMessage(supabaseConfigError);
+      return;
+    }
+
     // Validate using shared schema
     const validation = registerSchema.safeParse({
       fullName,
@@ -46,27 +53,27 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+      const result = await registerAdminAccount(supabase, {
+        fullName,
+        email,
         password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-          },
-        },
       });
 
-      if (error) {
-        setErrorMessage(formatSupabaseError(error));
-      } else if (!data.session) {
+      if (!result.ok) {
+        setErrorMessage(result.error);
+      } else if (result.requiresEmailConfirmation) {
         setSuccessMessage('Registration successful! Please verify your email.');
+      } else {
+        setSuccessMessage('Registration successful! You can now sign in.');
       }
     } catch (err) {
-      setErrorMessage(formatSupabaseError(err));
+      setErrorMessage(formatMobileAuthError(err, 'registration'));
     } finally {
       setIsLoading(false);
     }
   };
+
+  const displayedError = errorMessage ?? supabaseConfigError;
 
   return (
     <KeyboardAvoidingView
@@ -82,9 +89,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
           <Text style={styles.subtitle}>Set up your administrator profile</Text>
         </View>
 
-        {errorMessage ? (
+        {displayedError ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
+            <Text style={styles.errorText}>{displayedError}</Text>
           </View>
         ) : null}
 
@@ -132,6 +139,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
             <Button
               title="Create Account"
               onPress={handleRegister}
+              disabled={!supabase}
               isLoading={isLoading}
               style={styles.submitBtn}
             />

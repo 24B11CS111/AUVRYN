@@ -40,6 +40,8 @@ export interface StudentAcademicEnrollment {
  * Fetches the active academic year for an institution.
  */
 export async function getActiveAcademicYear(institutionId: string): Promise<AcademicYear | null> {
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('academic_years')
     .select('*')
@@ -58,6 +60,8 @@ export async function getClassSubjects(
   institutionId: string,
   classId: string
 ): Promise<AcademicSubject[]> {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('academic_class_subjects')
     .select(`

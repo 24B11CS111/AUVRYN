@@ -13,6 +13,11 @@ export default function App() {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);

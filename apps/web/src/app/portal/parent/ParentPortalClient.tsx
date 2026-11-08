@@ -13,7 +13,11 @@ import {
   CalendarOff,
   Calendar,
   Layers,
+  Bus,
+  Compass,
+  ShieldCheck,
 } from 'lucide-react';
+import { TransportMap } from '@/components/transport/TransportMap';
 
 interface ParentPortalClientProps {
   initialData: ParentPortalData;
@@ -21,7 +25,7 @@ interface ParentPortalClientProps {
 
 export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
   const [data, setData] = useState<ParentPortalData>(initialData);
-  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave' | 'transport'>('overview');
   const [isPending, startTransition] = useTransition();
 
   const handleChildSelect = (studentId: string) => {
@@ -156,6 +160,7 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
           { key: 'fees', label: 'Fees & Dues', icon: CreditCard },
           { key: 'homework', label: 'Homework', icon: BookOpen },
           { key: 'leave', label: 'Leave History', icon: CalendarOff },
+          { key: 'transport', label: 'School Transport', icon: Bus },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -433,6 +438,152 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'transport' && (
+        <div className="space-y-6">
+          {!(data.activeChildDetails as any)?.transport?.hasTransport ? (
+            <div className="p-12 text-center rounded-2xl border border-slate-200 bg-white shadow-xs space-y-3">
+              <Bus className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-bold text-slate-800">No School Transport Enrolled</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {activeChild?.firstName} is not currently assigned to an institutional transport route.
+              </p>
+            </div>
+          ) : (
+            (() => {
+              const trans = (data.activeChildDetails as any).transport;
+              const route = trans.route;
+              const vehicle = trans.vehicle;
+              const driver = trans.driver;
+              const journey = trans.activeJourney;
+              const liveLoc = trans.liveLocation;
+              const isLive = journey?.status === 'in_progress';
+              const isDelayed = journey?.status === 'delayed';
+
+              return (
+                <div className="space-y-5">
+                  {/* Transport Summary Header */}
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                        {route?.route_code}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-900 mt-1">{route?.route_name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Vehicle: <span className="font-mono font-semibold text-slate-800">{vehicle?.registration_number}</span> ({vehicle?.vehicle_model})
+                      </p>
+                    </div>
+
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <div>
+                        <span className="text-slate-400">Pickup Stop: </span>
+                        <span className="font-semibold text-slate-800">{trans.pickupStop?.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Drop-off Stop: </span>
+                        <span className="font-semibold text-slate-800">{trans.dropoffStop?.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[11px] pt-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Driver: {driver?.first_name} {driver?.last_name} (Hotline verified)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col justify-between items-start md:items-end">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                          isLive
+                            ? 'bg-emerald-100 text-emerald-800 animate-pulse'
+                            : isDelayed
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        {journey ? journey.status.toUpperCase() : 'NO ACTIVE JOURNEY'}
+                      </span>
+                      {isDelayed && (
+                        <p className="text-xs text-amber-700 font-semibold mt-1">
+                          +{journey.delay_minutes} min delay ({journey.delay_reason})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Live Tracking Map Component */}
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-3">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Compass className="w-4 h-4 text-emerald-600" />
+                      <span>Live Bus Tracking</span>
+                    </h3>
+
+                    <TransportMap
+                      routeName={route?.route_name}
+                      isLive={isLive}
+                      height="380px"
+                      vehicleLocation={
+                        liveLoc
+                          ? {
+                              latitude: parseFloat(liveLoc.latitude),
+                              longitude: parseFloat(liveLoc.longitude),
+                              speedKmh: liveLoc.speed_kmh,
+                              heading: liveLoc.heading,
+                              recordedAt: liveLoc.recorded_at,
+                            }
+                          : null
+                      }
+                      stops={[
+                        {
+                          id: 'pickup',
+                          name: trans.pickupStop?.name || 'Pickup Stop',
+                          latitude: trans.pickupStop?.latitude || 28.61,
+                          longitude: trans.pickupStop?.longitude || 77.2,
+                          stopOrder: 1,
+                        },
+                        {
+                          id: 'dropoff',
+                          name: trans.dropoffStop?.name || 'Drop-off Stop',
+                          latitude: trans.dropoffStop?.latitude || 28.63,
+                          longitude: trans.dropoffStop?.longitude || 77.22,
+                          stopOrder: 2,
+                        },
+                      ]}
+                    />
+                  </div>
+
+                  {/* Boarding History */}
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-3">
+                    <h3 className="text-sm font-bold text-slate-900">Recent Boarding & Drop-Off Confirmations</h3>
+                    {(trans.recentBoardings || []).length === 0 ? (
+                      <p className="text-xs text-slate-400">No boarding events recorded today yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {trans.recentBoardings.map((b: any) => (
+                          <div
+                            key={b.id}
+                            className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <span className="font-semibold text-slate-800">
+                                {b.eventType === 'pickup' ? 'Boarded Bus' : 'Safely Alighted'}
+                              </span>
+                              <span className="text-slate-500 block text-[11px] mt-0.5">
+                                At {b.stopName}
+                              </span>
+                            </div>
+                            <span className="font-mono text-slate-600">
+                              {new Date(b.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
+          )}
         </div>
       )}
     </div>

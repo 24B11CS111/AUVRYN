@@ -98,6 +98,7 @@ export interface ParentPortalData {
       reason: string;
       status: string;
     }>;
+    transport?: any;
   } | null;
   announcements: Array<{
     id: string;
@@ -378,6 +379,79 @@ export async function getParentPortalDataAction(
         status: l.status,
       }));
 
+      // Transport Assignment & Live Tracking for Active Child
+      const { data: transAssignment } = await supabase
+        .from('student_transport_assignments')
+        .select(`
+          id,
+          status,
+          route:transport_routes(
+            id,
+            route_name,
+            route_code,
+            assigned_vehicle:transport_vehicles(id, registration_number, vehicle_model, seating_capacity),
+            assigned_driver:staff_profiles!transport_routes_assigned_driver_id_fkey(first_name, last_name, phone)
+          ),
+          pickup_stop:transport_stops!student_transport_assignments_pickup_stop_id_fkey(id, name, address, latitude, longitude),
+          dropoff_stop:transport_stops!student_transport_assignments_dropoff_stop_id_fkey(id, name, address, latitude, longitude)
+        `)
+        .eq('student_id', activeChildId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      let transportData: any = { hasTransport: false };
+
+      if (transAssignment && transAssignment.route) {
+        const routeId = transAssignment.route.id;
+        const vehicleId = transAssignment.route.assigned_vehicle?.id;
+
+        // Fetch today's journey
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: todayJourney } = await supabase
+          .from('transport_journeys')
+          .select('id, status, shift, journey_type, delay_minutes, delay_reason, emergency_reason')
+          .eq('route_id', routeId)
+          .eq('journey_date', todayStr)
+          .maybeSingle();
+
+        // Fetch live telemetry if vehicle exists
+        let liveLocation = null;
+        if (vehicleId) {
+          const { data: loc } = await supabase
+            .from('vehicle_live_locations')
+            .select('latitude, longitude, speed_kmh, heading, recorded_at')
+            .eq('vehicle_id', vehicleId)
+            .maybeSingle();
+          liveLocation = loc;
+        }
+
+        // Fetch child's recent boarding events
+        const { data: boardings } = await supabase
+          .from('student_boarding_events')
+          .select('id, event_type, timestamp, stop:transport_stops(name)')
+          .eq('student_id', activeChildId)
+          .order('timestamp', { ascending: false })
+          .limit(5);
+
+        transportData = {
+          hasTransport: true,
+          assignment: transAssignment,
+          route: transAssignment.route,
+          pickupStop: transAssignment.pickup_stop,
+          dropoffStop: transAssignment.dropoff_stop,
+          vehicle: transAssignment.route.assigned_vehicle,
+          driver: transAssignment.route.assigned_driver,
+          activeJourney: todayJourney || null,
+          liveLocation,
+          recentBoardings: (boardings || []).map((b: any) => ({
+            id: b.id,
+            eventType: b.event_type,
+            timestamp: b.timestamp,
+            stopName: b.stop?.name || 'Stop',
+          })),
+        };
+      }
+
       activeDetails = {
         student: {
           id: activeChild.id,
@@ -409,6 +483,7 @@ export async function getParentPortalDataAction(
         },
         homework,
         recentLeave,
+        transport: transportData,
       };
     }
 

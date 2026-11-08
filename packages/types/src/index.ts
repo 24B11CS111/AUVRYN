@@ -209,7 +209,14 @@ export type Permission =
   | 'homework:manage'
   | 'homework:submit'
   | 'homework:grade'
-  | 'notifications:manage';
+  | 'notifications:manage'
+  | 'transport:manage'
+  | 'transport:view'
+  | 'transport:assign'
+  | 'transport:journey_manage'
+  | 'transport:track'
+  | 'transport:board'
+  | 'transport:driver';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -276,6 +283,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:submit',
     'homework:grade',
     'notifications:manage',
+    'transport:manage',
+    'transport:view',
+    'transport:assign',
+    'transport:journey_manage',
+    'transport:track',
+    'transport:board',
+    'transport:driver',
   ],
   admin: [
     'institution:manage',
@@ -340,6 +354,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:submit',
     'homework:grade',
     'notifications:manage',
+    'transport:manage',
+    'transport:view',
+    'transport:assign',
+    'transport:journey_manage',
+    'transport:track',
+    'transport:board',
+    'transport:driver',
   ],
   hr_administrator: [
     'institution:view',
@@ -364,6 +385,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'announcements:view',
     'messages:send',
     'notifications:manage',
+    'transport:view',
   ],
   academic_admin: [
     'institution:view',
@@ -410,6 +432,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:manage',
     'homework:grade',
     'notifications:manage',
+    'transport:view',
+    'transport:assign',
   ],
   department_head: [
     'institution:view',
@@ -448,6 +472,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:manage',
     'homework:grade',
     'notifications:manage',
+    'transport:view',
   ],
   admissions_officer: [
     'institution:view',
@@ -473,6 +498,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'receipts:view',
     'announcements:view',
     'messages:send',
+    'transport:view',
   ],
   faculty: [
     'institution:view',
@@ -499,6 +525,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'messages:send',
     'homework:manage',
     'homework:grade',
+    'transport:view',
+    'transport:board',
   ],
   staff: [
     'institution:view',
@@ -514,6 +542,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'results:view',
     'announcements:view',
     'messages:send',
+    'transport:view',
+    'transport:assign',
+    'transport:journey_manage',
+    'transport:track',
+    'transport:board',
+    'transport:driver',
   ],
   accountant: [
     'institution:view',
@@ -536,6 +570,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'receipts:view',
     'announcements:view',
     'messages:send',
+    'transport:view',
   ],
   student: [
     'institution:view',
@@ -555,6 +590,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'announcements:view',
     'messages:send',
     'homework:submit',
+    'transport:view',
+    'transport:track',
   ],
   parent: [
     'institution:view',
@@ -575,6 +612,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'announcements:view',
     'messages:send',
     'homework:manage',
+    'transport:view',
+    'transport:track',
   ],
 };
 
@@ -2744,6 +2783,395 @@ export interface CommunicationsOverviewStats {
   activeThreads: number;
   pendingHomework: number;
 }
+
+// ==========================================
+// 12. Transport Management & Tracking Types
+// ==========================================
+
+export type TransportVehicleStatus = 'active' | 'inactive' | 'under_maintenance' | 'retired';
+
+export type VehicleDocumentType =
+  | 'insurance'
+  | 'permit'
+  | 'fitness_certificate'
+  | 'pollution_certificate'
+  | 'road_tax'
+  | 'other';
+
+export type VehicleDocumentStatus = 'valid' | 'expiring_soon' | 'expired';
+
+export type TransportMaintenanceType =
+  | 'routine_service'
+  | 'repair'
+  | 'inspection'
+  | 'emergency_breakdown'
+  | 'tire_replacement'
+  | 'other';
+
+export type TransportMaintenanceStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+
+export type TransportStaffRole = 'driver' | 'attendant' | 'both';
+
+export type TransportRouteType = 'morning_pickup' | 'evening_dropoff' | 'both' | 'shuttle';
+
+export type TransportRouteShift = 'morning' | 'afternoon' | 'evening' | 'general';
+
+export type StudentTransportStatus = 'active' | 'suspended' | 'withdrawn' | 'pending_approval';
+
+export type TransportJourneyStatus =
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'delayed'
+  | 'cancelled'
+  | 'emergency';
+
+export type TransportJourneyType = 'pickup' | 'dropoff' | 'shuttle';
+
+export type JourneyStopStatus = 'pending' | 'arrived' | 'departed' | 'skipped';
+
+export type BoardingEventType = 'pickup' | 'dropoff';
+
+export type BoardingVerificationMethod =
+  | 'driver_manual'
+  | 'attendant_manual'
+  | 'qr_scan'
+  | 'nfc'
+  | 'rfid'
+  | 'other';
+
+export type TransportChangeRequestType =
+  | 'new_enrollment'
+  | 'route_change'
+  | 'stop_change'
+  | 'temporary_suspension'
+  | 'withdrawal';
+
+export type TransportChangeRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface TransportVehicle {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  registrationNumber: string;
+  vehicleModel: string;
+  vehicleType: string;
+  seatingCapacity: number;
+  standingCapacity: number;
+  fuelType?: string | null;
+  ownershipType: string;
+  status: TransportVehicleStatus;
+  gpsDeviceId?: string | null;
+  makeYear?: number | null;
+  color?: string | null;
+  chassisNumber?: string | null;
+  engineNumber?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  campus?: Campus;
+}
+
+export interface VehicleDocument {
+  id: string;
+  institutionId: string;
+  vehicleId: string;
+  documentType: VehicleDocumentType;
+  documentNumber: string;
+  issuedDate: string;
+  expiryDate: string;
+  issuingAuthority?: string | null;
+  fileUrl?: string | null;
+  status: VehicleDocumentStatus;
+  notes?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle?: TransportVehicle;
+}
+
+export interface VehicleMaintenanceRecord {
+  id: string;
+  institutionId: string;
+  vehicleId: string;
+  maintenanceType: TransportMaintenanceType;
+  description: string;
+  odometerReading?: number | null;
+  cost: number;
+  serviceCenter?: string | null;
+  startDate: string;
+  completionDate?: string | null;
+  status: TransportMaintenanceStatus;
+  performedBy?: string | null;
+  invoiceUrl?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle?: TransportVehicle;
+}
+
+export interface TransportStaffProfile {
+  id: string;
+  institutionId: string;
+  staffProfileId: string;
+  roleType: TransportStaffRole;
+  licenseNumber?: string | null;
+  licenseType?: string | null;
+  licenseExpiry?: string | null;
+  badgeNumber?: string | null;
+  policeVerificationStatus: string;
+  policeVerificationDate?: string | null;
+  medicalFitnessExpiry?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  isActive: boolean;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  staffProfile?: StaffProfile;
+}
+
+export interface TransportStop {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  name: string;
+  code?: string | null;
+  address?: string | null;
+  latitude: number;
+  longitude: number;
+  geofenceRadiusMeters: number;
+  landmark?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RouteStop {
+  id: string;
+  institutionId: string;
+  routeId: string;
+  stopId: string;
+  stopOrder: number;
+  scheduledArrivalTime: string;
+  scheduledDepartureTime: string;
+  pickupAllowed: boolean;
+  dropoffAllowed: boolean;
+  createdAt: string;
+  stop?: TransportStop;
+}
+
+export interface TransportRoute {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  academicYearId: string;
+  routeName: string;
+  routeCode: string;
+  startLocation: string;
+  destination: string;
+  routeType: TransportRouteType;
+  shift: TransportRouteShift;
+  assignedVehicleId?: string | null;
+  assignedDriverId?: string | null;
+  assignedAttendantId?: string | null;
+  totalDistanceKm: number;
+  estimatedDurationMins: number;
+  status: string;
+  description?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  assignedVehicle?: TransportVehicle;
+  assignedDriver?: StaffProfile;
+  assignedAttendant?: StaffProfile;
+  stops?: RouteStop[];
+  assignedCount?: number;
+}
+
+export interface StudentTransportAssignment {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  academicYearId: string;
+  routeId: string;
+  pickupStopId: string;
+  dropoffStopId: string;
+  feeStructureId?: string | null;
+  status: StudentTransportStatus;
+  parentConfirmed: boolean;
+  effectiveStartDate: string;
+  effectiveEndDate?: string | null;
+  cancellationReason?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  student?: Student;
+  route?: TransportRoute;
+  pickupStop?: TransportStop;
+  dropoffStop?: TransportStop;
+}
+
+export interface TransportJourney {
+  id: string;
+  institutionId: string;
+  routeId: string;
+  vehicleId: string;
+  driverId: string;
+  attendantId?: string | null;
+  journeyDate: string;
+  shift: TransportRouteShift;
+  journeyType: TransportJourneyType;
+  status: TransportJourneyStatus;
+  scheduledStartTime?: string | null;
+  actualStartTime?: string | null;
+  scheduledEndTime?: string | null;
+  actualEndTime?: string | null;
+  currentStopId?: string | null;
+  delayMinutes: number;
+  delayReason?: string | null;
+  emergencyReason?: string | null;
+  emergencyReportedAt?: string | null;
+  cancellationReason?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  route?: TransportRoute;
+  vehicle?: TransportVehicle;
+  driver?: StaffProfile;
+  attendant?: StaffProfile;
+  currentStop?: TransportStop;
+  liveLocation?: VehicleLiveLocation;
+}
+
+export interface JourneyStopEvent {
+  id: string;
+  institutionId: string;
+  journeyId: string;
+  stopId: string;
+  stopOrder: number;
+  scheduledArrivalTime?: string | null;
+  actualArrivalTime?: string | null;
+  actualDepartureTime?: string | null;
+  status: JourneyStopStatus;
+  skippedReason?: string | null;
+  studentsExpected: number;
+  studentsBoarded: number;
+  createdAt: string;
+  stop?: TransportStop;
+}
+
+export interface VehicleLiveLocation {
+  vehicleId: string;
+  institutionId: string;
+  journeyId?: string | null;
+  latitude: number;
+  longitude: number;
+  speedKmh: number;
+  heading: number;
+  accuracyMeters: number;
+  batteryLevel?: number | null;
+  provider: string;
+  recordedAt: string;
+  updatedAt: string;
+}
+
+export interface VehicleLocationHistory {
+  id: string;
+  institutionId: string;
+  vehicleId: string;
+  journeyId: string;
+  latitude: number;
+  longitude: number;
+  speedKmh: number;
+  heading: number;
+  recordedAt: string;
+  createdAt: string;
+}
+
+export interface StudentBoardingEvent {
+  id: string;
+  institutionId: string;
+  journeyId: string;
+  studentId: string;
+  stopId: string;
+  eventType: BoardingEventType;
+  timestamp: string;
+  verificationMethod: BoardingVerificationMethod;
+  verifiedBy?: string | null;
+  isCorrected: boolean;
+  correctionReason?: string | null;
+  correctedBy?: string | null;
+  correctedAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  student?: Student;
+  stop?: TransportStop;
+  verifier?: Profile;
+}
+
+export interface TransportChangeRequest {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  requestedByUserId: string;
+  requestType: TransportChangeRequestType;
+  targetRouteId?: string | null;
+  targetPickupStopId?: string | null;
+  targetDropoffStopId?: string | null;
+  reason: string;
+  status: TransportChangeRequestStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  student?: Student;
+  requestedBy?: Profile;
+  targetRoute?: TransportRoute;
+  targetPickupStop?: TransportStop;
+  targetDropoffStop?: TransportStop;
+}
+
+export interface TransportSettings {
+  id: string;
+  institutionId: string;
+  gpsProvider: string;
+  gpsUpdateIntervalSeconds: number;
+  locationRetentionDays: number;
+  approachingStopDistanceMeters: number;
+  allowParentTracking: boolean;
+  requireParentChangeApproval: boolean;
+  preventOvercapacityAssignment: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransportOverviewStats {
+  totalVehicles: number;
+  activeVehicles: number;
+  underMaintenanceVehicles: number;
+  totalRoutes: number;
+  activeRoutes: number;
+  activeJourneys: number;
+  delayedJourneys: number;
+  totalEnrolledStudents: number;
+  expiringDocumentsCount: number;
+}
+
+export interface ParentPortalTransportData {
+  hasTransport: boolean;
+  studentId: string;
+  studentName: string;
+  assignment?: StudentTransportAssignment;
+  activeJourney?: TransportJourney;
+  lastLocation?: VehicleLiveLocation;
+  recentBoarding?: StudentBoardingEvent[];
+}
+
 
 
 
