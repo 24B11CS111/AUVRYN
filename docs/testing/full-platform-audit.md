@@ -726,7 +726,7 @@ This Full Platform Audit has thoroughly validated the architecture, database sch
 
 **Current Summary Verdict**:
 - **Codebase Stability**: **EXCELLENT**. All 364 automated unit and security tests pass with 100% success across 28 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
-- **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), and `REM-HIGH-03` (Notification Outbox Worker) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17 and automated test suites. Remaining: `REM-MED-02` (Integration Test Harness) and `REM-MED-01` (Mobile Hardware Packages).
+- **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), and `REM-HIGH-03` (Notification Outbox Worker) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17 and automated test suites. Remaining: `REM-MED-01` (Native GPS & Push Notifications — Phase 2.5) and `REM-MED-02` (Integration Test Harness — Phase 2.6).
 - **Rule Adherence**: No regressions introduced, no remote migrations pushed, and all tests executed against local verified environments.
 
 **Next Step**:
