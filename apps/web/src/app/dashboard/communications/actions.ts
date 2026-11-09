@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireInstitution } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   announcementCreateSchema,
   announcementAcknowledgeSchema,
@@ -833,7 +833,11 @@ export async function triggerOutboxWorkerAction(
       return { success: false, error: 'Unauthorized to trigger outbox worker' };
     }
 
-    const supabase = createClient() as any;
+    // Use trusted server-side admin client with service_role privileges for worker execution
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? (createAdminClient() as any)
+      : (createClient() as any);
+
     const worker = new NotificationOutboxWorker({ batchSize });
     const result = await worker.processBatch(supabase);
 
@@ -897,7 +901,11 @@ export async function requeueDeadLetterDeliveryAction(
       return { success: false, error: 'Unauthorized' };
     }
 
-    const supabase = createClient() as any;
+    // Use trusted server-side admin client with service_role privileges
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? (createAdminClient() as any)
+      : (createClient() as any);
+
     const { data, error } = await supabase.rpc('requeue_dead_letter_delivery', {
       p_delivery_id: deliveryId,
       p_institution_id: membership.institutionId,

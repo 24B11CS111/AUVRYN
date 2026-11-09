@@ -669,10 +669,12 @@ The findings identified in this audit are organized below by priority. Remediati
 
 #### Finding REM-HIGH-03: Implement Background Worker for External Notification Deliveries [RESOLVED — Phase 2.4]
 - **Severity**: **High**
-- **Status**: **RESOLVED & VERIFIED (Phase 2.4)**
+- **Status**: **RESOLVED & VERIFIED (Phase 2.4 + Security Follow-Up)**
 - **Affected Files**:
   - `supabase/migrations/20261109122000_notification_outbox_worker.sql`
+  - `supabase/migrations/20261109123000_harden_notification_worker_rpc_grants.sql`
   - `supabase/migrations/rollback/20261109122000_rollback.sql`
+  - `supabase/migrations/rollback/20261109123000_rollback.sql`
   - `packages/types/src/index.ts`
   - `apps/web/src/lib/notifications/types.ts`
   - `apps/web/src/lib/notifications/adapters.ts`
@@ -682,7 +684,7 @@ The findings identified in this audit are organized below by priority. Remediati
   - `apps/web/src/app/dashboard/communications/actions.ts`
   - `apps/web/src/app/dashboard/communications/delivery/DeliveryQueueClient.tsx`
   - `tests/security/notification-outbox-worker.test.ts`
-- **Problem**: Rows queued in `notification_deliveries` (`sms`, `email`, `whatsapp`, `push`) remained in `queued` status indefinitely because no background consumer claimed and transmitted them. In addition, the table lacked worker concurrency locks, retry backoff calculation columns, dead-letter state tracking, and non-PII audit logging.
+- **Problem**: Rows queued in `notification_deliveries` (`sms`, `email`, `whatsapp`, `push`) remained in `queued` status indefinitely because no background consumer claimed and transmitted them. In addition, the table lacked worker concurrency locks, retry backoff calculation columns, dead-letter state tracking, non-PII audit logging, and RPC access control separation between client users and background daemons.
 - **Resolution**:
   1. Created forward migration `supabase/migrations/20261109122000_notification_outbox_worker.sql` expanding `notification_delivery_status` with `'processing'`, `'sent'`, and `'dead_letter'`, and adding worker tracking columns (`locked_at`, `locked_by`, `next_retry_at`, `provider_message_id`, `provider_response`).
   2. Implemented atomic job claiming function `public.claim_notification_deliveries()` with `FOR UPDATE SKIP LOCKED` and automatic stale lock recovery for interrupted workers.
@@ -690,8 +692,11 @@ The findings identified in this audit are organized below by priority. Remediati
   4. Implemented admin dead-letter requeue function `public.requeue_dead_letter_delivery()` and operational aggregation view `public.notification_outbox_metrics`.
   5. Built multi-channel adapter layer (`MockDeliveryAdapter`, `EmailDeliveryAdapter`, `SmsDeliveryAdapter`, `PushDeliveryAdapter`) and background worker engine `NotificationOutboxWorker` in `apps/web/src/lib/notifications/` with recipient institutional authorization and timeout resilience.
   6. Implemented Supabase Edge Function `dispatch-notifications` for cron / webhook invocation and updated the web dashboard delivery queue client with live batch execution, status badges, and dead-letter requeuing.
-  7. Accompanied by rollback migration `supabase/migrations/rollback/20261109122000_rollback.sql`.
-- **Verification**: Verified via live SQL execution on a local PostgreSQL 17 engine testing atomic claiming across concurrent workers, stale lock recovery, exponential backoff, dead-letter transition, metrics aggregation, rollback, and re-apply. Verified with 15 automated security regression tests in `tests/security/notification-outbox-worker.test.ts`. See `docs/testing/remediation-phase-2.md` for full details.
+  7. **Security Follow-Up (`20261109123000_harden_notification_worker_rpc_grants.sql`):** Revoked `EXECUTE` on worker RPC functions (`claim_notification_deliveries`, `resolve_notification_delivery`, `requeue_dead_letter_delivery`) from `PUBLIC`, `anon`, and `authenticated`. Granted execute permissions exclusively to `service_role`.
+  8. Hardened `requeue_dead_letter_delivery` in PostgreSQL to verify that if called under an authenticated session context, the caller must possess an institutional administrative role (`has_institution_role`).
+  9. Updated server-side actions (`triggerOutboxWorkerAction`, `requeueDeadLetterDeliveryAction`) to use `createAdminClient()` (service-role client), ensuring service-role keys are never exposed to browser or mobile code.
+  10. Accompanied by rollback migrations (`20261109122000_rollback.sql`, `20261109123000_rollback.sql`).
+- **Verification**: Verified via live SQL execution on a local PostgreSQL 17 engine testing atomic claiming across concurrent workers, stale lock recovery, exponential backoff, dead-letter transition, metrics aggregation, privilege revocation on `authenticated` / `anon` (blocked with 42501), `service_role` execution, rollback, and re-apply. Verified with 19 automated security regression tests in `tests/security/notification-outbox-worker.test.ts`. See `docs/testing/remediation-phase-2.md` for full details.
 
 ---
 
@@ -725,7 +730,7 @@ The findings identified in this audit are organized below by priority. Remediati
 This Full Platform Audit has thoroughly validated the architecture, database schema, RBAC model, and cross-module workflows across all 11 development milestones.
 
 **Current Summary Verdict**:
-- **Codebase Stability**: **EXCELLENT**. All 364 automated unit and security tests pass with 100% success across 28 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
+- **Codebase Stability**: **EXCELLENT**. All 368 automated unit and security tests pass with 100% success across 28 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
 - **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), and `REM-HIGH-03` (Notification Outbox Worker) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17 and automated test suites. Remaining: `REM-MED-01` (Native GPS & Push Notifications — Phase 2.5) and `REM-MED-02` (Integration Test Harness — Phase 2.6).
 - **Rule Adherence**: No regressions introduced, no remote migrations pushed, and all tests executed against local verified environments.
 

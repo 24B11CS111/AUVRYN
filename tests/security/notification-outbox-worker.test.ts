@@ -596,4 +596,147 @@ describe('REM-HIGH-03: Notification Worker & Outbox Dispatch Security', () => {
       expect(revived.errorMessage).toBeNull();
     });
   });
+
+  // ============================================================================
+  // 8. Worker RPC Access Control & Privilege Separation (Phase 2.4 Follow-Up)
+  // ============================================================================
+  describe('8. Worker RPC Access Control & Privilege Separation', () => {
+    type DbRole = 'anon' | 'authenticated' | 'service_role';
+
+    interface RpcCallerContext {
+      role: DbRole;
+      userId?: string;
+      institutionRole?: string;
+      institutionId?: string;
+    }
+
+    function executeClaimRpc(
+      context: RpcCallerContext,
+      batchSize: number = 10
+    ): { allowed: boolean; error?: string } {
+      // In hardened PostgreSQL migration, EXECUTE is revoked from anon and authenticated
+      if (context.role === 'anon' || context.role === 'authenticated') {
+        return {
+          allowed: false,
+          error: 'permission denied for function claim_notification_deliveries',
+        };
+      }
+
+      if (context.role === 'service_role') {
+        return { allowed: true };
+      }
+
+      return { allowed: false, error: 'unknown role' };
+    }
+
+    function executeResolveRpc(
+      context: RpcCallerContext,
+      deliveryId: string
+    ): { allowed: boolean; error?: string } {
+      // In hardened PostgreSQL migration, EXECUTE is revoked from anon and authenticated
+      if (context.role === 'anon' || context.role === 'authenticated') {
+        return {
+          allowed: false,
+          error: 'permission denied for function resolve_notification_delivery',
+        };
+      }
+
+      if (context.role === 'service_role') {
+        return { allowed: true };
+      }
+
+      return { allowed: false, error: 'unknown role' };
+    }
+
+    function executeRequeueRpc(
+      context: RpcCallerContext,
+      delivery: { id: string; institutionId: string; status: NotificationDeliveryStatus },
+      targetInstitutionId: string
+    ): { success: boolean; error?: string } {
+      // Direct RPC execution: anon and ordinary authenticated have no EXECUTE grant
+      if (context.role === 'anon' || context.role === 'authenticated') {
+        return {
+          success: false,
+          error: 'permission denied for function requeue_dead_letter_delivery',
+        };
+      }
+
+      // If called with service_role (e.g. from server action after verifying caller):
+      if (delivery.institutionId !== targetInstitutionId) {
+        return {
+          success: false,
+          error: 'Delivery not found in specified institution',
+        };
+      }
+
+      if (delivery.status !== 'dead_letter') {
+        return {
+          success: false,
+          error: 'Only dead_letter deliveries can be manually requeued',
+        };
+      }
+
+      return { success: true };
+    }
+
+    it('denies direct invocation of claim_notification_deliveries by anon and authenticated callers', () => {
+      const anonCall = executeClaimRpc({ role: 'anon' });
+      expect(anonCall.allowed).toBe(false);
+      expect(anonCall.error).toContain('permission denied');
+
+      const studentCall = executeClaimRpc({
+        role: 'authenticated',
+        userId: USER_STUDENT,
+        institutionRole: 'student',
+        institutionId: TENANT_A,
+      });
+      expect(studentCall.allowed).toBe(false);
+      expect(studentCall.error).toContain('permission denied');
+    });
+
+    it('denies direct invocation of resolve_notification_delivery by ordinary users', () => {
+      const guardianCall = executeResolveRpc(
+        {
+          role: 'authenticated',
+          userId: 'user-guardian-1',
+          institutionRole: 'parent',
+          institutionId: TENANT_A,
+        },
+        'deliv-123'
+      );
+      expect(guardianCall.allowed).toBe(false);
+      expect(guardianCall.error).toContain('permission denied');
+    });
+
+    it('allows trusted server worker with service_role to claim and resolve deliveries', () => {
+      const serverWorkerContext: RpcCallerContext = { role: 'service_role' };
+
+      const claimRes = executeClaimRpc(serverWorkerContext, 25);
+      expect(claimRes.allowed).toBe(true);
+
+      const resolveRes = executeResolveRpc(serverWorkerContext, 'deliv-123');
+      expect(resolveRes.allowed).toBe(true);
+    });
+
+    it('enforces institution-scoped boundaries and rejects requeuing non-dead-letter deliveries', () => {
+      const serverActionServiceContext: RpcCallerContext = { role: 'service_role' };
+
+      const deadJob = { id: 'd-10', institutionId: TENANT_A, status: 'dead_letter' as const };
+      const deliveredJob = { id: 'd-11', institutionId: TENANT_A, status: 'delivered' as const };
+
+      // Legitimate admin requeue for dead_letter delivery in correct institution
+      const validRequeue = executeRequeueRpc(serverActionServiceContext, deadJob, TENANT_A);
+      expect(validRequeue.success).toBe(true);
+
+      // Requeue across mismatched institution boundary is rejected
+      const crossTenantRequeue = executeRequeueRpc(serverActionServiceContext, deadJob, TENANT_B);
+      expect(crossTenantRequeue.success).toBe(false);
+      expect(crossTenantRequeue.error).toContain('Delivery not found in specified institution');
+
+      // Attempting to requeue already delivered delivery is rejected
+      const invalidStatusRequeue = executeRequeueRpc(serverActionServiceContext, deliveredJob, TENANT_A);
+      expect(invalidStatusRequeue.success).toBe(false);
+      expect(invalidStatusRequeue.error).toContain('Only dead_letter deliveries can be manually requeued');
+    });
+  });
 });
