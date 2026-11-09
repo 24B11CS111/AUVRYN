@@ -23,6 +23,13 @@ import {
   type StaffInvitationAcceptInput,
 } from '@edu-platform/validators';
 import { formatSupabaseError } from '@edu-platform/supabase-client';
+import {
+  STORAGE_BUCKETS,
+  validateFileUpload,
+  validateStoragePath,
+  generateStoragePath,
+  createSignedDownloadUrl,
+} from '@/lib/storage';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -409,7 +416,24 @@ export async function uploadStaffDocumentAction(data: StaffDocumentUploadInput):
       return { success: false, error: parsed.error.errors[0]?.message || 'Invalid document metadata.' };
     }
 
+    // Validate file against bucket policy restrictions
+    const validation = validateFileUpload(STORAGE_BUCKETS.STAFF_DOCUMENTS, {
+      fileName: parsed.data.fileName,
+      fileSize: parsed.data.fileSize,
+      mimeType: parsed.data.mimeType,
+    });
+    if (!validation.valid) {
+      return { success: false, error: validation.error || 'Invalid file format or size.' };
+    }
+
     const institutionId = session.activeMembership!.institutionId;
+
+    // Enforce canonical institution-isolated storage path to prevent directory traversal or cross-tenant injection
+    const targetStoragePath =
+      parsed.data.storagePath && validateStoragePath(parsed.data.storagePath, institutionId).valid
+        ? parsed.data.storagePath
+        : generateStoragePath(institutionId, 'staff', parsed.data.staffId, parsed.data.fileName);
+
     const supabase = createClient() as any;
 
     const { data: newDoc, error: insertError } = await supabase
@@ -422,7 +446,7 @@ export async function uploadStaffDocumentAction(data: StaffDocumentUploadInput):
         file_name: parsed.data.fileName,
         file_size: parsed.data.fileSize,
         mime_type: parsed.data.mimeType,
-        storage_path: parsed.data.storagePath,
+        storage_path: targetStoragePath,
         verification_status: 'pending',
         uploaded_by: session.user.id,
       })
@@ -438,6 +462,57 @@ export async function uploadStaffDocumentAction(data: StaffDocumentUploadInput):
     return { success: true, data: newDoc };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to upload staff document record.' };
+  }
+}
+
+export async function getStaffDocumentSignedUrlAction(
+  documentId: string
+): Promise<ActionResult<{ signedUrl: string }>> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+    const supabase = createClient() as any;
+
+    const { data: doc, error: fetchError } = await supabase
+      .from('staff_documents')
+      .select('id, institution_id, staff_id, storage_path')
+      .eq('id', documentId)
+      .eq('institution_id', institutionId)
+      .single();
+
+    if (fetchError || !doc) {
+      return { success: false, error: 'Document not found or access denied.' };
+    }
+
+    const isHrOrAdmin = ['owner', 'admin', 'hr_administrator'].includes(role || '');
+    if (!isHrOrAdmin) {
+      const { data: staffRecord } = await supabase
+        .from('staff_profiles')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('institution_id', institutionId)
+        .maybeSingle();
+
+      if (!staffRecord || staffRecord.id !== doc.staff_id) {
+        return { success: false, error: 'Forbidden: you do not have permission to view this document.' };
+      }
+    }
+
+    const { signedUrl, error: signError } = await createSignedDownloadUrl(
+      supabase,
+      STORAGE_BUCKETS.STAFF_DOCUMENTS,
+      doc.storage_path,
+      300
+    );
+
+    if (signError || !signedUrl) {
+      return { success: false, error: signError || 'Failed to generate signed download link.' };
+    }
+
+    return { success: true, data: { signedUrl } };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error generating staff document URL.' };
   }
 }
 

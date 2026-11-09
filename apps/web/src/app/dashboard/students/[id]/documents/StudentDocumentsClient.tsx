@@ -10,7 +10,11 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Alert } from '@/components/ui/Alert';
-import { uploadStudentDocumentAction, verifyStudentDocumentAction } from '../../actions';
+import {
+  uploadStudentDocumentAction,
+  verifyStudentDocumentAction,
+  getStudentDocumentSignedUrlAction,
+} from '../../actions';
 import {
   ArrowLeft,
   FileText,
@@ -20,6 +24,7 @@ import {
   Clock,
   ShieldCheck,
   FileCheck,
+  ExternalLink,
 } from 'lucide-react';
 import type { StudentRow, StudentDocumentRow } from '@edu-platform/database';
 
@@ -50,6 +55,24 @@ export function StudentDocumentsClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+
+  const handleViewDocument = async (docId: string) => {
+    try {
+      setLoadingDocId(docId);
+      setErrorMsg(null);
+      const res = await getStudentDocumentSignedUrlAction(docId);
+      if (!res.success || !res.data?.signedUrl) {
+        setErrorMsg(res.error || 'Failed to generate signed download link.');
+        return;
+      }
+      window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error opening document.');
+    } finally {
+      setLoadingDocId(null);
+    }
+  };
 
   // Upload Form State
   const [uploadData, setUploadData] = useState({
@@ -245,8 +268,19 @@ export function StudentDocumentsClient({
                 </div>
               </div>
 
-              {canManage && (
-                <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewDocument(doc.id)}
+                  disabled={loadingDocId === doc.id}
+                  className="text-xs h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                  {loadingDocId === doc.id ? 'Loading...' : 'View File'}
+                </Button>
+
+                {canManage && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -263,8 +297,8 @@ export function StudentDocumentsClient({
                     <ShieldCheck className="w-3.5 h-3.5 mr-1" />
                     Review Status
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </Card>
           );
         })}

@@ -646,17 +646,26 @@ The findings identified in this audit are organized below by priority. Remediati
 
 #### Finding REM-HIGH-02: Create Infrastructure-as-Code for Supabase Storage Buckets & RLS
 - **Severity**: **High**
-- **Affected File**: `supabase/migrations/20261109121000_storage_security_policies.sql` (to be created)
-- **Problem**: `storage.objects` has zero RLS policies in version control.
-- **Recommended Action**: Create a dedicated storage migration declaring private buckets (`student-documents`, `staff-documents`, `vehicle-documents`) with path-based RLS:
-  ```sql
-  CREATE POLICY "Tenant isolated document access" ON storage.objects
-  FOR SELECT TO authenticated
-  USING (
-    bucket_id IN ('student-documents', 'staff-documents', 'vehicle-documents')
-    AND is_institution_member((storage.foldername(name))[1]::UUID)
-  );
-  ```
+- **Status**: **RESOLVED (Phase 2.3)**
+- **Affected Files**:
+  - `supabase/migrations/20261109121000_storage_security_policies.sql`
+  - `supabase/migrations/rollback/20261109121000_rollback.sql`
+  - `packages/database/src/index.ts`
+  - `apps/web/src/lib/storage.ts`
+  - `apps/web/src/app/dashboard/students/actions.ts`
+  - `apps/web/src/app/dashboard/students/[id]/documents/StudentDocumentsClient.tsx`
+  - `apps/web/src/app/dashboard/staff/actions.ts`
+  - `apps/web/src/app/dashboard/staff/[id]/documents/StaffDocumentsClient.tsx`
+  - `apps/web/src/app/portal/parent/actions.ts`
+  - `apps/web/src/app/portal/student/actions.ts`
+  - `tests/security/storage-security.test.ts`
+- **Resolution**:
+  1. Configured 4 strictly private Supabase Storage buckets (`student-documents`, `staff-documents`, `transport-documents`, `academic-documents`) with `public = false`, explicit size limits (10MB, 15MB, 25MB), and whitelist MIME types.
+  2. Created path extraction helper functions `public.storage_extract_institution_id(p_name text)` and `public.storage_extract_entity_id(p_name text)` validating UUID formatting to prevent SQL errors.
+  3. Created granular `storage.objects` RLS policies for `SELECT`, `INSERT`, `UPDATE`, and `DELETE` across all 4 buckets enforcing institution membership, role authorization, student self-ownership, guardian access to verified children, and deletion protections (only institutional `owner` and `admin` can delete compliance records).
+  4. Built central storage library `apps/web/src/lib/storage.ts` providing file name sanitization, path generation, directory traversal prevention, double extension protection, MIME and size validation, and short-lived signed download URL generation (clamped between 30s and 3600s, default 300s).
+  5. Implemented signed download URL server actions for students, staff, and portal (parent/student) and connected UI "View File" buttons.
+- **Verification**: Verified via live SQL execution on PostgreSQL 17 engine testing all 7 RLS scenarios on `storage.objects` (multi-tenant isolation, student peer isolation, guardian verification, deletion protection) and 37 automated tests in `tests/security/storage-security.test.ts`. See `docs/testing/remediation-phase-2.md` for full details.
 
 #### Finding REM-HIGH-03: Implement Background Worker for External Notification Deliveries
 - **Severity**: **High**

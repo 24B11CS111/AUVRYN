@@ -135,6 +135,15 @@ export const DATABASE_TABLES = {
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
 
+export const STORAGE_BUCKETS = {
+  STUDENT_DOCUMENTS: 'student-documents',
+  STAFF_DOCUMENTS: 'staff-documents',
+  TRANSPORT_DOCUMENTS: 'transport-documents',
+  ACADEMIC_DOCUMENTS: 'academic-documents',
+} as const;
+
+export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
+
 export type Json =
   | string
   | number

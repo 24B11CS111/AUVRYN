@@ -3,6 +3,7 @@
 import { requireInstitution } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatSupabaseError } from '@edu-platform/supabase-client';
+import { STORAGE_BUCKETS, createSignedDownloadUrl } from '@/lib/storage';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -533,5 +534,62 @@ export async function getParentPortalDataAction(
     };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function getParentChildDocumentSignedUrlAction(
+  studentId: string,
+  documentId: string
+): Promise<ActionResult<{ signedUrl: string }>> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+
+    if (role !== 'parent' && (role as string) !== 'guardian') {
+      return { success: false, error: 'Unauthorized: portal access restricted to parent accounts.' };
+    }
+
+    const supabase = createClient() as any;
+
+    // Verify parent has legitimate verified relationship to this specific student
+    const { data: guardianRel, error: relError } = await supabase
+      .from('student_guardians')
+      .select('student_id, guardians!inner(user_id)')
+      .eq('student_id', studentId)
+      .eq('guardians.user_id', session.user.id)
+      .maybeSingle();
+
+    if (relError || !guardianRel) {
+      return { success: false, error: 'Access denied: verified relationship to this child is required.' };
+    }
+
+    // Fetch document metadata ensuring institution and student match
+    const { data: doc, error: docError } = await supabase
+      .from('student_documents')
+      .select('id, storage_path')
+      .eq('id', documentId)
+      .eq('student_id', studentId)
+      .eq('institution_id', institutionId)
+      .single();
+
+    if (docError || !doc) {
+      return { success: false, error: 'Document not found or access denied.' };
+    }
+
+    const { signedUrl, error: signError } = await createSignedDownloadUrl(
+      supabase,
+      STORAGE_BUCKETS.STUDENT_DOCUMENTS,
+      doc.storage_path,
+      300
+    );
+
+    if (signError || !signedUrl) {
+      return { success: false, error: signError || 'Failed to generate download link.' };
+    }
+
+    return { success: true, data: { signedUrl } };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error generating document URL.' };
   }
 }

@@ -2,6 +2,7 @@
 
 import { requireInstitution } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { STORAGE_BUCKETS, createSignedDownloadUrl } from '@/lib/storage';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -370,5 +371,61 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function getStudentOwnDocumentSignedUrlAction(
+  documentId: string
+): Promise<ActionResult<{ signedUrl: string }>> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+
+    if (role !== 'student') {
+      return { success: false, error: 'Unauthorized: access restricted to student accounts.' };
+    }
+
+    const supabase = createClient() as any;
+
+    // Resolve student record for authenticated user
+    const { data: studentRecord, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('institution_id', institutionId)
+      .maybeSingle();
+
+    if (studentError || !studentRecord) {
+      return { success: false, error: 'Student record not found for active institution.' };
+    }
+
+    // Fetch document ensuring it belongs strictly to this student
+    const { data: doc, error: docError } = await supabase
+      .from('student_documents')
+      .select('id, storage_path')
+      .eq('id', documentId)
+      .eq('student_id', studentRecord.id)
+      .eq('institution_id', institutionId)
+      .single();
+
+    if (docError || !doc) {
+      return { success: false, error: 'Document not found or access denied.' };
+    }
+
+    const { signedUrl, error: signError } = await createSignedDownloadUrl(
+      supabase,
+      STORAGE_BUCKETS.STUDENT_DOCUMENTS,
+      doc.storage_path,
+      300
+    );
+
+    if (signError || !signedUrl) {
+      return { success: false, error: signError || 'Failed to generate download link.' };
+    }
+
+    return { success: true, data: { signedUrl } };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error generating document URL.' };
   }
 }
