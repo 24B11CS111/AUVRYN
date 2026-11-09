@@ -61,7 +61,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding');
+  const isProtectedRoute =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/portal');
 
   // If user is not authenticated and trying to access protected route, redirect to login
   if (!user && isProtectedRoute) {
@@ -71,10 +74,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If user is already authenticated and visits login/register, redirect to dashboard or onboarding
+  // If user is already authenticated and visits login/register, redirect to destination or dashboard
   if (user && (pathname === '/auth/login' || pathname === '/auth/register')) {
+    const redirectTo = request.nextUrl.searchParams.get('redirectTo');
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    // Validate redirectTo is a safe internal relative path
+    if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+      url.pathname = redirectTo;
+      url.searchParams.delete('redirectTo');
+    } else {
+      url.pathname = '/dashboard';
+    }
     return NextResponse.redirect(url);
   }
 

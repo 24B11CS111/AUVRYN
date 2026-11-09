@@ -112,7 +112,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
       if (st) {
         studentId = st.id;
       }
-    } else {
+    } else if (membership.role === 'owner' || membership.role === 'admin') {
       // Admin/Owner previewing student portal: fetch first student
       const { data: anyStudent } = await supabase
         .from('students')
@@ -124,6 +124,11 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
       if (anyStudent) {
         studentId = anyStudent.id;
       }
+    } else {
+      return {
+        success: false,
+        error: 'Unauthorized: Access to the student portal requires a student or administrative role.',
+      };
     }
 
     if (!studentId) {
@@ -155,6 +160,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
         )
       `)
       .eq('id', studentId)
+      .eq('institution_id', membership.institutionId)
       .single();
 
     if (stErr || !st) {
@@ -167,6 +173,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     const { data: attRecords } = await supabase
       .from('student_attendance_records')
       .select('status, session:attendance_sessions(session_date, session_type)')
+      .eq('institution_id', membership.institutionId)
       .eq('student_id', studentId)
       .order('created_at', { ascending: false })
       .limit(30);
@@ -194,6 +201,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
           room:rooms(room_number),
           faculty:profiles!timetable_entries_faculty_id_fkey(full_name)
         `)
+        .eq('institution_id', membership.institutionId)
         .eq('class_id', activeEnrollment.class.id)
         .eq('is_active', true);
 
@@ -218,6 +226,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     const { data: resultsData } = await supabase
       .from('student_exam_results')
       .select('*, exam:examinations(name)')
+      .eq('institution_id', membership.institutionId)
       .eq('student_id', studentId)
       .eq('is_published', true)
       .order('created_at', { ascending: false });
@@ -236,6 +245,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     const { data: ticketsData } = await supabase
       .from('hall_tickets')
       .select('*, exam:examinations(name)')
+      .eq('institution_id', membership.institutionId)
       .eq('student_id', studentId)
       .order('generated_at', { ascending: false });
 
@@ -287,6 +297,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     const { data: feeInstData } = await supabase
       .from('student_fee_installments')
       .select('*')
+      .eq('institution_id', membership.institutionId)
       .eq('student_id', studentId)
       .order('due_date', { ascending: true });
 

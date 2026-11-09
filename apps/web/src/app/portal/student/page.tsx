@@ -1,10 +1,10 @@
 import React from 'react';
-import { requireInstitution } from '@/lib/auth';
+import { requirePortalRole } from '@/lib/auth';
 import { getStudentPortalDataAction } from './actions';
 import { StudentPortalClient } from './StudentPortalClient';
 
 export default async function StudentPortalPage() {
-  await requireInstitution();
+  await requirePortalRole(['student', 'owner', 'admin']);
 
   const res = await getStudentPortalDataAction();
   const data = res.success && res.data

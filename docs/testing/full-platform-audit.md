@@ -633,17 +633,16 @@ The findings identified in this audit are organized below by priority. Remediati
 
 ### 9.2 High-Priority Findings
 
-#### Finding REM-HIGH-01: Secure `/portal/*` Routes in Edge Middleware
+#### Finding REM-HIGH-01: Secure `/portal/*` Routes in Edge Middleware [RESOLVED — Phase 2.2]
 - **Severity**: **High**
+- **Status**: **RESOLVED & VERIFIED (Phase 2.2)**
 - **Affected File**: `apps/web/src/lib/supabase/middleware.ts`
-- **Problem**: Unauthenticated requests to `/portal/parent` and `/portal/student` bypass early edge redirection.
-- **Recommended Action**: Expand `isProtectedRoute` in `middleware.ts`:
-  ```typescript
-  const isProtectedRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/onboarding') ||
-    pathname.startsWith('/portal');
-  ```
+- **Resolution**:
+  1. Expanded `isProtectedRoute` in `middleware.ts` to include `/portal/*`, ensuring unauthenticated users are redirected to `/auth/login?redirectTo=<pathname>`.
+  2. Hardened post-login redirect handler to support safe relative internal redirection while preventing open-redirect attacks.
+  3. Added server-side guard `requirePortalRole()` in `apps/web/src/lib/auth.ts` and applied it to `/portal/parent/page.tsx` and `/portal/student/page.tsx`.
+  4. Hardened portal actions (`getParentPortalDataAction`, `getStudentPortalDataAction`) to reject unauthorized roles, scope all queries strictly by `membership.institutionId`, and sanitize student selection.
+- **Verification**: Verified with 14 automated tests in `tests/security/portal-middleware-security.test.ts`. Full Next.js production build generated 106 routes cleanly with an 87 kB middleware bundle. See `docs/testing/remediation-phase-2.md` for full details.
 
 #### Finding REM-HIGH-02: Create Infrastructure-as-Code for Supabase Storage Buckets & RLS
 - **Severity**: **High**

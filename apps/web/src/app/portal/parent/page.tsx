@@ -1,10 +1,10 @@
 import React from 'react';
-import { requireInstitution } from '@/lib/auth';
+import { requirePortalRole } from '@/lib/auth';
 import { getParentPortalDataAction } from './actions';
 import { ParentPortalClient } from './ParentPortalClient';
 
 export default async function ParentPortalPage() {
-  await requireInstitution();
+  await requirePortalRole(['parent', 'owner', 'admin']);
 
   const res = await getParentPortalDataAction();
   const data = res.success && res.data

@@ -153,6 +153,32 @@ export async function requireInstitution(): Promise<UserSessionContext> {
 }
 
 /**
+ * Guard: Requires specific portal roles. Redirects to fallback route (e.g. /dashboard) if unauthorized.
+ */
+export async function requirePortalRole(
+  allowedRoles: Role[],
+  fallbackRedirect: string = '/dashboard'
+): Promise<UserSessionContext> {
+  const context = await requireInstitution();
+  const membership = context.activeMembership;
+
+  if (!membership || membership.status !== 'active') {
+    redirect('/onboarding');
+  }
+
+  const role = membership.role;
+  const isAllowed =
+    allowedRoles.includes(role) ||
+    (allowedRoles.includes('parent') && (role as string) === 'guardian');
+
+  if (!isAllowed) {
+    redirect(fallbackRedirect);
+  }
+
+  return context;
+}
+
+/**
  * Server-side authorization check against specific roles
  */
 export function hasRequiredRole(

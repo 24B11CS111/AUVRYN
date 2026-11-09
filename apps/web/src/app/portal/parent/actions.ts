@@ -122,7 +122,7 @@ export async function getParentPortalDataAction(
     // 1. Resolve guardian record for current user
     let studentIds: string[] = [];
 
-    if (membership.role === 'parent') {
+    if (membership.role === 'parent' || (membership.role as string) === 'guardian') {
       const { data: guardian } = await supabase
         .from('guardians')
         .select('id')
@@ -134,6 +134,7 @@ export async function getParentPortalDataAction(
         const { data: links } = await supabase
           .from('student_guardians')
           .select('student_id')
+          .eq('institution_id', membership.institutionId)
           .eq('guardian_id', guardian.id);
 
         studentIds = (links || []).map((l: any) => l.student_id);
@@ -147,6 +148,11 @@ export async function getParentPortalDataAction(
         .limit(5);
 
       studentIds = (anyStudents || []).map((s: any) => s.id);
+    } else {
+      return {
+        success: false,
+        error: 'Unauthorized: parent portal access requires parent, guardian, or administrative role.',
+      };
     }
 
     if (studentIds.length === 0) {
@@ -172,6 +178,7 @@ export async function getParentPortalDataAction(
           section:academic_sections(id, name)
         )
       `)
+      .eq('institution_id', membership.institutionId)
       .in('id', studentIds);
 
     if (stErr) {
@@ -189,6 +196,7 @@ export async function getParentPortalDataAction(
       const { data: att } = await supabase
         .from('student_attendance_records')
         .select('status')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', st.id);
 
       const totalSessions = att?.length || 0;
@@ -199,6 +207,7 @@ export async function getParentPortalDataAction(
       const { data: feeAssignments } = await supabase
         .from('student_fee_assignments')
         .select('total_amount, paid_amount')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', st.id);
 
       let outstanding = 0;
@@ -247,6 +256,7 @@ export async function getParentPortalDataAction(
       const { data: attRecords } = await supabase
         .from('student_attendance_records')
         .select('status, session:attendance_sessions(session_date, session_type)')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', activeChildId)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -269,6 +279,7 @@ export async function getParentPortalDataAction(
       const { data: resultsData } = await supabase
         .from('student_exam_results')
         .select('*, exam:examinations(name)')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', activeChildId)
         .eq('is_published', true)
         .order('created_at', { ascending: false });
@@ -289,6 +300,7 @@ export async function getParentPortalDataAction(
         let ttQuery = supabase
           .from('timetable_entries')
           .select('*, subject:academic_subjects(name)')
+          .eq('institution_id', membership.institutionId)
           .eq('class_id', activeEnrollment.class.id)
           .eq('is_active', true);
 
@@ -311,6 +323,7 @@ export async function getParentPortalDataAction(
       const { data: feeInstData } = await supabase
         .from('student_fee_installments')
         .select('*')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', activeChildId)
         .order('due_date', { ascending: true });
 
@@ -367,6 +380,7 @@ export async function getParentPortalDataAction(
       const { data: leaveData } = await supabase
         .from('leave_requests')
         .select('id, start_date, end_date, reason, status')
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', activeChildId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -395,6 +409,7 @@ export async function getParentPortalDataAction(
           pickup_stop:transport_stops!student_transport_assignments_pickup_stop_id_fkey(id, name, address, latitude, longitude),
           dropoff_stop:transport_stops!student_transport_assignments_dropoff_stop_id_fkey(id, name, address, latitude, longitude)
         `)
+        .eq('institution_id', membership.institutionId)
         .eq('student_id', activeChildId)
         .eq('status', 'active')
         .maybeSingle();
@@ -410,6 +425,7 @@ export async function getParentPortalDataAction(
         const { data: todayJourney } = await supabase
           .from('transport_journeys')
           .select('id, status, shift, journey_type, delay_minutes, delay_reason, emergency_reason')
+          .eq('institution_id', membership.institutionId)
           .eq('route_id', routeId)
           .eq('journey_date', todayStr)
           .maybeSingle();
@@ -429,6 +445,7 @@ export async function getParentPortalDataAction(
         const { data: boardings } = await supabase
           .from('student_boarding_events')
           .select('id, event_type, timestamp, stop:transport_stops(name)')
+          .eq('institution_id', membership.institutionId)
           .eq('student_id', activeChildId)
           .order('timestamp', { ascending: false })
           .limit(5);
