@@ -1,4 +1,21 @@
 export * from '@edu-platform/types';
+import type {
+  LibraryCopyStatus,
+  LibraryCirculationStatus,
+  LibraryReservationStatus,
+  LibraryFineStatus,
+  LibraryResourceType,
+  HostelGenderPolicy,
+  HostelRoomType,
+  HostelAllocationStatus,
+  HostelOutpassStatus,
+  HostelComplaintCategory,
+  HostelComplaintStatus,
+  InstitutionEventType,
+  EventStatus,
+  EventRegistrationStatus,
+  EventCertificateType,
+} from '@edu-platform/types';
 
 export const DATABASE_TABLES = {
   PROFILES: 'profiles',
@@ -91,6 +108,29 @@ export const DATABASE_TABLES = {
   STUDENT_BOARDING_EVENTS: 'student_boarding_events',
   TRANSPORT_CHANGE_REQUESTS: 'transport_change_requests',
   TRANSPORT_SETTINGS: 'transport_settings',
+  LIBRARY_BRANCHES: 'library_branches',
+  LIBRARY_BOOKS: 'library_books',
+  LIBRARY_BOOK_COPIES: 'library_book_copies',
+  LIBRARY_MEMBERS: 'library_members',
+  LIBRARY_CIRCULATIONS: 'library_circulations',
+  LIBRARY_RESERVATIONS: 'library_reservations',
+  LIBRARY_FINES: 'library_fines',
+  LIBRARY_DIGITAL_RESOURCES: 'library_digital_resources',
+  LIBRARY_SETTINGS: 'library_settings',
+  HOSTEL_BUILDINGS: 'hostel_buildings',
+  HOSTEL_ROOMS: 'hostel_rooms',
+  HOSTEL_BEDS: 'hostel_beds',
+  HOSTEL_ALLOCATIONS: 'hostel_allocations',
+  HOSTEL_APPLICATIONS: 'hostel_applications',
+  HOSTEL_ROOM_TRANSFERS: 'hostel_room_transfers',
+  HOSTEL_OUTPASSES: 'hostel_outpasses',
+  HOSTEL_VISITORS: 'hostel_visitors',
+  HOSTEL_COMPLAINTS: 'hostel_complaints',
+  HOSTEL_MESS_RECORDS: 'hostel_mess_records',
+  INSTITUTION_EVENTS: 'institution_events',
+  EVENT_REGISTRATIONS: 'event_registrations',
+  EVENT_ATTENDANCE: 'event_attendance',
+  EVENT_CERTIFICATES: 'event_certificates',
 } as const;
 
 export type DatabaseTableName = (typeof DATABASE_TABLES)[keyof typeof DATABASE_TABLES];
@@ -4033,6 +4073,1110 @@ export interface Database {
         };
         Relationships: [];
       };
+      library_branches: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          name: string;
+          code: string;
+          location: string | null;
+          opening_hours: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          name: string;
+          code: string;
+          location?: string | null;
+          opening_hours?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          name?: string;
+          code?: string;
+          location?: string | null;
+          opening_hours?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_books: {
+        Row: {
+          id: string;
+          institution_id: string;
+          branch_id: string | null;
+          title: string;
+          author: string;
+          isbn: string | null;
+          publisher: string | null;
+          category: string;
+          edition: string | null;
+          subject: string | null;
+          dewey_decimal: string | null;
+          description: string | null;
+          cover_url: string | null;
+          pages: number | null;
+          language: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          branch_id?: string | null;
+          title: string;
+          author: string;
+          isbn?: string | null;
+          publisher?: string | null;
+          category: string;
+          edition?: string | null;
+          subject?: string | null;
+          dewey_decimal?: string | null;
+          description?: string | null;
+          cover_url?: string | null;
+          pages?: number | null;
+          language?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          branch_id?: string | null;
+          title?: string;
+          author?: string;
+          isbn?: string | null;
+          publisher?: string | null;
+          category?: string;
+          edition?: string | null;
+          subject?: string | null;
+          dewey_decimal?: string | null;
+          description?: string | null;
+          cover_url?: string | null;
+          pages?: number | null;
+          language?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_book_copies: {
+        Row: {
+          id: string;
+          institution_id: string;
+          book_id: string;
+          branch_id: string | null;
+          accession_number: string;
+          barcode: string;
+          copy_number: number;
+          status: LibraryCopyStatus;
+          condition: string | null;
+          shelf_location: string | null;
+          price: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          book_id: string;
+          branch_id?: string | null;
+          accession_number: string;
+          barcode: string;
+          copy_number?: number;
+          status?: LibraryCopyStatus;
+          condition?: string | null;
+          shelf_location?: string | null;
+          price?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          book_id?: string;
+          branch_id?: string | null;
+          accession_number?: string;
+          barcode?: string;
+          copy_number?: number;
+          status?: LibraryCopyStatus;
+          condition?: string | null;
+          shelf_location?: string | null;
+          price?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_members: {
+        Row: {
+          id: string;
+          institution_id: string;
+          member_type: 'student' | 'staff';
+          student_id: string | null;
+          staff_id: string | null;
+          membership_number: string;
+          barcode: string;
+          max_books_allowed: number;
+          borrow_duration_days: number;
+          status: 'active' | 'suspended' | 'expired';
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          member_type: 'student' | 'staff';
+          student_id?: string | null;
+          staff_id?: string | null;
+          membership_number: string;
+          barcode: string;
+          max_books_allowed?: number;
+          borrow_duration_days?: number;
+          status?: 'active' | 'suspended' | 'expired';
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          member_type?: 'student' | 'staff';
+          student_id?: string | null;
+          staff_id?: string | null;
+          membership_number?: string;
+          barcode?: string;
+          max_books_allowed?: number;
+          borrow_duration_days?: number;
+          status?: 'active' | 'suspended' | 'expired';
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_circulations: {
+        Row: {
+          id: string;
+          institution_id: string;
+          copy_id: string;
+          member_id: string;
+          issued_at: string;
+          due_date: string;
+          returned_at: string | null;
+          renewal_count: number;
+          max_renewals: number;
+          status: LibraryCirculationStatus;
+          issued_by: string | null;
+          received_by: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          copy_id: string;
+          member_id: string;
+          issued_at?: string;
+          due_date: string;
+          returned_at?: string | null;
+          renewal_count?: number;
+          max_renewals?: number;
+          status?: LibraryCirculationStatus;
+          issued_by?: string | null;
+          received_by?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          copy_id?: string;
+          member_id?: string;
+          issued_at?: string;
+          due_date?: string;
+          returned_at?: string | null;
+          renewal_count?: number;
+          max_renewals?: number;
+          status?: LibraryCirculationStatus;
+          issued_by?: string | null;
+          received_by?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_reservations: {
+        Row: {
+          id: string;
+          institution_id: string;
+          book_id: string;
+          member_id: string;
+          reserved_at: string;
+          expires_at: string;
+          status: LibraryReservationStatus;
+          fulfilled_at: string | null;
+          cancelled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          book_id: string;
+          member_id: string;
+          reserved_at?: string;
+          expires_at: string;
+          status?: LibraryReservationStatus;
+          fulfilled_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          book_id?: string;
+          member_id?: string;
+          reserved_at?: string;
+          expires_at?: string;
+          status?: LibraryReservationStatus;
+          fulfilled_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_fines: {
+        Row: {
+          id: string;
+          institution_id: string;
+          circulation_id: string | null;
+          member_id: string;
+          amount: number;
+          reason: 'overdue' | 'lost_book' | 'damaged_book' | 'other';
+          status: LibraryFineStatus;
+          paid_at: string | null;
+          waived_at: string | null;
+          waived_by: string | null;
+          waiver_reason: string | null;
+          receipt_number: string | null;
+          fee_record_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          circulation_id?: string | null;
+          member_id: string;
+          amount?: number;
+          reason: 'overdue' | 'lost_book' | 'damaged_book' | 'other';
+          status?: LibraryFineStatus;
+          paid_at?: string | null;
+          waived_at?: string | null;
+          waived_by?: string | null;
+          waiver_reason?: string | null;
+          receipt_number?: string | null;
+          fee_record_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          circulation_id?: string | null;
+          member_id?: string;
+          amount?: number;
+          reason?: 'overdue' | 'lost_book' | 'damaged_book' | 'other';
+          status?: LibraryFineStatus;
+          paid_at?: string | null;
+          waived_at?: string | null;
+          waived_by?: string | null;
+          waiver_reason?: string | null;
+          receipt_number?: string | null;
+          fee_record_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_digital_resources: {
+        Row: {
+          id: string;
+          institution_id: string;
+          branch_id: string | null;
+          title: string;
+          author: string | null;
+          resource_type: LibraryResourceType;
+          category: string;
+          file_url: string | null;
+          external_url: string | null;
+          access_level: 'all_members' | 'staff_only' | 'students_only';
+          download_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          branch_id?: string | null;
+          title: string;
+          author?: string | null;
+          resource_type?: LibraryResourceType;
+          category: string;
+          file_url?: string | null;
+          external_url?: string | null;
+          access_level?: 'all_members' | 'staff_only' | 'students_only';
+          download_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          branch_id?: string | null;
+          title?: string;
+          author?: string | null;
+          resource_type?: LibraryResourceType;
+          category?: string;
+          file_url?: string | null;
+          external_url?: string | null;
+          access_level?: 'all_members' | 'staff_only' | 'students_only';
+          download_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_settings: {
+        Row: {
+          id: string;
+          institution_id: string;
+          fine_per_day: number;
+          grace_period_days: number;
+          max_fine_per_book: number;
+          default_loan_days_student: number;
+          default_loan_days_staff: number;
+          max_books_student: number;
+          max_books_staff: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          fine_per_day?: number;
+          grace_period_days?: number;
+          max_fine_per_book?: number;
+          default_loan_days_student?: number;
+          default_loan_days_staff?: number;
+          max_books_student?: number;
+          max_books_staff?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          fine_per_day?: number;
+          grace_period_days?: number;
+          max_fine_per_book?: number;
+          default_loan_days_student?: number;
+          default_loan_days_staff?: number;
+          max_books_student?: number;
+          max_books_staff?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_buildings: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          name: string;
+          building_code: string;
+          gender_policy: HostelGenderPolicy;
+          total_floors: number;
+          warden_id: string | null;
+          assistant_warden_id: string | null;
+          caretaker_contact: string | null;
+          address: string | null;
+          status: 'active' | 'inactive' | 'maintenance';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          name: string;
+          building_code: string;
+          gender_policy?: HostelGenderPolicy;
+          total_floors?: number;
+          warden_id?: string | null;
+          assistant_warden_id?: string | null;
+          caretaker_contact?: string | null;
+          address?: string | null;
+          status?: 'active' | 'inactive' | 'maintenance';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          name?: string;
+          building_code?: string;
+          gender_policy?: HostelGenderPolicy;
+          total_floors?: number;
+          warden_id?: string | null;
+          assistant_warden_id?: string | null;
+          caretaker_contact?: string | null;
+          address?: string | null;
+          status?: 'active' | 'inactive' | 'maintenance';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_rooms: {
+        Row: {
+          id: string;
+          institution_id: string;
+          building_id: string;
+          room_number: string;
+          floor_number: number;
+          room_type: HostelRoomType;
+          bed_capacity: number;
+          is_ac: boolean;
+          is_attached_washroom: boolean;
+          base_fee_monthly: number;
+          status: 'available' | 'full' | 'maintenance' | 'inactive';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          building_id: string;
+          room_number: string;
+          floor_number?: number;
+          room_type?: HostelRoomType;
+          bed_capacity?: number;
+          is_ac?: boolean;
+          is_attached_washroom?: boolean;
+          base_fee_monthly?: number;
+          status?: 'available' | 'full' | 'maintenance' | 'inactive';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          building_id?: string;
+          room_number?: string;
+          floor_number?: number;
+          room_type?: HostelRoomType;
+          bed_capacity?: number;
+          is_ac?: boolean;
+          is_attached_washroom?: boolean;
+          base_fee_monthly?: number;
+          status?: 'available' | 'full' | 'maintenance' | 'inactive';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_beds: {
+        Row: {
+          id: string;
+          institution_id: string;
+          room_id: string;
+          bed_number: string;
+          status: 'available' | 'occupied' | 'maintenance';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          room_id: string;
+          bed_number: string;
+          status?: 'available' | 'occupied' | 'maintenance';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          room_id?: string;
+          bed_number?: string;
+          status?: 'available' | 'occupied' | 'maintenance';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_allocations: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          bed_id: string;
+          academic_year_id: string;
+          allocated_from: string;
+          allocated_to: string | null;
+          vacated_at: string | null;
+          status: HostelAllocationStatus;
+          fee_structure_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          bed_id: string;
+          academic_year_id: string;
+          allocated_from: string;
+          allocated_to?: string | null;
+          vacated_at?: string | null;
+          status?: HostelAllocationStatus;
+          fee_structure_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          bed_id?: string;
+          academic_year_id?: string;
+          allocated_from?: string;
+          allocated_to?: string | null;
+          vacated_at?: string | null;
+          status?: HostelAllocationStatus;
+          fee_structure_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_applications: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          academic_year_id: string;
+          preferred_building_id: string | null;
+          preferred_room_type: HostelRoomType | null;
+          reason: string | null;
+          status: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          academic_year_id: string;
+          preferred_building_id?: string | null;
+          preferred_room_type?: HostelRoomType | null;
+          reason?: string | null;
+          status?: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          academic_year_id?: string;
+          preferred_building_id?: string | null;
+          preferred_room_type?: HostelRoomType | null;
+          reason?: string | null;
+          status?: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_room_transfers: {
+        Row: {
+          id: string;
+          institution_id: string;
+          allocation_id: string;
+          target_bed_id: string | null;
+          reason: string;
+          status: 'pending' | 'approved' | 'rejected' | 'completed';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          allocation_id: string;
+          target_bed_id?: string | null;
+          reason: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'completed';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          allocation_id?: string;
+          target_bed_id?: string | null;
+          reason?: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'completed';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_outpasses: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          departure_time: string;
+          expected_return_time: string;
+          actual_departure_time: string | null;
+          actual_return_time: string | null;
+          purpose: string;
+          destination: string;
+          emergency_contact: string;
+          parent_consent_status: 'not_required' | 'pending' | 'approved' | 'rejected';
+          parent_consent_by: string | null;
+          parent_consent_at: string | null;
+          warden_status: 'pending' | 'approved' | 'rejected';
+          warden_approved_by: string | null;
+          warden_approved_at: string | null;
+          status: HostelOutpassStatus;
+          gate_pass_code: string;
+          rejection_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          departure_time: string;
+          expected_return_time: string;
+          actual_departure_time?: string | null;
+          actual_return_time?: string | null;
+          purpose: string;
+          destination: string;
+          emergency_contact: string;
+          parent_consent_status?: 'not_required' | 'pending' | 'approved' | 'rejected';
+          parent_consent_by?: string | null;
+          parent_consent_at?: string | null;
+          warden_status?: 'pending' | 'approved' | 'rejected';
+          warden_approved_by?: string | null;
+          warden_approved_at?: string | null;
+          status?: HostelOutpassStatus;
+          gate_pass_code?: string;
+          rejection_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          departure_time?: string;
+          expected_return_time?: string;
+          actual_departure_time?: string | null;
+          actual_return_time?: string | null;
+          purpose?: string;
+          destination?: string;
+          emergency_contact?: string;
+          parent_consent_status?: 'not_required' | 'pending' | 'approved' | 'rejected';
+          parent_consent_by?: string | null;
+          parent_consent_at?: string | null;
+          warden_status?: 'pending' | 'approved' | 'rejected';
+          warden_approved_by?: string | null;
+          warden_approved_at?: string | null;
+          status?: HostelOutpassStatus;
+          gate_pass_code?: string;
+          rejection_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_visitors: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          visitor_name: string;
+          relationship: string;
+          id_proof_type: string | null;
+          id_proof_number: string | null;
+          contact_phone: string;
+          check_in_time: string;
+          check_out_time: string | null;
+          purpose: string | null;
+          checked_in_by: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          visitor_name: string;
+          relationship: string;
+          id_proof_type?: string | null;
+          id_proof_number?: string | null;
+          contact_phone: string;
+          check_in_time?: string;
+          check_out_time?: string | null;
+          purpose?: string | null;
+          checked_in_by?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          visitor_name?: string;
+          relationship?: string;
+          id_proof_type?: string | null;
+          id_proof_number?: string | null;
+          contact_phone?: string;
+          check_in_time?: string;
+          check_out_time?: string | null;
+          purpose?: string | null;
+          checked_in_by?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_complaints: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          room_id: string | null;
+          category: HostelComplaintCategory;
+          title: string;
+          description: string;
+          priority: 'low' | 'normal' | 'high' | 'urgent';
+          status: HostelComplaintStatus;
+          assigned_to: string | null;
+          resolved_at: string | null;
+          resolution_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          room_id?: string | null;
+          category?: HostelComplaintCategory;
+          title: string;
+          description: string;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          status?: HostelComplaintStatus;
+          assigned_to?: string | null;
+          resolved_at?: string | null;
+          resolution_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          room_id?: string | null;
+          category?: HostelComplaintCategory;
+          title?: string;
+          description?: string;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          status?: HostelComplaintStatus;
+          assigned_to?: string | null;
+          resolved_at?: string | null;
+          resolution_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      hostel_mess_records: {
+        Row: {
+          id: string;
+          institution_id: string;
+          student_id: string;
+          meal_plan: 'vegetarian' | 'non_vegetarian' | 'jain' | 'special';
+          dietary_notes: string | null;
+          start_date: string;
+          end_date: string | null;
+          status: 'active' | 'suspended' | 'cancelled';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          student_id: string;
+          meal_plan?: 'vegetarian' | 'non_vegetarian' | 'jain' | 'special';
+          dietary_notes?: string | null;
+          start_date: string;
+          end_date?: string | null;
+          status?: 'active' | 'suspended' | 'cancelled';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          student_id?: string;
+          meal_plan?: 'vegetarian' | 'non_vegetarian' | 'jain' | 'special';
+          dietary_notes?: string | null;
+          start_date?: string;
+          end_date?: string | null;
+          status?: 'active' | 'suspended' | 'cancelled';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      institution_events: {
+        Row: {
+          id: string;
+          institution_id: string;
+          campus_id: string | null;
+          title: string;
+          event_type: InstitutionEventType;
+          description: string | null;
+          venue: string;
+          start_time: string;
+          end_time: string;
+          registration_deadline: string | null;
+          max_participants: number;
+          is_registration_open: boolean;
+          organizer_staff_id: string | null;
+          status: EventStatus;
+          banner_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          campus_id?: string | null;
+          title: string;
+          event_type?: InstitutionEventType;
+          description?: string | null;
+          venue: string;
+          start_time: string;
+          end_time: string;
+          registration_deadline?: string | null;
+          max_participants?: number;
+          is_registration_open?: boolean;
+          organizer_staff_id?: string | null;
+          status?: EventStatus;
+          banner_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          campus_id?: string | null;
+          title?: string;
+          event_type?: InstitutionEventType;
+          description?: string | null;
+          venue?: string;
+          start_time?: string;
+          end_time?: string;
+          registration_deadline?: string | null;
+          max_participants?: number;
+          is_registration_open?: boolean;
+          organizer_staff_id?: string | null;
+          status?: EventStatus;
+          banner_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      event_registrations: {
+        Row: {
+          id: string;
+          institution_id: string;
+          event_id: string;
+          participant_category: 'student' | 'staff' | 'guest';
+          student_id: string | null;
+          staff_id: string | null;
+          guest_name: string | null;
+          guest_email: string | null;
+          guest_phone: string | null;
+          status: EventRegistrationStatus;
+          registered_at: string;
+          ticket_code: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          event_id: string;
+          participant_category: 'student' | 'staff' | 'guest';
+          student_id?: string | null;
+          staff_id?: string | null;
+          guest_name?: string | null;
+          guest_email?: string | null;
+          guest_phone?: string | null;
+          status?: EventRegistrationStatus;
+          registered_at?: string;
+          ticket_code?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          event_id?: string;
+          participant_category?: 'student' | 'staff' | 'guest';
+          student_id?: string | null;
+          staff_id?: string | null;
+          guest_name?: string | null;
+          guest_email?: string | null;
+          guest_phone?: string | null;
+          status?: EventRegistrationStatus;
+          registered_at?: string;
+          ticket_code?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      event_attendance: {
+        Row: {
+          id: string;
+          institution_id: string;
+          registration_id: string;
+          checked_in_at: string;
+          checked_in_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          registration_id: string;
+          checked_in_at?: string;
+          checked_in_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          registration_id?: string;
+          checked_in_at?: string;
+          checked_in_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      event_certificates: {
+        Row: {
+          id: string;
+          institution_id: string;
+          registration_id: string;
+          certificate_number: string;
+          certificate_type: EventCertificateType;
+          title: string;
+          issued_at: string;
+          issued_by: string | null;
+          certificate_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id: string;
+          registration_id: string;
+          certificate_number: string;
+          certificate_type?: EventCertificateType;
+          title: string;
+          issued_at?: string;
+          issued_by?: string | null;
+          certificate_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string;
+          registration_id?: string;
+          certificate_number?: string;
+          certificate_type?: EventCertificateType;
+          title?: string;
+          issued_at?: string;
+          issued_by?: string | null;
+          certificate_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -4787,6 +5931,29 @@ export type StudentBoardingEventRow = Database['public']['Tables']['student_boar
 export type TransportChangeRequestRow = Database['public']['Tables']['transport_change_requests']['Row'];
 export type TransportSettingsRow = Database['public']['Tables']['transport_settings']['Row'];
 
+export type LibraryBranchRow = Database['public']['Tables']['library_branches']['Row'];
+export type LibraryBookRow = Database['public']['Tables']['library_books']['Row'];
+export type LibraryBookCopyRow = Database['public']['Tables']['library_book_copies']['Row'];
+export type LibraryMemberRow = Database['public']['Tables']['library_members']['Row'];
+export type LibraryCirculationRow = Database['public']['Tables']['library_circulations']['Row'];
+export type LibraryReservationRow = Database['public']['Tables']['library_reservations']['Row'];
+export type LibraryFineRow = Database['public']['Tables']['library_fines']['Row'];
+export type LibraryDigitalResourceRow = Database['public']['Tables']['library_digital_resources']['Row'];
+export type LibrarySettingsRow = Database['public']['Tables']['library_settings']['Row'];
 
+export type HostelBuildingRow = Database['public']['Tables']['hostel_buildings']['Row'];
+export type HostelRoomRow = Database['public']['Tables']['hostel_rooms']['Row'];
+export type HostelBedRow = Database['public']['Tables']['hostel_beds']['Row'];
+export type HostelAllocationRow = Database['public']['Tables']['hostel_allocations']['Row'];
+export type HostelApplicationRow = Database['public']['Tables']['hostel_applications']['Row'];
+export type HostelRoomTransferRow = Database['public']['Tables']['hostel_room_transfers']['Row'];
+export type HostelOutpassRow = Database['public']['Tables']['hostel_outpasses']['Row'];
+export type HostelVisitorRow = Database['public']['Tables']['hostel_visitors']['Row'];
+export type HostelComplaintRow = Database['public']['Tables']['hostel_complaints']['Row'];
+export type HostelMessRecordRow = Database['public']['Tables']['hostel_mess_records']['Row'];
 
+export type InstitutionEventRow = Database['public']['Tables']['institution_events']['Row'];
+export type EventRegistrationRow = Database['public']['Tables']['event_registrations']['Row'];
+export type EventAttendanceRow = Database['public']['Tables']['event_attendance']['Row'];
+export type EventCertificateRow = Database['public']['Tables']['event_certificates']['Row'];
 

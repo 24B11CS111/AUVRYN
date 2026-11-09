@@ -344,4 +344,49 @@ describe('Unit: RBAC Permissions Matrix & Hierarchy', () => {
       expect(checkPermission(r, 'transport:driver')).toBe(false);
     }
   });
+
+  it('correctly maps Milestone 11 Library, Hostel, and Events permissions across roles', () => {
+    // Owners and Admins have full library, hostel, and events authority
+    for (const r of ['owner', 'admin'] as const) {
+      expect(checkPermission(r, 'library:manage')).toBe(true);
+      expect(checkPermission(r, 'library:view')).toBe(true);
+      expect(checkPermission(r, 'library:issue')).toBe(true);
+      expect(checkPermission(r, 'library:catalog')).toBe(true);
+      expect(checkPermission(r, 'hostel:manage')).toBe(true);
+      expect(checkPermission(r, 'hostel:view')).toBe(true);
+      expect(checkPermission(r, 'hostel:allocate')).toBe(true);
+      expect(checkPermission(r, 'hostel:outpass')).toBe(true);
+      expect(checkPermission(r, 'events:manage')).toBe(true);
+      expect(checkPermission(r, 'events:view')).toBe(true);
+      expect(checkPermission(r, 'events:register')).toBe(true);
+      expect(checkPermission(r, 'events:certify')).toBe(true);
+    }
+
+    // Staff have desk operations (issue, catalog, outpass, register, certify)
+    expect(checkPermission('staff', 'library:view')).toBe(true);
+    expect(checkPermission('staff', 'library:issue')).toBe(true);
+    expect(checkPermission('staff', 'library:catalog')).toBe(true);
+    expect(checkPermission('staff', 'hostel:view')).toBe(true);
+    expect(checkPermission('staff', 'hostel:outpass')).toBe(true);
+    expect(checkPermission('staff', 'events:view')).toBe(true);
+    expect(checkPermission('staff', 'events:register')).toBe(true);
+    expect(checkPermission('staff', 'events:certify')).toBe(true);
+    expect(checkPermission('staff', 'library:manage')).toBe(false);
+    expect(checkPermission('staff', 'hostel:manage')).toBe(false);
+    expect(checkPermission('staff', 'events:manage')).toBe(false);
+
+    // Students and Parents have view & register access, but cannot issue, allocate, or certify
+    for (const r of ['student', 'parent'] as const) {
+      expect(checkPermission(r, 'library:view')).toBe(true);
+      expect(checkPermission(r, 'hostel:view')).toBe(true);
+      expect(checkPermission(r, 'events:view')).toBe(true);
+      expect(checkPermission(r, 'events:register')).toBe(true);
+      expect(checkPermission(r, 'library:manage')).toBe(false);
+      expect(checkPermission(r, 'library:issue')).toBe(false);
+      expect(checkPermission(r, 'hostel:manage')).toBe(false);
+      expect(checkPermission(r, 'hostel:allocate')).toBe(false);
+      expect(checkPermission(r, 'events:manage')).toBe(false);
+      expect(checkPermission(r, 'events:certify')).toBe(false);
+    }
+  });
 });

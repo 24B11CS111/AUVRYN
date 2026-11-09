@@ -216,7 +216,19 @@ export type Permission =
   | 'transport:journey_manage'
   | 'transport:track'
   | 'transport:board'
-  | 'transport:driver';
+  | 'transport:driver'
+  | 'library:manage'
+  | 'library:view'
+  | 'library:issue'
+  | 'library:catalog'
+  | 'hostel:manage'
+  | 'hostel:view'
+  | 'hostel:allocate'
+  | 'hostel:outpass'
+  | 'events:manage'
+  | 'events:view'
+  | 'events:register'
+  | 'events:certify';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -290,6 +302,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'transport:track',
     'transport:board',
     'transport:driver',
+    'library:manage',
+    'library:view',
+    'library:issue',
+    'library:catalog',
+    'hostel:manage',
+    'hostel:view',
+    'hostel:allocate',
+    'hostel:outpass',
+    'events:manage',
+    'events:view',
+    'events:register',
+    'events:certify',
   ],
   admin: [
     'institution:manage',
@@ -361,6 +385,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'transport:track',
     'transport:board',
     'transport:driver',
+    'library:manage',
+    'library:view',
+    'library:issue',
+    'library:catalog',
+    'hostel:manage',
+    'hostel:view',
+    'hostel:allocate',
+    'hostel:outpass',
+    'events:manage',
+    'events:view',
+    'events:register',
+    'events:certify',
   ],
   hr_administrator: [
     'institution:view',
@@ -386,6 +422,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'messages:send',
     'notifications:manage',
     'transport:view',
+    'events:view',
   ],
   academic_admin: [
     'institution:view',
@@ -434,6 +471,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'notifications:manage',
     'transport:view',
     'transport:assign',
+    'library:manage',
+    'library:view',
+    'library:catalog',
+    'hostel:view',
+    'events:manage',
+    'events:view',
+    'events:register',
+    'events:certify',
   ],
   department_head: [
     'institution:view',
@@ -473,6 +518,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:grade',
     'notifications:manage',
     'transport:view',
+    'library:view',
+    'hostel:view',
+    'events:view',
+    'events:register',
   ],
   admissions_officer: [
     'institution:view',
@@ -499,6 +548,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'announcements:view',
     'messages:send',
     'transport:view',
+    'hostel:view',
+    'hostel:allocate',
+    'events:view',
   ],
   faculty: [
     'institution:view',
@@ -527,6 +579,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:grade',
     'transport:view',
     'transport:board',
+    'library:view',
+    'events:view',
+    'events:register',
   ],
   staff: [
     'institution:view',
@@ -548,6 +603,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'transport:track',
     'transport:board',
     'transport:driver',
+    'library:view',
+    'library:issue',
+    'library:catalog',
+    'hostel:view',
+    'hostel:outpass',
+    'events:view',
+    'events:register',
+    'events:certify',
   ],
   accountant: [
     'institution:view',
@@ -571,6 +634,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'announcements:view',
     'messages:send',
     'transport:view',
+    'library:view',
+    'hostel:view',
   ],
   student: [
     'institution:view',
@@ -592,6 +657,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:submit',
     'transport:view',
     'transport:track',
+    'library:view',
+    'hostel:view',
+    'hostel:outpass',
+    'events:view',
+    'events:register',
   ],
   parent: [
     'institution:view',
@@ -614,6 +684,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'homework:manage',
     'transport:view',
     'transport:track',
+    'library:view',
+    'hostel:view',
+    'hostel:outpass',
+    'events:view',
+    'events:register',
   ],
 };
 
@@ -3177,3 +3252,549 @@ export interface ParentPortalTransportData {
 
 
 
+
+
+// ==============================================================================
+// 12. Library Management Types
+// ==============================================================================
+
+export type LibraryCopyStatus =
+  | 'available'
+  | 'issued'
+  | 'reserved'
+  | 'lost'
+  | 'damaged'
+  | 'under_repair'
+  | 'weeded';
+
+export type LibraryCirculationStatus =
+  | 'issued'
+  | 'returned'
+  | 'overdue'
+  | 'lost'
+  | 'damaged';
+
+export type LibraryReservationStatus =
+  | 'pending'
+  | 'fulfilled'
+  | 'cancelled'
+  | 'expired';
+
+export type LibraryFineStatus =
+  | 'pending'
+  | 'paid'
+  | 'waived';
+
+export type LibraryResourceType =
+  | 'ebook'
+  | 'journal'
+  | 'thesis'
+  | 'audio'
+  | 'video'
+  | 'other';
+
+export interface LibraryBranch {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  name: string;
+  code: string;
+  location?: string | null;
+  openingHours?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryBook {
+  id: string;
+  institutionId: string;
+  branchId?: string | null;
+  title: string;
+  author: string;
+  isbn?: string | null;
+  publisher?: string | null;
+  category: string;
+  edition?: string | null;
+  subject?: string | null;
+  deweyDecimal?: string | null;
+  description?: string | null;
+  coverUrl?: string | null;
+  pages?: number | null;
+  language?: string | null;
+  totalCopies?: number;
+  availableCopies?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryBookCopy {
+  id: string;
+  institutionId: string;
+  bookId: string;
+  branchId?: string | null;
+  accessionNumber: string;
+  barcode: string;
+  copyNumber: number;
+  status: LibraryCopyStatus;
+  condition: string;
+  shelfLocation?: string | null;
+  price?: number;
+  book?: LibraryBook;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryMember {
+  id: string;
+  institutionId: string;
+  memberType: 'student' | 'staff';
+  studentId?: string | null;
+  staffId?: string | null;
+  membershipNumber: string;
+  barcode: string;
+  maxBooksAllowed: number;
+  borrowDurationDays: number;
+  status: 'active' | 'suspended' | 'expired';
+  notes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  staff?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    employeeId: string;
+  };
+  currentIssuesCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryCirculation {
+  id: string;
+  institutionId: string;
+  copyId: string;
+  memberId: string;
+  issuedAt: string;
+  dueDate: string;
+  returnedAt?: string | null;
+  renewalCount: number;
+  maxRenewals: number;
+  status: LibraryCirculationStatus;
+  issuedBy?: string | null;
+  receivedBy?: string | null;
+  notes?: string | null;
+  copy?: LibraryBookCopy;
+  member?: LibraryMember;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryReservation {
+  id: string;
+  institutionId: string;
+  bookId: string;
+  memberId: string;
+  reservedAt: string;
+  expiresAt: string;
+  status: LibraryReservationStatus;
+  fulfilledAt?: string | null;
+  cancelledAt?: string | null;
+  book?: LibraryBook;
+  member?: LibraryMember;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryFine {
+  id: string;
+  institutionId: string;
+  circulationId?: string | null;
+  memberId: string;
+  amount: number;
+  reason: 'overdue' | 'lost_book' | 'damaged_book' | 'other';
+  status: LibraryFineStatus;
+  paidAt?: string | null;
+  waivedAt?: string | null;
+  waivedBy?: string | null;
+  waiverReason?: string | null;
+  receiptNumber?: string | null;
+  feeRecordId?: string | null;
+  notes?: string | null;
+  member?: LibraryMember;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryDigitalResource {
+  id: string;
+  institutionId: string;
+  branchId?: string | null;
+  title: string;
+  author?: string | null;
+  resourceType: LibraryResourceType;
+  category: string;
+  fileUrl?: string | null;
+  externalUrl?: string | null;
+  accessLevel: 'all_members' | 'staff_only' | 'students_only';
+  downloadCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibrarySettings {
+  id: string;
+  institutionId: string;
+  finePerDay: number;
+  gracePeriodDays: number;
+  maxFinePerBook: number;
+  defaultLoanDaysStudent: number;
+  defaultLoanDaysStaff: number;
+  maxBooksStudent: number;
+  maxBooksStaff: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==============================================================================
+// 13. Hostel Management Types
+// ==============================================================================
+
+export type HostelGenderPolicy = 'boys' | 'girls' | 'coed';
+export type HostelRoomType = 'single' | 'double' | 'triple' | 'dormitory';
+export type HostelAllocationStatus = 'active' | 'vacated' | 'cancelled';
+export type HostelOutpassStatus =
+  | 'pending_consent'
+  | 'pending_approval'
+  | 'approved'
+  | 'rejected'
+  | 'checked_out'
+  | 'completed'
+  | 'overdue';
+export type HostelComplaintCategory =
+  | 'electrical'
+  | 'plumbing'
+  | 'carpentry'
+  | 'cleaning'
+  | 'internet'
+  | 'other';
+export type HostelComplaintStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export interface HostelBuilding {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  name: string;
+  buildingCode: string;
+  genderPolicy: HostelGenderPolicy;
+  totalFloors: number;
+  wardenId?: string | null;
+  assistantWardenId?: string | null;
+  caretakerContact?: string | null;
+  address?: string | null;
+  status: 'active' | 'inactive' | 'maintenance';
+  warden?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  };
+  totalRooms?: number;
+  totalBeds?: number;
+  occupiedBeds?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelRoom {
+  id: string;
+  institutionId: string;
+  buildingId: string;
+  roomNumber: string;
+  floorNumber: number;
+  roomType: HostelRoomType;
+  bedCapacity: number;
+  isAc: boolean;
+  isAttachedWashroom: boolean;
+  baseFeeMonthly?: number;
+  status: 'available' | 'full' | 'maintenance' | 'inactive';
+  building?: HostelBuilding;
+  beds?: HostelBed[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelBed {
+  id: string;
+  institutionId: string;
+  roomId: string;
+  bedNumber: string;
+  status: 'available' | 'occupied' | 'maintenance';
+  room?: HostelRoom;
+  activeAllocation?: HostelAllocation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelAllocation {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  bedId: string;
+  academicYearId: string;
+  allocatedFrom: string;
+  allocatedTo?: string | null;
+  vacatedAt?: string | null;
+  status: HostelAllocationStatus;
+  feeStructureId?: string | null;
+  notes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  bed?: HostelBed;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelApplication {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  academicYearId: string;
+  preferredBuildingId?: string | null;
+  preferredRoomType?: HostelRoomType | null;
+  reason?: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  preferredBuilding?: HostelBuilding;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelRoomTransfer {
+  id: string;
+  institutionId: string;
+  allocationId: string;
+  targetBedId?: string | null;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  allocation?: HostelAllocation;
+  targetBed?: HostelBed;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelOutpass {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  departureTime: string;
+  expectedReturnTime: string;
+  actualDepartureTime?: string | null;
+  actualReturnTime?: string | null;
+  purpose: string;
+  destination: string;
+  emergencyContact: string;
+  parentConsentStatus: 'not_required' | 'pending' | 'approved' | 'rejected';
+  parentConsentBy?: string | null;
+  parentConsentAt?: string | null;
+  wardenStatus: 'pending' | 'approved' | 'rejected';
+  wardenApprovedBy?: string | null;
+  wardenApprovedAt?: string | null;
+  status: HostelOutpassStatus;
+  gatePassCode: string;
+  rejectionReason?: string | null;
+  notes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelVisitor {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  visitorName: string;
+  relationship: string;
+  idProofType?: string | null;
+  idProofNumber?: string | null;
+  contactPhone: string;
+  checkInTime: string;
+  checkOutTime?: string | null;
+  purpose?: string | null;
+  checkedInBy?: string | null;
+  notes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelComplaint {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  roomId?: string | null;
+  category: HostelComplaintCategory;
+  title: string;
+  description: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: HostelComplaintStatus;
+  assignedTo?: string | null;
+  resolvedAt?: string | null;
+  resolutionNotes?: string | null;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  room?: HostelRoom;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostelMessRecord {
+  id: string;
+  institutionId: string;
+  studentId: string;
+  mealPlan: 'vegetarian' | 'non_vegetarian' | 'jain' | 'special';
+  dietaryNotes?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  status: 'active' | 'suspended' | 'cancelled';
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==============================================================================
+// 14. Events & Activities Types
+// ==============================================================================
+
+export type InstitutionEventType =
+  | 'academic'
+  | 'cultural'
+  | 'sports'
+  | 'workshop'
+  | 'seminar'
+  | 'club_activity'
+  | 'competition'
+  | 'other';
+
+export type EventStatus = 'draft' | 'published' | 'ongoing' | 'completed' | 'cancelled';
+export type EventRegistrationStatus = 'registered' | 'waitlisted' | 'confirmed' | 'cancelled';
+export type EventCertificateType = 'participation' | 'merit' | 'winner' | 'runner_up';
+
+export interface InstitutionEvent {
+  id: string;
+  institutionId: string;
+  campusId?: string | null;
+  title: string;
+  eventType: InstitutionEventType;
+  description?: string | null;
+  venue: string;
+  startTime: string;
+  endTime: string;
+  registrationDeadline?: string | null;
+  maxParticipants: number;
+  isRegistrationOpen: boolean;
+  organizerStaffId?: string | null;
+  status: EventStatus;
+  bannerUrl?: string | null;
+  organizer?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  registeredCount?: number;
+  attendedCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  institutionId: string;
+  eventId: string;
+  participantCategory: 'student' | 'staff' | 'guest';
+  studentId?: string | null;
+  staffId?: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  status: EventRegistrationStatus;
+  registeredAt: string;
+  ticketCode: string;
+  notes?: string | null;
+  event?: InstitutionEvent;
+  student?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    admissionNumber: string;
+  };
+  staff?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  attendance?: EventAttendance;
+  certificate?: EventCertificate;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventAttendance {
+  id: string;
+  institutionId: string;
+  registrationId: string;
+  checkedInAt: string;
+  checkedInBy?: string | null;
+  createdAt: string;
+}
+
+export interface EventCertificate {
+  id: string;
+  institutionId: string;
+  registrationId: string;
+  certificateNumber: string;
+  certificateType: EventCertificateType;
+  title: string;
+  issuedAt: string;
+  issuedBy?: string | null;
+  certificateUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -28,6 +28,9 @@ import {
   User,
   HeartHandshake,
   Bus,
+  Library,
+  Building2,
+  Calendar,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -138,6 +141,24 @@ export function Sidebar({
       href: '/dashboard/transport',
       icon: Bus,
       roles: ['owner', 'admin', 'academic_admin', 'staff', 'faculty', 'student', 'parent'],
+    },
+    {
+      label: 'Library',
+      href: '/dashboard/library',
+      icon: Library,
+      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+    },
+    {
+      label: 'Hostel',
+      href: '/dashboard/hostel',
+      icon: Building2,
+      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+    },
+    {
+      label: 'Events',
+      href: '/dashboard/events',
+      icon: Calendar,
+      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
     },
     {
       label: 'Parent Portal',

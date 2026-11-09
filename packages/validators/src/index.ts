@@ -2292,3 +2292,483 @@ export type TransportSettingsUpdateInput = z.input<typeof transportSettingsUpdat
 
 
 
+
+
+// ==============================================================================
+// 12. Library Management Validators
+// ==============================================================================
+
+export const libraryCopyStatusEnum = z.enum([
+  'available',
+  'issued',
+  'reserved',
+  'lost',
+  'damaged',
+  'under_repair',
+  'weeded',
+]);
+
+export const libraryCirculationStatusEnum = z.enum([
+  'issued',
+  'returned',
+  'overdue',
+  'lost',
+  'damaged',
+]);
+
+export const libraryReservationStatusEnum = z.enum([
+  'pending',
+  'fulfilled',
+  'cancelled',
+  'expired',
+]);
+
+export const libraryFineStatusEnum = z.enum([
+  'pending',
+  'paid',
+  'waived',
+]);
+
+export const libraryResourceTypeEnum = z.enum([
+  'ebook',
+  'journal',
+  'thesis',
+  'audio',
+  'video',
+  'other',
+]);
+
+export const createLibraryBranchSchema = z.object({
+  name: z.string().trim().min(2, 'Branch name must be at least 2 characters').max(100),
+  code: z.string().trim().min(2, 'Branch code must be at least 2 characters').max(30),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+  location: z.string().trim().max(200).optional().nullable().or(z.literal('')),
+  openingHours: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+});
+
+export type CreateLibraryBranchInput = z.input<typeof createLibraryBranchSchema>;
+
+export const createLibraryBookSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(255),
+  author: z.string().trim().min(1, 'Author is required').max(200),
+  isbn: z.string().trim().max(20).optional().nullable().or(z.literal('')),
+  publisher: z.string().trim().max(150).optional().nullable().or(z.literal('')),
+  category: z.string().trim().min(2, 'Category is required').max(100),
+  edition: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  subject: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  deweyDecimal: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  description: z.string().trim().max(1000).optional().nullable().or(z.literal('')),
+  coverUrl: z.string().url().optional().nullable().or(z.literal('')),
+  pages: z.coerce.number().int().min(1).optional().nullable(),
+  language: z.string().trim().max(50).default('English'),
+  branchId: z.string().uuid().optional().nullable().or(z.literal('')),
+});
+
+export type CreateLibraryBookInput = z.input<typeof createLibraryBookSchema>;
+
+export const createBookCopySchema = z.object({
+  bookId: z.string().uuid('Valid book ID is required'),
+  accessionNumber: z.string().trim().min(1, 'Accession number is required').max(50),
+  barcode: z.string().trim().min(1, 'Barcode is required').max(50),
+  copyNumber: z.coerce.number().int().min(1).default(1),
+  condition: z.string().trim().max(50).default('good'),
+  status: libraryCopyStatusEnum.optional().default('available'),
+  shelfLocation: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  price: z.coerce.number().min(0).default(0.00),
+  branchId: z.string().uuid().optional().nullable().or(z.literal('')),
+});
+
+export type CreateBookCopyInput = z.input<typeof createBookCopySchema>;
+export const createLibraryCopySchema = createBookCopySchema;
+export type CreateLibraryCopyInput = CreateBookCopyInput;
+
+export const createLibraryMemberSchema = z.object({
+  memberType: z.enum(['student', 'staff']),
+  studentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  staffId: z.string().uuid().optional().nullable().or(z.literal('')),
+  membershipNumber: z.string().trim().min(2, 'Membership number is required').max(50),
+  barcode: z.string().trim().min(2, 'Barcode is required').max(50),
+  maxBooksAllowed: z.coerce.number().int().min(1).default(3),
+  borrowDurationDays: z.coerce.number().int().min(1).default(14),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type CreateLibraryMemberInput = z.input<typeof createLibraryMemberSchema>;
+
+export const issueBookSchema = z.object({
+  copyId: z.string().uuid('Valid copy ID is required'),
+  memberId: z.string().uuid('Valid member ID is required'),
+  loanDays: z.coerce.number().int().min(1).max(90).optional(),
+  loanDurationDays: z.coerce.number().int().min(1).max(90).optional(),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+}).transform((data) => ({
+  ...data,
+  loanDays: data.loanDays ?? data.loanDurationDays ?? 14,
+  loanDurationDays: data.loanDurationDays ?? data.loanDays ?? 14,
+}));
+
+export type IssueBookInput = z.input<typeof issueBookSchema>;
+
+export const returnBookSchema = z.object({
+  circulationId: z.string().uuid('Valid circulation ID is required'),
+  condition: z.string().trim().max(50).default('good'),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type ReturnBookInput = z.input<typeof returnBookSchema>;
+
+export const renewBookSchema = z.object({
+  circulationId: z.string().uuid('Valid circulation ID is required'),
+  additionalDays: z.coerce.number().int().min(1).max(30).optional(),
+  extensionDays: z.coerce.number().int().min(1).max(30).optional(),
+}).transform((data) => ({
+  ...data,
+  additionalDays: data.additionalDays ?? data.extensionDays ?? 14,
+  extensionDays: data.extensionDays ?? data.additionalDays ?? 14,
+}));
+
+export type RenewBookInput = z.input<typeof renewBookSchema>;
+
+export const reserveBookSchema = z.object({
+  bookId: z.string().uuid('Valid book ID is required'),
+  memberId: z.string().uuid('Valid member ID is required'),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type ReserveBookInput = z.input<typeof reserveBookSchema>;
+export const createReservationSchema = reserveBookSchema;
+export type CreateReservationInput = ReserveBookInput;
+
+export const settleFineSchema = z.object({
+  fineId: z.string().uuid('Valid fine ID is required'),
+  isWaived: z.boolean().default(false),
+  waiverReason: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+  receiptNumber: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+});
+
+export type SettleFineInput = z.input<typeof settleFineSchema>;
+
+export const payFineSchema = z.object({
+  fineId: z.string().uuid('Valid fine ID is required'),
+  paymentMethod: z.string().trim().default('cash'),
+  receiptNumber: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+});
+
+export type PayFineInput = z.input<typeof payFineSchema>;
+
+export const waiveFineSchema = z.object({
+  fineId: z.string().uuid('Valid fine ID is required'),
+  waiverReason: z.string().trim().min(3, 'Waiver reason must be at least 3 characters').max(300),
+  notes: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+});
+
+export type WaiveFineInput = z.input<typeof waiveFineSchema>;
+
+export const createDigitalResourceSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200),
+  author: z.string().trim().max(150).optional().nullable().or(z.literal('')),
+  resourceType: libraryResourceTypeEnum,
+  category: z.string().trim().min(2, 'Category is required').max(100),
+  fileUrl: z.string().url().optional().nullable().or(z.literal('')),
+  externalUrl: z.string().url().optional().nullable().or(z.literal('')),
+  accessLevel: z.enum(['all_members', 'staff_only', 'students_only']).default('all_members'),
+  branchId: z.string().uuid().optional().nullable().or(z.literal('')),
+});
+
+export type CreateDigitalResourceInput = z.input<typeof createDigitalResourceSchema>;
+
+export const updateLibrarySettingsSchema = z.object({
+  finePerDay: z.coerce.number().min(0).default(5.00),
+  gracePeriodDays: z.coerce.number().int().min(0).default(2),
+  maxFinePerBook: z.coerce.number().min(0).default(200.00),
+  defaultLoanDaysStudent: z.coerce.number().int().min(1).default(14),
+  defaultLoanDaysStaff: z.coerce.number().int().min(1).default(30),
+  maxBooksStudent: z.coerce.number().int().min(1).default(3),
+  maxBooksStaff: z.coerce.number().int().min(1).default(6),
+});
+
+export type UpdateLibrarySettingsInput = z.input<typeof updateLibrarySettingsSchema>;
+
+// ==============================================================================
+// 13. Hostel Management Validators
+// ==============================================================================
+
+export const hostelGenderPolicyEnum = z.enum(['boys', 'girls', 'coed']);
+export const hostelRoomTypeEnum = z.enum(['single', 'double', 'triple', 'dormitory']);
+export const hostelAllocationStatusEnum = z.enum(['active', 'vacated', 'cancelled']);
+export const hostelOutpassStatusEnum = z.enum([
+  'pending_consent',
+  'pending_approval',
+  'approved',
+  'rejected',
+  'departed',
+  'checked_out',
+  'completed',
+  'overdue',
+]);
+export const hostelComplaintCategoryEnum = z.enum([
+  'electrical',
+  'plumbing',
+  'carpentry',
+  'cleaning',
+  'internet',
+  'other',
+]);
+export const hostelComplaintStatusEnum = z.enum(['open', 'in_progress', 'resolved', 'closed']);
+
+export const createHostelBuildingSchema = z.object({
+  name: z.string().trim().min(2, 'Building name must be at least 2 characters').max(100),
+  buildingCode: z.string().trim().min(1, 'Building code is required').max(30),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+  genderPolicy: hostelGenderPolicyEnum,
+  totalFloors: z.coerce.number().int().min(1).default(1),
+  wardenId: z.string().uuid().optional().nullable().or(z.literal('')),
+  assistantWardenId: z.string().uuid().optional().nullable().or(z.literal('')),
+  caretakerContact: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  address: z.string().trim().max(255).optional().nullable().or(z.literal('')),
+  status: z.enum(['active', 'inactive', 'maintenance']).optional().default('active'),
+});
+
+export type CreateHostelBuildingInput = z.input<typeof createHostelBuildingSchema>;
+
+export const createHostelRoomSchema = z.object({
+  buildingId: z.string().uuid('Valid building ID is required'),
+  roomNumber: z.string().trim().min(1, 'Room number is required').max(20),
+  floorNumber: z.coerce.number().int().min(0).default(0),
+  roomType: hostelRoomTypeEnum,
+  bedCapacity: z.coerce.number().int().min(1).max(20).default(2),
+  isAc: z.boolean().default(false),
+  isAttachedWashroom: z.boolean().default(false),
+  baseFeeMonthly: z.coerce.number().min(0).default(0.00),
+});
+
+export type CreateHostelRoomInput = z.input<typeof createHostelRoomSchema>;
+
+export const createHostelBedSchema = z.object({
+  roomId: z.string().uuid('Valid room ID is required'),
+  bedNumber: z.string().trim().min(1, 'Bed number is required').max(10),
+  status: z.enum(['available', 'occupied', 'maintenance']).optional().default('available'),
+});
+
+export type CreateHostelBedInput = z.input<typeof createHostelBedSchema>;
+
+export const allocateHostelBedSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  bedId: z.string().uuid('Valid bed ID is required'),
+  academicYearId: z.string().uuid('Valid academic year ID is required'),
+  allocatedFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD'),
+  allocatedTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD').optional().nullable().or(z.literal('')),
+  feeStructureId: z.string().uuid().optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type AllocateHostelBedInput = z.input<typeof allocateHostelBedSchema>;
+export const allocateBedSchema = allocateHostelBedSchema;
+export type AllocateBedInput = AllocateHostelBedInput;
+
+export const vacateHostelBedSchema = z.object({
+  allocationId: z.string().uuid('Valid allocation ID is required'),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type VacateHostelBedInput = z.input<typeof vacateHostelBedSchema>;
+export const vacateBedSchema = vacateHostelBedSchema;
+export type VacateBedInput = VacateHostelBedInput;
+
+export const createHostelApplicationSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  academicYearId: z.string().uuid('Valid academic year ID is required'),
+  preferredBuildingId: z.string().uuid().optional().nullable().or(z.literal('')),
+  preferredRoomType: hostelRoomTypeEnum.optional().nullable(),
+  reason: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type CreateHostelApplicationInput = z.input<typeof createHostelApplicationSchema>;
+export const submitHostelApplicationSchema = createHostelApplicationSchema;
+export type SubmitHostelApplicationInput = CreateHostelApplicationInput;
+
+export const reviewHostelApplicationSchema = z.object({
+  applicationId: z.string().uuid('Valid application ID is required'),
+  status: z.enum(['approved', 'rejected', 'waitlisted']),
+  reviewNotes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type ReviewHostelApplicationInput = z.input<typeof reviewHostelApplicationSchema>;
+
+export const createHostelRoomTransferSchema = z.object({
+  allocationId: z.string().uuid('Valid allocation ID is required'),
+  targetBedId: z.string().uuid().optional().nullable().or(z.literal('')),
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters').max(500),
+});
+
+export type CreateHostelRoomTransferInput = z.input<typeof createHostelRoomTransferSchema>;
+export const requestRoomTransferSchema = createHostelRoomTransferSchema;
+export type RequestRoomTransferInput = CreateHostelRoomTransferInput;
+
+export const createHostelOutpassSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  departureTime: z.string().datetime('Valid departure timestamp is required'),
+  expectedReturnTime: z.string().datetime('Valid expected return timestamp is required'),
+  purpose: z.string().trim().min(3, 'Purpose must be at least 3 characters').max(300),
+  destination: z.string().trim().min(3, 'Destination must be at least 3 characters').max(200),
+  emergencyContact: z.string().trim().min(5, 'Emergency contact is required').max(50),
+  parentConsentStatus: z.enum(['not_required', 'pending', 'approved', 'rejected']).optional().default('pending'),
+  notes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type CreateHostelOutpassInput = z.input<typeof createHostelOutpassSchema>;
+export const createOutpassSchema = createHostelOutpassSchema;
+export type CreateOutpassInput = CreateHostelOutpassInput;
+
+export const updateOutpassStatusSchema = z.object({
+  outpassId: z.string().uuid('Valid outpass ID is required'),
+  action: z.enum(['approve_consent', 'reject_consent', 'approve_warden', 'reject_warden', 'check_out', 'check_in']).optional(),
+  status: hostelOutpassStatusEnum.optional(),
+  rejectionReason: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+});
+
+export type UpdateOutpassStatusInput = z.input<typeof updateOutpassStatusSchema>;
+
+export const createHostelVisitorSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  visitorName: z.string().trim().min(2, 'Visitor name is required').max(100),
+  relationship: z.string().trim().min(2, 'Relationship is required').max(50),
+  idProofType: z.string().trim().max(50).default('government_id'),
+  idProofNumber: z.string().trim().max(50).optional().nullable().or(z.literal('')),
+  contactPhone: z.string().trim().min(5, 'Phone number is required').max(20),
+  purpose: z.string().trim().max(200).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+});
+
+export type CreateHostelVisitorInput = z.input<typeof createHostelVisitorSchema>;
+export const registerVisitorSchema = createHostelVisitorSchema;
+export type RegisterVisitorInput = CreateHostelVisitorInput;
+
+export const createHostelComplaintSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  roomId: z.string().uuid().optional().nullable().or(z.literal('')),
+  category: hostelComplaintCategoryEnum,
+  title: z.string().trim().min(3, 'Title is required').max(150),
+  description: z.string().trim().min(5, 'Description is required').max(1000),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+});
+
+export type CreateHostelComplaintInput = z.input<typeof createHostelComplaintSchema>;
+export const createComplaintSchema = createHostelComplaintSchema;
+export type CreateComplaintInput = CreateHostelComplaintInput;
+
+export const resolveHostelComplaintSchema = z.object({
+  complaintId: z.string().uuid('Valid complaint ID is required'),
+  status: hostelComplaintStatusEnum,
+  resolutionNotes: z.string().trim().max(500).optional().nullable().or(z.literal('')),
+});
+
+export type ResolveHostelComplaintInput = z.input<typeof resolveHostelComplaintSchema>;
+export const resolveComplaintSchema = resolveHostelComplaintSchema;
+export type ResolveComplaintInput = ResolveHostelComplaintInput;
+
+export const createHostelMessRecordSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  mealPlan: z.enum(['vegetarian', 'non_vegetarian', 'jain', 'special']),
+  dietaryNotes: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD').optional().nullable().or(z.literal('')),
+});
+
+export type CreateHostelMessRecordInput = z.input<typeof createHostelMessRecordSchema>;
+export const manageMessSchema = createHostelMessRecordSchema;
+export type ManageMessInput = CreateHostelMessRecordInput;
+
+// ==============================================================================
+// 14. Events & Activities Validators
+// ==============================================================================
+
+export const institutionEventTypeEnum = z.enum([
+  'academic',
+  'cultural',
+  'sports',
+  'workshop',
+  'seminar',
+  'club_activity',
+  'competition',
+  'other',
+]);
+
+export const eventStatusEnum = z.enum([
+  'draft',
+  'published',
+  'ongoing',
+  'completed',
+  'cancelled',
+]);
+
+export const eventRegistrationStatusEnum = z.enum([
+  'registered',
+  'waitlisted',
+  'confirmed',
+  'cancelled',
+]);
+
+export const eventCertificateTypeEnum = z.enum([
+  'participation',
+  'merit',
+  'winner',
+  'runner_up',
+]);
+
+export const createInstitutionEventSchema = z.object({
+  title: z.string().trim().min(2, 'Title is required').max(150),
+  eventType: institutionEventTypeEnum,
+  description: z.string().trim().max(2000).optional().nullable().or(z.literal('')),
+  venue: z.string().trim().min(2, 'Venue is required').max(150),
+  startTime: z.string().datetime('Valid start timestamp is required'),
+  endTime: z.string().datetime('Valid end timestamp is required'),
+  registrationDeadline: z.string().datetime().optional().nullable().or(z.literal('')),
+  maxParticipants: z.coerce.number().int().min(0).default(0),
+  isRegistrationOpen: z.boolean().default(true),
+  organizerStaffId: z.string().uuid().optional().nullable().or(z.literal('')),
+  campusId: z.string().uuid().optional().nullable().or(z.literal('')),
+  bannerUrl: z.string().url().optional().nullable().or(z.literal('')),
+  status: eventStatusEnum.default('draft'),
+});
+
+export type CreateInstitutionEventInput = z.input<typeof createInstitutionEventSchema>;
+
+export const updateEventStatusSchema = z.object({
+  eventId: z.string().uuid('Valid event ID is required'),
+  status: eventStatusEnum,
+});
+
+export type UpdateEventStatusInput = z.input<typeof updateEventStatusSchema>;
+
+export const registerEventParticipantSchema = z.object({
+  eventId: z.string().uuid('Valid event ID is required'),
+  participantCategory: z.enum(['student', 'staff', 'guest']),
+  studentId: z.string().uuid().optional().nullable().or(z.literal('')),
+  staffId: z.string().uuid().optional().nullable().or(z.literal('')),
+  guestName: z.string().trim().max(100).optional().nullable().or(z.literal('')),
+  guestEmail: z.string().email().optional().nullable().or(z.literal('')),
+  guestPhone: z.string().trim().max(20).optional().nullable().or(z.literal('')),
+  notes: z.string().trim().max(300).optional().nullable().or(z.literal('')),
+});
+
+export type RegisterEventParticipantInput = z.input<typeof registerEventParticipantSchema>;
+
+export const checkInEventParticipantSchema = z.object({
+  registrationId: z.string().uuid('Valid registration ID is required'),
+});
+
+export type CheckInEventParticipantInput = z.input<typeof checkInEventParticipantSchema>;
+export const recordEventAttendanceSchema = checkInEventParticipantSchema;
+export type RecordEventAttendanceInput = CheckInEventParticipantInput;
+
+export const issueEventCertificateSchema = z.object({
+  registrationId: z.string().uuid('Valid registration ID is required'),
+  certificateNumber: z.string().trim().max(50).optional().default(() => 'CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase()),
+  certificateType: eventCertificateTypeEnum,
+  title: z.string().trim().min(2, 'Certificate title is required').max(150),
+  certificateUrl: z.string().url().optional().nullable().or(z.literal('')),
+});
+
+export type IssueEventCertificateInput = z.input<typeof issueEventCertificateSchema>;

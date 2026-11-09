@@ -58,6 +58,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
   const [isGpsSharingActive, setIsGpsSharingActive] = useState<boolean>(false);
   const [offlineEventQueue, setOfflineEventQueue] = useState<any[]>([]);
 
+  // Milestone 11: Library, Hostel, Events
+  const [librarySummary, setLibrarySummary] = useState<{
+    borrowedCount: number;
+    nearestDueDate: string | null;
+    books: { id: string; title: string; dueDate: string }[];
+  } | null>(null);
+  const [hostelSummary, setHostelSummary] = useState<{
+    allocation: any | null;
+    latestOutpass: any | null;
+  } | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+
   const fetchData = async () => {
     const client = supabase;
     if (!client) {
@@ -160,8 +172,79 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
               attendancePct: pct,
               pendingHomework: hwCount || 0,
             });
+
+            // Milestone 11 queries for student
+            const { data: libMember } = await client
+              .from('library_members')
+              .select('id, membership_number')
+              .eq('institution_id', activeInstId)
+              .eq('student_id', st.id)
+              .maybeSingle();
+
+            let activeCircs: any[] = [];
+            if (libMember) {
+              const { data: circs } = await (client as any)
+                .from('library_circulations')
+                .select('id, due_date, status, copy:library_book_copies(book:library_books(title))')
+                .eq('institution_id', activeInstId)
+                .eq('member_id', libMember.id)
+                .eq('status', 'issued');
+              activeCircs = circs || [];
+            }
+
+            const [
+              { data: hostelAlloc },
+              { data: latestOutpass },
+            ] = await Promise.all([
+              (client as any)
+                .from('hostel_allocations')
+                .select('id, status, bed:hostel_beds(bed_number, room:hostel_rooms(room_number, building:hostel_buildings(name)))')
+                .eq('institution_id', activeInstId)
+                .eq('student_id', st.id)
+                .eq('status', 'active')
+                .maybeSingle(),
+              client
+                .from('hostel_outpasses')
+                .select('id, purpose, destination, departure_time, expected_return_time, status, gate_pass_code')
+                .eq('institution_id', activeInstId)
+                .eq('student_id', st.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            ]);
+
+            const nearestDue =
+              activeCircs.length > 0
+                ? activeCircs.map((c: any) => c.due_date).sort()[0]
+                : null;
+
+            setLibrarySummary({
+              borrowedCount: activeCircs.length,
+              nearestDueDate: nearestDue,
+              books: activeCircs.map((c: any) => ({
+                id: c.id,
+                title: c.copy?.book?.title || 'Library Title',
+                dueDate: c.due_date,
+              })),
+            });
+
+            setHostelSummary({
+              allocation: hostelAlloc || null,
+              latestOutpass: latestOutpass || null,
+            });
           }
         }
+
+        // Fetch upcoming campus events for all roles
+        const { data: eventsList } = await client
+          .from('institution_events')
+          .select('id, title, event_type, venue, start_time')
+          .eq('institution_id', activeInstId)
+          .eq('status', 'published')
+          .order('start_time', { ascending: true })
+          .limit(3);
+
+        setUpcomingEvents(eventsList || []);
 
         // If staff, check if assigned as driver for today's journeys
         const { data: staffMember } = await client
@@ -369,6 +452,89 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
               <Text style={styles.statLabel}>Assignments</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Student Library Loans Card */}
+      {librarySummary && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Library & Borrowed Books</Text>
+          <View style={styles.card}>
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statNumber}>{librarySummary.borrowedCount}</Text>
+                <Text style={styles.statLabel}>Books on Loan</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={[styles.statNumber, { fontSize: 13, color: '#dc2626' }]}>
+                  {librarySummary.nearestDueDate || 'None'}
+                </Text>
+                <Text style={styles.statLabel}>Next Due Date</Text>
+              </View>
+            </View>
+
+            {librarySummary.books.length > 0 && (
+              <View style={styles.bookList}>
+                {librarySummary.books.map((b) => (
+                  <View key={b.id} style={styles.bookItem}>
+                    <Text style={styles.bookTitle} numberOfLines={1}>{b.title}</Text>
+                    <Text style={styles.bookDue}>Due: {b.dueDate}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Hostel & Outpasses Card */}
+      {hostelSummary?.allocation && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Hostel & Boarding</Text>
+          <View style={styles.card}>
+            <Text style={styles.hostelRoomText}>
+              Bed {hostelSummary.allocation.bed?.bed_number} • Room {hostelSummary.allocation.bed?.room?.room_number}
+            </Text>
+            <Text style={styles.hostelBlockText}>
+              {hostelSummary.allocation.bed?.room?.building?.name || 'Hostel Block'}
+            </Text>
+
+            {hostelSummary.latestOutpass && (
+              <View style={styles.outpassBox}>
+                <Text style={styles.outpassTitle}>
+                  Latest Outpass: {hostelSummary.latestOutpass.purpose}
+                </Text>
+                <Text style={styles.outpassSub}>
+                  Destination: {hostelSummary.latestOutpass.destination}
+                </Text>
+                <View style={styles.gatePassBadge}>
+                  <Text style={styles.gatePassText}>
+                    Status: {hostelSummary.latestOutpass.status.toUpperCase()} • Code: {hostelSummary.latestOutpass.gate_pass_code}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Campus Events Card */}
+      {upcomingEvents.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upcoming Campus Events</Text>
+          {upcomingEvents.map((evt) => (
+            <View key={evt.id} style={styles.eventCard}>
+              <View style={styles.eventHeader}>
+                <Text style={styles.eventTitle}>{evt.title}</Text>
+                <View style={styles.eventTypeBadge}>
+                  <Text style={styles.eventTypeText}>{evt.event_type.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Text style={styles.eventSub}>
+                {evt.venue} • {evt.start_time?.split('T')[0]} {evt.start_time?.split('T')[1]?.slice(0, 5)}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -888,5 +1054,107 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#92400e',
     fontWeight: '600',
+  },
+  bookList: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 8,
+  },
+  bookItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  bookTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1e293b',
+    flex: 1,
+    marginRight: 8,
+  },
+  bookDue: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: 'monospace',
+  },
+  hostelRoomText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  hostelBlockText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  outpassBox: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 6,
+  },
+  outpassTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  outpassSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  gatePassBadge: {
+    marginTop: 6,
+    backgroundColor: '#e0f2fe',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  gatePassText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0369a1',
+  },
+  eventCard: {
+    backgroundColor: '#ffffff',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 8,
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  eventTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    flex: 1,
+    marginRight: 8,
+  },
+  eventTypeBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  eventTypeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  eventSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 4,
   },
 });
