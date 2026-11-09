@@ -78,24 +78,34 @@ export async function registerDevicePushTokenAsync(
 
     activePushToken = token;
 
-    // 4. Upsert into database under user's own authenticated scope
+    // 4. Register in database under user's authenticated scope
     const client = supabase;
     if (client) {
-      const { error: dbError } = await client.from('push_device_tokens').upsert(
-        {
-          user_id: userId,
-          token,
-          platform: (Platform.OS === 'ios' ? 'ios' : 'android') as 'ios' | 'android',
-          app_version: '1.0.0',
-          is_active: true,
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: 'token' }
-      );
+      // First attempt the atomic procedure which safely handles shared-device account switching
+      const { error: rpcError } = await client.rpc('register_push_device_token_atomic', {
+        p_token: token,
+        p_platform: Platform.OS === 'ios' ? 'ios' : 'android',
+        p_app_version: '1.0.0',
+      });
 
-      if (dbError) {
-        console.warn('[NotificationService] Database registration error:', dbError.message);
-        return { success: false, error: dbError.message };
+      if (rpcError) {
+        // Fallback to direct upsert if RPC is unavailable in legacy test harnesses
+        const { error: dbError } = await client.from('push_device_tokens').upsert(
+          {
+            user_id: userId,
+            token,
+            platform: (Platform.OS === 'ios' ? 'ios' : 'android') as 'ios' | 'android',
+            app_version: '1.0.0',
+            is_active: true,
+            last_used_at: new Date().toISOString(),
+          },
+          { onConflict: 'token' }
+        );
+
+        if (dbError) {
+          console.warn('[NotificationService] Database registration error:', dbError.message);
+          return { success: false, error: dbError.message };
+        }
       }
     }
 

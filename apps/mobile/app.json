@@ -48,7 +48,11 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow EduPlatform to track vehicle location during active transport journeys."
+          "locationAlwaysAndWhenInUsePermission": "Allow EduPlatform to track vehicle location during active transport journeys.",
+          "locationAlwaysPermission": "Allow EduPlatform to track bus location in the background during active routes.",
+          "locationWhenInUsePermission": "Allow EduPlatform to access bus GPS location during active transport trips.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

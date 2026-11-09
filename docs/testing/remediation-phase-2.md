@@ -167,79 +167,6 @@
 
 ---
 
-## Phase 2.5 — Native GPS and Push Notification Capabilities Details
-
-### 1. Investigation Findings
-1. **Missing Native Hardware Modules in Mobile Application:**
-   - `apps/mobile/package.json` had neither `expo-location` nor `expo-notifications` installed.
-   - `apps/mobile/app.json` lacked Android permission declarations required for foreground/background location tracking and push notifications.
-   - In `apps/mobile/src/screens/DashboardScreen.tsx`, driver journey actions toggled simulated UI state without acquiring device GPS or transmitting coordinates to PostgreSQL.
-2. **Security & Role Boundaries in Mobile Transport:**
-   - Students and guardians must never be able to initiate driver tracking or broadcast spoofed coordinates.
-   - Vehicle location updates must strictly target `record_vehicle_gps_location_atomic(p_institution_id, p_vehicle_id, p_journey_id, ...)`.
-   - The database stored procedure enforces that telemetry is accepted only when the associated journey has `status IN ('in_progress', 'delayed')`. When a journey completes or is cancelled, updates are rejected.
-3. **Push Token Lifecycle & Isolation:**
-   - Native device push tokens must be bound to the authenticated user's ID in `public.push_device_tokens`.
-   - The table enforces user-level RLS: `CREATE POLICY push_device_tokens_user ON public.push_device_tokens FOR ALL USING (user_id = auth.uid())`.
-   - When a user signs out, their device push token must be marked `is_active = false` to prevent cross-account notification leakage on shared devices.
-
-### 2. Remediation Architecture
-1. **Package Installation & Compatibility:**
-   - Inspected `node_modules/expo/bundledNativeModules.json` to verify Expo SDK 52 canonical package versions:
-     - `"expo-location": "~18.0.10"`
-     - `"expo-notifications": "~0.29.14"`
-   - Installed both packages into `@edu-platform/mobile`.
-2. **Android Permissions & Plugin Configuration (`apps/mobile/app.json`):**
-   - Configured `android.permissions`:
-     - `ACCESS_COARSE_LOCATION`
-     - `ACCESS_FINE_LOCATION`
-     - `ACCESS_BACKGROUND_LOCATION`
-     - `FOREGROUND_SERVICE`
-     - `FOREGROUND_SERVICE_LOCATION`
-     - `POST_NOTIFICATIONS`
-   - Configured Expo config plugins for `expo-location` and `expo-notifications`.
-3. **Native Location Service (`apps/mobile/src/lib/locationService.ts`):**
-   - `isRoleAuthorizedForDriverTracking(role)`: Strictly disallows `student`, `parent`, `guardian` roles; allows staff/driver/admin.
-   - `checkAndRequestLocationPermissions()`: Checks `Location.hasServicesEnabledAsync()` and requests foreground permissions.
-   - `startDriverTripTracking(options)`: Verifies role, requests permissions, starts `Location.watchPositionAsync()`, sanitizes coordinates, and calls atomic procedure `record_vehicle_gps_location_atomic`.
-   - `stopDriverTripTracking()`: Removes location subscription and clears active tracking state.
-   - `getDriverTrackingStatus()`: Returns current tracking state.
-4. **Native Notification Service (`apps/mobile/src/lib/notificationService.ts`):**
-   - `Notifications.setNotificationHandler`: Configures alert, sound, and badge presentation behavior.
-   - `setupAndroidNotificationChannels()`: Creates Android notification channels (`default` and `transport_alerts`).
-   - `registerDevicePushTokenAsync(userId)`: Requests permissions, acquires Expo push token, and upserts into `public.push_device_tokens` with `user_id = userId`, `platform = android`, `is_active = true`.
-   - `unregisterDevicePushTokenAsync(userId, token)`: Marks token `is_active = false` on logout.
-   - `getActivePushToken()`: Exposes active registered token.
-5. **Mobile Dashboard Integration (`apps/mobile/src/screens/DashboardScreen.tsx`):**
-   - Push token registered automatically on mount/login and cleaned up on unmount.
-   - `handleSignOut`: Calls `stopDriverTripTracking()`, `unregisterDevicePushTokenAsync()`, and `auth.signOut()`.
-   - `handleStartDriverJourney`: Starts native GPS tracking with telemetry callback updating live UI state.
-   - `handleEndDriverJourney`: Completes journey in DB, halts location tracking, and clears coordinates.
-   - GPS Banner displays active tracking state, live coordinates (`latitude`, `longitude`, `speedKmh`, `accuracyMeters`), and any permission/service errors.
-
-### 3. Verification & Quality Gates
-- **Security & Hardware Regression Suite (`tests/security/mobile-hardware-security.test.ts`):**
-  - Added 14 automated unit and security tests covering:
-    - Permission checks (granted, denied, services disabled).
-    - Role restrictions (students and parents blocked from driver tracking).
-    - Driver journey tracking lifecycle and atomic RPC parameter verification.
-    - Coordinate bounds validation and out-of-order/invalid fix discarding.
-    - Clean subscription removal upon `stopDriverTripTracking`.
-    - Android notification channel configuration.
-    - Push token registration bound to authenticated user.
-    - Push token revocation on logout.
-    - Multi-tenant and RLS isolation on `push_device_tokens` and inactive journey rejection in database stored procedures.
-  - All 14 tests PASSED.
-- **Security Test Suite:** 180 / 180 tests PASSED across 16 security test suites (`npm run test:security`).
-- **Full Monorepo Test Suite:** 382 / 382 tests PASSED across 29 test suites (`npm test`).
-- **Workspace Typecheck:** PASSED (`npm run typecheck` returned 0 errors across all 7 packages and applications).
-- **Shared Dependency Builds:** PASSED (`npm run build:mobile-deps` compiled types, database, validators, supabase-client).
-- **Next.js Production Web Build:** PASSED (`npm run build --workspace=@edu-platform/web` compiled 106 routes).
-- **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist bundle `index-0307f8992611ed4b727afbb719c744a0.hbc`, 2.67 MB).
-
-
----
-
 ## Phase 2.4 — Notification Worker & Outbox Dispatch Details
 
 ### 1. Investigation Findings
@@ -372,42 +299,66 @@
    - Configured Expo config plugins for `expo-location` and `expo-notifications`.
 3. **Native Location Service (`apps/mobile/src/lib/locationService.ts`):**
    - `isRoleAuthorizedForDriverTracking(role)`: Strictly disallows `student`, `parent`, `guardian` roles; allows staff/driver/admin.
-   - `checkAndRequestLocationPermissions()`: Checks `Location.hasServicesEnabledAsync()` and requests foreground permissions.
-   - `startDriverTripTracking(options)`: Verifies role, requests permissions, starts `Location.watchPositionAsync()`, sanitizes coordinates, and calls atomic procedure `record_vehicle_gps_location_atomic`.
-   - `stopDriverTripTracking()`: Removes location subscription and clears active tracking state.
-   - `getDriverTrackingStatus()`: Returns current tracking state.
+   - `checkAndRequestLocationPermissions()`: Checks `Location.hasServicesEnabledAsync()`, requests foreground permissions, and requests background location permissions.
+   - `startDriverTripTracking(options)`: Verifies role, requests permissions, starts `Location.watchPositionAsync()` for responsive UI updates, registers background task `LOCATION_BACKGROUND_TASK_NAME` via `TaskManager.defineTask`, and launches `Location.startLocationUpdatesAsync` with Android foreground service notification.
+   - `stopDriverTripTracking()`: Removes foreground location subscription, halts background location updates via `Location.stopLocationUpdatesAsync`, and clears active tracking state.
+   - `getDriverTrackingStatus()`: Returns current tracking state including background service status.
 4. **Native Notification Service (`apps/mobile/src/lib/notificationService.ts`):**
    - `Notifications.setNotificationHandler`: Configures alert, sound, and badge presentation behavior.
    - `setupAndroidNotificationChannels()`: Creates Android notification channels (`default` and `transport_alerts`).
-   - `registerDevicePushTokenAsync(userId)`: Requests permissions, acquires Expo push token, and upserts into `public.push_device_tokens` with `user_id = userId`, `platform = android`, `is_active = true`.
+   - `registerDevicePushTokenAsync(userId)`: Requests permissions, acquires Expo push token, and invokes atomic procedure `public.register_push_device_token_atomic` (with fallback to direct upsert).
    - `unregisterDevicePushTokenAsync(userId, token)`: Marks token `is_active = false` on logout.
    - `getActivePushToken()`: Exposes active registered token.
 5. **Mobile Dashboard Integration (`apps/mobile/src/screens/DashboardScreen.tsx`):**
    - Push token registered automatically on mount/login and cleaned up on unmount.
    - `handleSignOut`: Calls `stopDriverTripTracking()`, `unregisterDevicePushTokenAsync()`, and `auth.signOut()`.
-   - `handleStartDriverJourney`: Starts native GPS tracking with telemetry callback updating live UI state.
+   - `handleStartDriverJourney`: Starts native GPS tracking with telemetry callback updating live UI state and background task broadcasting.
    - `handleEndDriverJourney`: Completes journey in DB, halts location tracking, and clears coordinates.
    - GPS Banner displays active tracking state, live coordinates (`latitude`, `longitude`, `speedKmh`, `accuracyMeters`), and any permission/service errors.
+6. **Server-Side Authorization & Push Token Hardening (`20261110090000_harden_transport_gps_authorization.sql`):**
+   - Hardened `public.record_vehicle_gps_location_atomic`:
+     - Enforces `auth.uid()` authentication (bypassed only by `service_role`).
+     - Verifies active membership in `p_institution_id`.
+     - Verifies `p_journey_id` is provided and belongs to `p_institution_id`.
+     - Verifies vehicle matches the journey assignment (`j.vehicle_id = p_vehicle_id`).
+     - Verifies journey is currently active (`status IN ('in_progress', 'delayed')`).
+     - Enforces that caller MUST be the assigned driver (`sp_driver.user_id = auth.uid()`), the assigned attendant (`sp_attendant.user_id = auth.uid()`), or an institution admin (`owner`, `admin`).
+     - Revokes `EXECUTE` from `PUBLIC` and `anon`; grants exclusively to `authenticated` and `service_role`.
+   - Created `public.register_push_device_token_atomic`:
+     - Reads `auth.uid()` securely from session.
+     - Upserts into `push_device_tokens`, reassigning existing token hardware cleanly upon shared-device account switching without triggering PostgreSQL RLS policy violation.
+     - Revokes `EXECUTE` from `PUBLIC` and `anon`; grants to `authenticated` and `service_role`.
+   - Created rollback migration `supabase/migrations/rollback/20261110090000_rollback.sql`.
 
 ### 3. Verification & Quality Gates
+- **PostgreSQL 17 Live Engine Verification:**
+  - Started local PostgreSQL 17 cluster (port 54333) and executed `scratch/test_gps_security.sql`.
+  - Verified forward migration applied cleanly.
+  - Verified `anon` execution of `record_vehicle_gps_location_atomic` blocked with `42501 (insufficient_privilege)`.
+  - Verified `anon` execution of `register_push_device_token_atomic` blocked with `42501 (insufficient_privilege)`.
+  - Verified rollback migration executed cleanly.
+  - Verified forward migration re-applied cleanly with 0 errors.
 - **Security & Hardware Regression Suite (`tests/security/mobile-hardware-security.test.ts`):**
-  - Added 14 automated unit and security tests covering:
-    - Permission checks (granted, denied, services disabled).
+  - Added 24 automated unit, security, and database authorization tests covering:
+    - Permission checks (granted, denied, services disabled, background permissions).
     - Role restrictions (students and parents blocked from driver tracking).
     - Driver journey tracking lifecycle and atomic RPC parameter verification.
     - Coordinate bounds validation and out-of-order/invalid fix discarding.
-    - Clean subscription removal upon `stopDriverTripTracking`.
-    - Android notification channel configuration.
-    - Push token registration bound to authenticated user.
-    - Push token revocation on logout.
-    - Multi-tenant and RLS isolation on `push_device_tokens` and inactive journey rejection in database stored procedures.
-  - All 14 tests PASSED.
-- **Security Test Suite:** 180 / 180 tests PASSED across 16 security test suites (`npm run test:security`).
-- **Full Monorepo Test Suite:** 382 / 382 tests PASSED across 29 test suites (`npm test`).
+    - Background task registration (`expo-task-manager`) and foreground service notification configuration.
+    - Background task execution and coordinate transmission.
+    - Clean subscription and background update termination upon `stopDriverTripTracking`.
+    - Android notification channel configuration (`default`, `transport_alerts`).
+    - Push token registration using `register_push_device_token_atomic`.
+    - Push token revocation on logout (`is_active = false`).
+    - Shared-device account switching token re-assignment.
+    - Server-side database authorization: unauthenticated rejection, cross-tenant rejection, student/parent rejection, vehicle mismatch rejection, and inactive journey rejection.
+  - All 24 tests PASSED.
+- **Security Test Suite:** 190 / 190 tests PASSED across 16 security test suites (`npm run test:security`).
+- **Full Monorepo Test Suite:** 392 / 392 tests PASSED across 29 test suites (`npm test`).
 - **Workspace Typecheck:** PASSED (`npm run typecheck` returned 0 errors across all 7 packages and applications).
 - **Shared Dependency Builds:** PASSED (`npm run build:mobile-deps` compiled types, database, validators, supabase-client).
 - **Next.js Production Web Build:** PASSED (`npm run build --workspace=@edu-platform/web` compiled 106 routes).
-- **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist bundle `index-0307f8992611ed4b727afbb719c744a0.hbc`, 2.67 MB).
+- **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist bundle `index-0545950b3050e936335f744564e66039.hbc`, 2.68 MB).
 
 
 

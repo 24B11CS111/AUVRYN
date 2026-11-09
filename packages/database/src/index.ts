@@ -2894,7 +2894,8 @@ export interface Database {
           device_model: string | null;
           app_version: string | null;
           is_active: boolean;
-          last_seen_at: string;
+          last_used_at: string;
+          last_seen_at?: string;
           created_at: string;
           updated_at: string;
         };
@@ -2906,6 +2907,7 @@ export interface Database {
           device_model?: string | null;
           app_version?: string | null;
           is_active?: boolean;
+          last_used_at?: string;
           last_seen_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -2918,6 +2920,7 @@ export interface Database {
           device_model?: string | null;
           app_version?: string | null;
           is_active?: boolean;
+          last_used_at?: string;
           last_seen_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -5494,6 +5497,18 @@ export interface Database {
           vehicle_id?: string;
           recorded_at?: string;
           reason?: string;
+        };
+      };
+      register_push_device_token_atomic: {
+        Args: {
+          p_token: string;
+          p_platform?: string;
+          p_app_version?: string;
+        };
+        Returns: {
+          success: boolean;
+          token?: string;
+          user_id?: string;
         };
       };
       record_student_boarding_atomic: {
