@@ -12,35 +12,22 @@ import { Button } from '../components/Button';
 import type { InstitutionMembership } from '@edu-platform/types';
 import type { CampusRow, AcademicYearRow } from '@edu-platform/database';
 import { INSTITUTION_TYPE_DEFINITIONS } from '@edu-platform/types';
+import {
+  startDriverTripTracking,
+  stopDriverTripTracking,
+  type LocationCoordinates,
+} from '../lib/locationService';
+import {
+  registerDevicePushTokenAsync,
+  unregisterDevicePushTokenAsync,
+} from '../lib/notificationService';
 
 interface DashboardScreenProps {
   userId: string;
   userEmail: string;
 }
 
-export const registerPushDeviceToken = async (
-  userId: string,
-  token: string,
-  platform: 'ios' | 'android' | 'web'
-) => {
-  const client = supabase;
-  if (!client) return;
-
-  try {
-    await client.from('push_device_tokens').upsert(
-      {
-        user_id: userId,
-        token,
-        platform,
-        is_active: true,
-        last_seen_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id, token' }
-    );
-  } catch (err) {
-    console.error('Failed to register push token:', err);
-  }
-};
+export { registerDevicePushTokenAsync as registerPushDeviceToken };
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEmail }) => {
   const [loading, setLoading] = useState(true);
@@ -56,6 +43,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
   const [driverProfile, setDriverProfile] = useState<any | null>(null);
   const [driverJourneys, setDriverJourneys] = useState<any[]>([]);
   const [isGpsSharingActive, setIsGpsSharingActive] = useState<boolean>(false);
+  const [lastCoords, setLastCoords] = useState<LocationCoordinates | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [pushToken, setPushToken] = useState<string | null>(null);
   const [offlineEventQueue, setOfflineEventQueue] = useState<any[]>([]);
 
   // Milestone 11: Library, Hostel, Events
@@ -290,6 +280,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
 
   useEffect(() => {
     fetchData();
+
+    let isMounted = true;
+    registerDevicePushTokenAsync(userId)
+      .then((res) => {
+        if (isMounted && res.token) {
+          setPushToken(res.token);
+        }
+      })
+      .catch((err) => {
+        console.warn('Push registration failed:', err);
+      });
+
+    return () => {
+      isMounted = false;
+      stopDriverTripTracking().catch(() => {});
+    };
   }, [userId]);
 
   const onRefresh = () => {
@@ -298,6 +304,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
   };
 
   const handleSignOut = async () => {
+    try {
+      await stopDriverTripTracking();
+      if (pushToken) {
+        await unregisterDevicePushTokenAsync(userId, pushToken);
+      }
+    } catch (err) {
+      console.warn('Signout cleanup error:', err);
+    }
     const client = supabase;
     if (!client) return;
     await client.auth.signOut();
@@ -317,10 +331,36 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
         })
         .eq('id', journey.id);
 
+      setGpsError(null);
       setIsGpsSharingActive(true);
       setDriverJourneys((prev) =>
         prev.map((j) => (j.id === journey.id ? { ...j, status: 'in_progress' } : j))
       );
+
+      // Start native GPS tracking
+      const activeInstId = (memberships[0] as any)?.institution_id || (memberships[0] as any)?.institutionId || '';
+      const userRole = memberships[0]?.role || 'staff';
+      const vehicleId = journey.vehicle?.id || journey.vehicle_id || '';
+      const driverStaffId = driverProfile?.id || '';
+
+      const trackRes = await startDriverTripTracking({
+        institutionId: activeInstId,
+        vehicleId,
+        journeyId: journey.id,
+        driverStaffId,
+        userRole,
+        onLocationUpdate: (coords) => {
+          setLastCoords(coords);
+          setGpsError(null);
+        },
+        onError: (err) => {
+          setGpsError(err);
+        },
+      });
+
+      if (!trackRes.success) {
+        setGpsError(trackRes.error || 'Failed to initialize GPS tracking.');
+      }
     } catch (err) {
       console.error('Failed to start journey:', err);
     }
@@ -340,7 +380,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
         })
         .eq('id', journeyId);
 
+      await stopDriverTripTracking();
       setIsGpsSharingActive(false);
+      setLastCoords(null);
+
       setDriverJourneys((prev) =>
         prev.map((j) => (j.id === journeyId ? { ...j, status: 'completed' } : j))
       );
@@ -565,6 +608,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
                 ? 'Transmitting vehicle coordinates strictly for current authorized journey. Tracking terminates automatically upon completion.'
                 : 'Location is not shared while journeys are in standby or completed.'}
             </Text>
+            {lastCoords && isGpsSharingActive && (
+              <View style={styles.coordsRow}>
+                <Text style={styles.coordsText}>
+                  Lat: {lastCoords.latitude.toFixed(5)} • Lon: {lastCoords.longitude.toFixed(5)} • Speed: {lastCoords.speedKmh} km/h • Acc: {lastCoords.accuracyMeters}m
+                </Text>
+              </View>
+            )}
+            {gpsError && (
+              <View style={styles.gpsErrorBox}>
+                <Text style={styles.gpsErrorText}>⚠️ {gpsError}</Text>
+              </View>
+            )}
           </View>
 
           {/* Assigned Journeys */}
@@ -971,6 +1026,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#047857',
     marginTop: 2,
+  },
+  coordsRow: {
+    marginTop: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  coordsText: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: '#065f46',
+    fontWeight: '600',
+  },
+  gpsErrorBox: {
+    marginTop: 6,
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  gpsErrorText: {
+    fontSize: 11,
+    color: '#b91c1c',
+    fontWeight: '500',
   },
   driverJourneyCard: {
     backgroundColor: '#ffffff',

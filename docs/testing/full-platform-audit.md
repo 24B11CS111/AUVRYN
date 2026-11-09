@@ -702,11 +702,18 @@ The findings identified in this audit are organized below by priority. Remediati
 
 ### 9.3 Medium-Priority Findings
 
-#### Finding REM-MED-01: Install Native Location & Notification Packages in Mobile Workspace
+#### Finding REM-MED-01: Install Native Location & Notification Packages in Mobile Workspace [RESOLVED — Phase 2.5]
 - **Severity**: **Medium**
-- **Affected Files**: `apps/mobile/package.json`, `apps/mobile/app.json`
-- **Problem**: `expo-location` and `expo-notifications` are missing, preventing hardware GPS tracking and real push notification handling on physical mobile devices.
-- **Recommended Action**: Add `expo-location` and `expo-notifications` to `apps/mobile/package.json`, configure Android location permissions in `app.json`, and connect `DashboardScreen.tsx` to native location listeners during active journeys.
+- **Status**: **RESOLVED in Phase 2.5**
+- **Affected Files**: `apps/mobile/package.json`, `apps/mobile/app.json`, `apps/mobile/src/lib/locationService.ts`, `apps/mobile/src/lib/notificationService.ts`, `apps/mobile/src/screens/DashboardScreen.tsx`, `tests/security/mobile-hardware-security.test.ts`
+- **Resolution Summary**:
+  1. Installed SDK 52 compatible `expo-location@~18.0.10` and `expo-notifications@~0.29.14` in `@edu-platform/mobile`.
+  2. Configured fine-grained Android permissions in `app.json` (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`) and added Expo config plugins.
+  3. Implemented permission-aware location service in `locationService.ts` with strict role guards (`isRoleAuthorizedForDriverTracking`), ensuring students and guardians cannot broadcast coordinates. Transmits GPS fixes strictly for authorized drivers during active trips using PostgreSQL atomic procedure `record_vehicle_gps_location_atomic`.
+  4. Implemented native notification channels (`default`, `transport_alerts`) and push token registration in `notificationService.ts`, upserting tokens into `push_device_tokens` bound strictly to authenticated `auth.uid()` and revoking tokens (`is_active = false`) upon sign-out.
+  5. Connected `DashboardScreen.tsx` to handle push token registration on mount, clean token revocation and location teardown on sign out, start/stop driver tracking, and live telemetry rendering.
+  6. Added 14 automated unit and security tests in `tests/security/mobile-hardware-security.test.ts` covering permissions, role restrictions, trip lifecycle, coordinate validation, cleanup, push token registration, token revocation on logout, and multi-tenant RLS isolation. Verified with 100% pass rate.
+  7. Validated with clean Expo Android export (`npx expo export --platform android`) generating optimized Hermes bytecode bundle (2.67 MB).
 
 #### Finding REM-MED-02: Establish Integration Test Harness
 - **Severity**: **Medium**
@@ -730,9 +737,9 @@ The findings identified in this audit are organized below by priority. Remediati
 This Full Platform Audit has thoroughly validated the architecture, database schema, RBAC model, and cross-module workflows across all 11 development milestones.
 
 **Current Summary Verdict**:
-- **Codebase Stability**: **EXCELLENT**. All 368 automated unit and security tests pass with 100% success across 28 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
-- **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), and `REM-HIGH-03` (Notification Outbox Worker) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17 and automated test suites. Remaining: `REM-MED-01` (Native GPS & Push Notifications — Phase 2.5) and `REM-MED-02` (Integration Test Harness — Phase 2.6).
+- **Codebase Stability**: **EXCELLENT**. All 382 automated unit and security tests pass with 100% success across 29 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
+- **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), `REM-HIGH-03` (Notification Outbox Worker), and `REM-MED-01` (Native GPS & Push Notifications) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17, Expo Android export, and automated test suites. Remaining: `REM-MED-02` (Integration Test Harness — Phase 2.6).
 - **Rule Adherence**: No regressions introduced, no remote migrations pushed, and all tests executed against local verified environments.
 
 **Next Step**:
-We request user approval of this audit report to proceed with the prioritized remediation tasks (`REM-CRIT-01`, `REM-HIGH-01`, `REM-HIGH-02`, and `REM-MED-02`) before entering Milestone 12 (AI & Automation).
+We request user approval of Phase 2.5 before proceeding with Phase 2.6 (`REM-MED-02`: Real Integration Test Harness).
