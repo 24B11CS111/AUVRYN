@@ -3,13 +3,20 @@
 import React, { useState, useTransition } from 'react';
 import { CommunicationsNav } from '../CommunicationsNav';
 import type { NotificationDelivery } from '@edu-platform/types';
-import { retryOutboxDeliveryAction } from '../actions';
+import {
+  retryOutboxDeliveryAction,
+  requeueDeadLetterDeliveryAction,
+  triggerOutboxWorkerAction,
+} from '../actions';
 import {
   RotateCcw,
   CheckCircle2,
   XCircle,
   Clock,
   AlertCircle,
+  Play,
+  Skull,
+  RefreshCw,
 } from 'lucide-react';
 
 interface DeliveryQueueClientProps {
@@ -24,8 +31,9 @@ export function DeliveryQueueClient({
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>(initialDeliveries);
   const [channelFilter, setChannelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [isRetrying, startRetrying] = useTransition();
+  const [isProcessing, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const filtered = deliveries.filter((d) => {
     if (channelFilter !== 'all' && d.channel !== channelFilter) return false;
@@ -35,14 +43,56 @@ export function DeliveryQueueClient({
 
   const handleRetry = (id: string) => {
     setError(null);
-    startRetrying(async () => {
+    setInfoMessage(null);
+    startTransition(async () => {
       const res = await retryOutboxDeliveryAction(id);
       if (res.success) {
         setDeliveries((prev) =>
           prev.map((d) => (d.id === id ? { ...d, status: 'queued' } : d))
         );
+        setInfoMessage('Delivery requeued for retry');
       } else {
         setError(res.error || 'Failed to retry delivery');
+      }
+    });
+  };
+
+  const handleRequeue = (id: string) => {
+    setError(null);
+    setInfoMessage(null);
+    startTransition(async () => {
+      const res = await requeueDeadLetterDeliveryAction(id);
+      if (res.success) {
+        setDeliveries((prev) =>
+          prev.map((d) =>
+            d.id === id
+              ? {
+                  ...d,
+                  status: 'queued',
+                  attemptCount: 0,
+                  errorMessage: undefined,
+                }
+              : d
+          )
+        );
+        setInfoMessage('Dead-letter job successfully requeued to outbox');
+      } else {
+        setError(res.error || 'Failed to requeue delivery');
+      }
+    });
+  };
+
+  const handleTriggerWorker = () => {
+    setError(null);
+    setInfoMessage(null);
+    startTransition(async () => {
+      const res = await triggerOutboxWorkerAction(25);
+      if (res.success && res.data) {
+        setInfoMessage(
+          `Processed ${res.data.claimedCount} jobs: ${res.data.successCount} delivered, ${res.data.transientFailedCount} retried, ${res.data.deadLetterCount} dead-lettered.`
+        );
+      } else {
+        setError(res.error || 'Failed to execute worker batch');
       }
     });
   };
@@ -55,6 +105,20 @@ export function DeliveryQueueClient({
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3 h-3" />
             {status}
+          </span>
+        );
+      case 'processing':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            processing
+          </span>
+        );
+      case 'dead_letter':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-300">
+            <Skull className="w-3 h-3 text-red-700" />
+            dead letter
           </span>
         );
       case 'failed':
@@ -93,6 +157,21 @@ export function DeliveryQueueClient({
             Transactional delivery monitoring, dead letter inspection, and exponential backoff retries
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleTriggerWorker}
+            disabled={isProcessing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+          >
+            {isProcessing ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Play className="w-3.5 h-3.5" />
+            )}
+            <span>Process Outbox</span>
+          </button>
+        </div>
       </div>
 
       <CommunicationsNav userRole={userRole} />
@@ -101,6 +180,13 @@ export function DeliveryQueueClient({
         <div className="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {infoMessage && (
+        <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{infoMessage}</span>
         </div>
       )}
 
@@ -127,9 +213,11 @@ export function DeliveryQueueClient({
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="queued">Queued</option>
+          <option value="processing">Processing</option>
           <option value="sent">Sent</option>
           <option value="delivered">Delivered</option>
           <option value="failed">Failed</option>
+          <option value="dead_letter">Dead Letter</option>
         </select>
       </div>
 
@@ -183,11 +271,23 @@ export function DeliveryQueueClient({
                         <button
                           type="button"
                           onClick={() => handleRetry(d.id)}
-                          disabled={isRetrying}
+                          disabled={isProcessing}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition disabled:opacity-50"
                         >
                           <RotateCcw className="w-3 h-3" />
                           <span>Retry</span>
+                        </button>
+                      )}
+                      {d.status === 'dead_letter' && (
+                        <button
+                          type="button"
+                          onClick={() => handleRequeue(d.id)}
+                          disabled={isProcessing}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-700 text-white text-[11px] font-semibold hover:bg-rose-800 transition disabled:opacity-50"
+                          title="Requeue to outbox after resolving issues"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Requeue</span>
                         </button>
                       )}
                     </td>

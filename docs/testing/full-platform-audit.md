@@ -667,11 +667,31 @@ The findings identified in this audit are organized below by priority. Remediati
   5. Implemented signed download URL server actions for students, staff, and portal (parent/student) and connected UI "View File" buttons.
 - **Verification**: Verified via live SQL execution on PostgreSQL 17 engine testing all 7 RLS scenarios on `storage.objects` (multi-tenant isolation, student peer isolation, guardian verification, deletion protection) and 37 automated tests in `tests/security/storage-security.test.ts`. See `docs/testing/remediation-phase-2.md` for full details.
 
-#### Finding REM-HIGH-03: Implement Background Worker for External Notification Deliveries
+#### Finding REM-HIGH-03: Implement Background Worker for External Notification Deliveries [RESOLVED — Phase 2.4]
 - **Severity**: **High**
-- **Affected Files**: `supabase/functions/dispatch-notifications/` (or cron runner)
-- **Problem**: Rows queued in `notification_deliveries` (`sms`, `email`, `whatsapp`, `push`) remain in `queued` status indefinitely because no consumer daemon pulls and transmits them.
-- **Recommended Action**: Implement a scheduled Supabase Edge Function or Node.js background worker pulling `status = 'queued'` deliveries from `notification_deliveries`, invoking external gateway APIs (Twilio, SendGrid/Resend, FCM), and updating delivery status to `sent` or `failed`.
+- **Status**: **RESOLVED & VERIFIED (Phase 2.4)**
+- **Affected Files**:
+  - `supabase/migrations/20261109122000_notification_outbox_worker.sql`
+  - `supabase/migrations/rollback/20261109122000_rollback.sql`
+  - `packages/types/src/index.ts`
+  - `apps/web/src/lib/notifications/types.ts`
+  - `apps/web/src/lib/notifications/adapters.ts`
+  - `apps/web/src/lib/notifications/worker.ts`
+  - `apps/web/src/lib/notifications/index.ts`
+  - `supabase/functions/dispatch-notifications/index.ts`
+  - `apps/web/src/app/dashboard/communications/actions.ts`
+  - `apps/web/src/app/dashboard/communications/delivery/DeliveryQueueClient.tsx`
+  - `tests/security/notification-outbox-worker.test.ts`
+- **Problem**: Rows queued in `notification_deliveries` (`sms`, `email`, `whatsapp`, `push`) remained in `queued` status indefinitely because no background consumer claimed and transmitted them. In addition, the table lacked worker concurrency locks, retry backoff calculation columns, dead-letter state tracking, and non-PII audit logging.
+- **Resolution**:
+  1. Created forward migration `supabase/migrations/20261109122000_notification_outbox_worker.sql` expanding `notification_delivery_status` with `'processing'`, `'sent'`, and `'dead_letter'`, and adding worker tracking columns (`locked_at`, `locked_by`, `next_retry_at`, `provider_message_id`, `provider_response`).
+  2. Implemented atomic job claiming function `public.claim_notification_deliveries()` with `FOR UPDATE SKIP LOCKED` and automatic stale lock recovery for interrupted workers.
+  3. Implemented atomic resolution function `public.resolve_notification_delivery()` with exponential backoff delay calculation (`now() + LEAST(3600s, 2^(attempts-1) * 30s)`) and non-PII delivery audit logging (`public.notification_delivery_logs`).
+  4. Implemented admin dead-letter requeue function `public.requeue_dead_letter_delivery()` and operational aggregation view `public.notification_outbox_metrics`.
+  5. Built multi-channel adapter layer (`MockDeliveryAdapter`, `EmailDeliveryAdapter`, `SmsDeliveryAdapter`, `PushDeliveryAdapter`) and background worker engine `NotificationOutboxWorker` in `apps/web/src/lib/notifications/` with recipient institutional authorization and timeout resilience.
+  6. Implemented Supabase Edge Function `dispatch-notifications` for cron / webhook invocation and updated the web dashboard delivery queue client with live batch execution, status badges, and dead-letter requeuing.
+  7. Accompanied by rollback migration `supabase/migrations/rollback/20261109122000_rollback.sql`.
+- **Verification**: Verified via live SQL execution on a local PostgreSQL 17 engine testing atomic claiming across concurrent workers, stale lock recovery, exponential backoff, dead-letter transition, metrics aggregation, rollback, and re-apply. Verified with 15 automated security regression tests in `tests/security/notification-outbox-worker.test.ts`. See `docs/testing/remediation-phase-2.md` for full details.
 
 ---
 
@@ -705,9 +725,9 @@ The findings identified in this audit are organized below by priority. Remediati
 This Full Platform Audit has thoroughly validated the architecture, database schema, RBAC model, and cross-module workflows across all 11 development milestones.
 
 **Current Summary Verdict**:
-- **Codebase Stability**: **EXCELLENT**. All 288 automated unit and security tests pass with 100% success; shared packages, web app, and mobile bundle all compile with 0 errors.
-- **Production Blockers Identified**: 1 Critical SQL function reference mismatch (`current_user_tenant_ids()`), missing storage RLS policies, and edge middleware route scoping.
-- **Rule Adherence**: No application code was modified, no migrations were pushed, and no destructive database operations were executed.
+- **Codebase Stability**: **EXCELLENT**. All 364 automated unit and security tests pass with 100% success across 28 test suites; shared packages, web app, and mobile bundle all compile with 0 errors.
+- **Remediation Status**: `REM-CRIT-01` (Attendance RLS), `REM-HIGH-01` (Portal Middleware), `REM-HIGH-02` (Storage Security), and `REM-HIGH-03` (Notification Outbox Worker) have all been completely remediated, hardened with forward/rollback migrations, and verified live on PostgreSQL 17 and automated test suites. Remaining: `REM-MED-02` (Integration Test Harness) and `REM-MED-01` (Mobile Hardware Packages).
+- **Rule Adherence**: No regressions introduced, no remote migrations pushed, and all tests executed against local verified environments.
 
 **Next Step**:
 We request user approval of this audit report to proceed with the prioritized remediation tasks (`REM-CRIT-01`, `REM-HIGH-01`, `REM-HIGH-02`, and `REM-MED-02`) before entering Milestone 12 (AI & Automation).

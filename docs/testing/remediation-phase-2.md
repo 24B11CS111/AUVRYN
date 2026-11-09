@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-09  
 **Platform Version:** Post-Milestone 11 Testing & Remediation  
-**Status:** In Progress (Phase 2.1, 2.2, and 2.3 Completed & Verified)
+**Status:** In Progress (Phase 2.1, 2.2, 2.3, and 2.4 Completed & Verified)
 
 ---
 
@@ -13,7 +13,7 @@
 | **REM-CRIT-01** | Milestone 4 & 5 / Attendance RLS | **CRITICAL** | `supabase/migrations/20261105040000_attendance_management.sql` referenced `current_user_tenant_ids()`, but `20261105000000_initial_schema.sql` defined `get_user_institution_ids()`. Also, `student_att_select_policy` checked `is_institution_member()` instead of staff/admin roles, allowing students to view peer records. | 1. Created forward migration `20261109120000_fix_attendance_rls_functions.sql` defining `public.current_user_tenant_ids()` as a `SECURITY DEFINER` function with `search_path = public`.<br>2. Explicitly revoked default public execution and granted to `authenticated`, `anon`, `service_role`.<br>3. Hardened `student_att_select_policy`, `att_corr_select_policy`, and `att_notif_select_policy` to require staff/admin roles or student/guardian self-ownership.<br>4. Created rollback migration `20261109120000_rollback.sql`. | • `supabase/migrations/20261109120000_fix_attendance_rls_functions.sql`<br>• `supabase/migrations/rollback/20261109120000_rollback.sql`<br>• `tests/security/attendance-rls-regression.test.ts` | `tests/security/attendance-rls-regression.test.ts` (10 tests passing) | **VERIFIED LIVE** on PostgreSQL 17 engine with 2 institutions & 6 user roles (`test_app_user` with RLS). | Forward migration must be executed on target Supabase instance upon deployment. |
 | **REM-HIGH-01** | Milestone 9 / Portal Routing | **HIGH** | `apps/web/src/lib/supabase/middleware.ts` omitted `/portal/*` from `isProtectedRoute`. Portal pages relied solely on `requireInstitution()` without enforcing role boundaries or sanitizing login redirects. | 1. Expanded `isProtectedRoute` in `middleware.ts` to include `/portal/*`.<br>2. Added safe internal `redirectTo` validation to prevent open-redirect exploits.<br>3. Created server-side guard `requirePortalRole()` in `apps/web/src/lib/auth.ts`.<br>4. Hardened `/portal/parent/page.tsx` and `/portal/student/page.tsx` with role guards.<br>5. Hardened server actions to reject unauthorized roles and strictly scope all queries by active `membership.institutionId`. | • `apps/web/src/lib/supabase/middleware.ts`<br>• `apps/web/src/lib/auth.ts`<br>• `apps/web/src/app/portal/parent/page.tsx`<br>• `apps/web/src/app/portal/student/page.tsx`<br>• `apps/web/src/app/portal/parent/actions.ts`<br>• `apps/web/src/app/portal/student/actions.ts`<br>• `tests/security/portal-middleware-security.test.ts` | `tests/security/portal-middleware-security.test.ts` (14 tests passing) | **VERIFIED LIVE** via Next.js Edge Middleware route simulation & server action boundary tests. | Real-browser session cookie verification requires live browser automation or staging deployment. |
 | **REM-HIGH-02** | Milestone 2, 4, 10 / Storage | **HIGH** | File paths stored in DB without explicit bucket creation & `storage.objects` RLS in migrations. | 1. Created forward migration `20261109121000_storage_security_policies.sql` creating 4 private buckets (`student-documents`, `staff-documents`, `transport-documents`, `academic-documents`) with `public = false`.<br>2. Implemented `public.storage_extract_institution_id()` and `storage_extract_entity_id()` helpers with regex UUID validation.<br>3. Created granular RLS policies on `storage.objects` for SELECT, INSERT, UPDATE, DELETE enforcing institution isolation, staff rights, student self-ownership, and guardian verified child access.<br>4. Strictly restricted DELETE policies on `storage.objects` to `owner` and `admin` roles, preventing student/guardian deletion of compliance records.<br>5. Built centralized storage library `apps/web/src/lib/storage.ts` with file name sanitization, path traversal blocking, double extension prevention, file size/MIME verification, and clamped signed download URLs (30s-3600s).<br>6. Implemented signed URL generation server actions and UI View File buttons across web students, staff, and portal (parent/student).<br>7. Created rollback migration `20261109121000_rollback.sql`. | • `supabase/migrations/20261109121000_storage_security_policies.sql`<br>• `supabase/migrations/rollback/20261109121000_rollback.sql`<br>• `packages/database/src/index.ts`<br>• `apps/web/src/lib/storage.ts`<br>• `apps/web/src/app/dashboard/students/actions.ts`<br>• `apps/web/src/app/dashboard/students/[id]/documents/StudentDocumentsClient.tsx`<br>• `apps/web/src/app/dashboard/staff/actions.ts`<br>• `apps/web/src/app/dashboard/staff/[id]/documents/StaffDocumentsClient.tsx`<br>• `apps/web/src/app/portal/parent/actions.ts`<br>• `apps/web/src/app/portal/student/actions.ts`<br>• `tests/security/storage-security.test.ts` | `tests/security/storage-security.test.ts` (37 tests passing) | **VERIFIED LIVE** on PostgreSQL 17 engine testing all 7 RLS scenarios on `storage.objects` with non-superuser role `test_app_user`. | Supabase S3 storage backend upload simulation requires live bucket service or MinIO for binary byte verification. |
-| **REM-HIGH-03** | Milestone 5, 8, 9 / Notifications | **HIGH** | Notification outbox lacked background worker / consumer for SMS, email, WhatsApp, push. | *Pending Phase 2.4* | — | — | Pending Phase 2.4 | — |
+| **REM-HIGH-03** | Milestone 5, 8, 9 / Notifications | **HIGH** | Notification deliveries remained in `queued` status indefinitely without background consumer, concurrency locking, backoff delays, or dead-letter handling. | 1. Created forward migration `20261109122000_notification_outbox_worker.sql` expanding statuses (`processing`, `sent`, `dead_letter`) and worker columns (`locked_at`, `locked_by`, `next_retry_at`, `provider_message_id`, `provider_response`).<br>2. Implemented `public.claim_notification_deliveries()` with atomic `FOR UPDATE SKIP LOCKED` and stale lock recovery.<br>3. Implemented `public.resolve_notification_delivery()` with exponential backoff delay calculation (`LEAST(3600s, 2^(attempts-1)*30s)`) and non-PII audit logging in `notification_delivery_logs`.<br>4. Implemented admin dead-letter requeue function `public.requeue_dead_letter_delivery()` and metrics aggregation view `public.notification_outbox_metrics`.<br>5. Implemented server-side worker `NotificationOutboxWorker` with active membership verification and multi-channel adapters (`email`, `sms`, `push`, `mock`).<br>6. Implemented Supabase Edge Function `dispatch-notifications` and enhanced UI delivery queue with manual cycle trigger, status filters, and dead-letter requeueing.<br>7. Created rollback migration `20261109122000_rollback.sql`. | • `supabase/migrations/20261109122000_notification_outbox_worker.sql`<br>• `supabase/migrations/rollback/20261109122000_rollback.sql`<br>• `packages/types/src/index.ts`<br>• `apps/web/src/lib/notifications/types.ts`<br>• `apps/web/src/lib/notifications/adapters.ts`<br>• `apps/web/src/lib/notifications/worker.ts`<br>• `apps/web/src/lib/notifications/index.ts`<br>• `supabase/functions/dispatch-notifications/index.ts`<br>• `apps/web/src/app/dashboard/communications/actions.ts`<br>• `apps/web/src/app/dashboard/communications/delivery/DeliveryQueueClient.tsx`<br>• `tests/security/notification-outbox-worker.test.ts` | `tests/security/notification-outbox-worker.test.ts` (15 tests passing) | **VERIFIED LIVE** on PostgreSQL 17 engine with concurrent workers, stale lock recovery, exponential backoff, dead letter requeueing, and non-PII audit logging. | Production delivery requires live provider secrets (Resend, Twilio, FCM) configured in Supabase Vault / Edge Function secrets. |
 | **REM-MED-01** | Milestone 10 / Mobile Hardware | **MEDIUM** | Mobile lacks `expo-location` and `expo-notifications` native packages. | *Pending Phase 2.6* | — | — | Pending Phase 2.6 | — |
 | **REM-MED-02** | Testing Infrastructure | **MEDIUM** | Missing `tests/integration/` directory causing `npm run test:integration` exit code 1. | *Pending Phase 2.5* | — | — | Pending Phase 2.5 | — |
 
@@ -164,5 +164,99 @@
 - **Shared Dependency Builds:** PASSED (`npm run build:mobile-deps` compiled types, database, validators, supabase-client).
 - **Next.js Production Web Build:** PASSED (`npm run build --workspace=@edu-platform/web` generated all 106 routes).
 - **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist).
+
+---
+
+## Phase 2.4 — Notification Worker & Outbox Dispatch Details
+
+### 1. Investigation Findings
+1. **Dormant Outbox State:**
+   - In Milestone 9 (`supabase/migrations/20261105080000_parent_student_communications.sql`), `notifications` and `notification_deliveries` tables were defined to queue multi-channel communication events.
+   - However, no consumer worker, daemon process, or scheduled edge function pulled from `notification_deliveries`. Rows queued with `status = 'queued'` remained in that state indefinitely.
+2. **Missing Concurrency Control & State Management:**
+   - The original schema lacked atomic row-locking semantics. Multiple concurrent worker instances polling the outbox simultaneously would cause duplicate delivery dispatches to external gateways (Twilio, Resend, FCM).
+   - The enum `notification_delivery_status` only contained `('pending', 'queued', 'sent', 'delivered', 'failed', 'bounced')`. It lacked an active `'processing'` state for claimed locks, and a `'dead_letter'` state for jobs that permanently failed or exceeded maximum retry attempts.
+3. **Lack of Exponential Backoff & Transient vs. Permanent Failure Discrimination:**
+   - Outbox deliveries had no `next_retry_at` calculation or backoff scheduling. Transient network drops or provider rate limits (HTTP 429) had no automated progression.
+   - Permanent failures (such as invalid email syntax, invalid E.164 phone numbers, or deactivated/revoked user accounts) would repeatedly burn retry quotas without a designated dead-letter queue.
+4. **Security & PII Auditing Hazards:**
+   - Recipient authorization was not verified at dispatch time. If a user was revoked or belonged to another institution, delivering notifications risked leaking confidential grades or fee statements across tenants.
+   - Delivery error logging risked capturing sensitive message bodies or contact details in plain text logs.
+
+### 2. Remediation Architecture
+1. **Forward Migration (`supabase/migrations/20261109122000_notification_outbox_worker.sql`):**
+   - **Enum Expansion:** Added `'processing'`, `'sent'`, and `'dead_letter'` to `notification_delivery_status`.
+   - **Worker Columns:** Added `locked_at TIMESTAMP WITH TIME ZONE`, `locked_by TEXT`, `next_retry_at TIMESTAMP WITH TIME ZONE`, `provider_message_id TEXT`, and `provider_response JSONB` to `notification_deliveries`.
+   - **Performance Indexes:** Created `idx_notification_deliveries_worker_claim` on `(status, next_retry_at, locked_at)` for sub-millisecond worker claiming, and `idx_notification_deliveries_dead_letter` for dead-letter filtering.
+   - **Non-PII Delivery Audit Log (`public.notification_delivery_logs`):** Stores `delivery_id`, `institution_id`, `channel`, `provider`, `status`, `attempt_number`, `error_code`, and `latency_ms` with institutional RLS. Explicitly excludes sensitive message body and recipient personal data.
+   - **Atomic Claiming Stored Procedure (`public.claim_notification_deliveries`):**
+     - Uses `FOR UPDATE SKIP LOCKED` inside a Common Table Expression.
+     - Claims jobs where `(status = 'queued' OR status = 'failed') AND (locked_at IS NULL OR locked_at < now() - p_lock_timeout) AND (next_retry_at IS NULL OR next_retry_at <= now())`.
+     - Automatically resets stale locks from crashed worker nodes.
+     - Atomically transitions claimed jobs to `status = 'processing'` with worker ID and timestamp.
+   - **Atomic Resolution Stored Procedure (`public.resolve_notification_delivery`):**
+     - Increments `attempts_count`.
+     - If success: transitions to `delivered`, clears worker locks, and inserts an audit log.
+     - If failure: evaluates `is_permanent_failure` and `attempts_count >= max_attempts`. If true, transitions to `dead_letter`. Otherwise transitions to `failed` and schedules `next_retry_at = timezone('utc', now()) + LEAST(INTERVAL '3600 seconds', (POWER(2, GREATEST(0, attempts_count - 1)) * INTERVAL '30 seconds'))`.
+   - **Administrative Dead-Letter Requeueing (`public.requeue_dead_letter_delivery`):**
+     - Resets `status = 'queued'`, `attempts_count = 0`, `locked_by = NULL`, `locked_at = NULL`, `error_message = NULL`, `next_retry_at = timezone('utc', now())`.
+   - **Operational Visibility View (`public.notification_outbox_metrics`):**
+     - Aggregates per-institution counts for queued, pending, processing, delivered, failed, dead-letter, and oldest pending job age.
+2. **Rollback Migration (`supabase/migrations/rollback/20261109122000_rollback.sql`):**
+   - Drops `notification_outbox_metrics`, functions, `notification_delivery_logs`, indexes, and worker columns cleanly.
+3. **Multi-Channel Adapters & Background Worker Engine (`apps/web/src/lib/notifications/`):**
+   - `MockDeliveryAdapter`: Deterministic adapter for test suites and offline development with configurable behaviors (`success`, `transient_failure`, `rate_limited`, `permanent_failure`, `timeout`).
+   - `EmailDeliveryAdapter`: Validates RFC 5322 email syntax and prepares SendGrid / Resend payloads.
+   - `SmsDeliveryAdapter`: Validates E.164 international phone formats and prepares Twilio / SMS payloads.
+   - `PushDeliveryAdapter`: Validates Expo / FCM push tokens and payload formatting.
+   - `NotificationOutboxWorker`:
+     - Configurable `workerId`, `batchSize`, `lockTimeoutInterval`, and `dispatchTimeoutMs`.
+     - Checks `institution_memberships` where `institution_id = job.institutionId AND user_id = job.recipientUserId AND status = 'active'`. Deactivated, suspended, or foreign tenant recipients are immediately rejected with `UNAUTHORIZED_RECIPIENT` and routed to `dead_letter`.
+     - Resolves missing contact addresses dynamically from profiles and active push device tokens.
+     - Wraps adapter dispatch with timeout protection and AbortSignal handling.
+4. **Supabase Edge Function (`supabase/functions/dispatch-notifications/index.ts`):**
+   - Production edge function triggered via Supabase Cron (`pg_cron` or scheduled webhook) using the service role key.
+   - Processes batches iteratively until the queue is drained or execution limits are reached.
+5. **Dashboard Outbox Queue UI & Server Actions (`apps/web/src/app/dashboard/communications/`):**
+   - `triggerOutboxWorkerAction(batchSize)`: Triggers a worker cycle directly from the web admin console.
+   - `requeueDeadLetterDeliveryAction(deliveryId)`: Requeues dead-letter jobs back to active processing.
+   - `getOutboxMetricsAction()`: Retrieves real-time queue metrics.
+   - `DeliveryQueueClient.tsx`: Updated with "Process Outbox" execution button, `processing` and `dead_letter` status badges, status filter options, and inline "Requeue" buttons for dead-letter items.
+
+### 3. Verification & Quality Gates
+- **PostgreSQL 17 Live Engine Execution:**
+  - Initialized isolated PostgreSQL 17 test database (port 54333) with full platform schema and communications tables.
+  - Executed migration `20261109122000_notification_outbox_worker.sql` with zero errors.
+  - Tested live concurrency with two distinct worker instances:
+    1. Worker 1 claimed 2 jobs atomically (`FOR UPDATE SKIP LOCKED`).
+    2. Concurrent Worker 2 claimed remaining jobs with zero collision or row locking contention.
+    3. Stale Lock Recovery: Worker 2 successfully recovered and reclaimed a stale lock from a simulated dead worker node.
+    4. Delivery 1 resolved to `delivered` with provider ID and response payload.
+    5. Delivery 2 resolved to `failed` with exponential backoff scheduled for 30s in the future.
+    6. Delivery 3 resolved to `dead_letter` on permanent recipient syntax failure.
+    7. Requeued dead-letter delivery back to `queued` with attempt count reset to 0.
+    8. Verified `notification_outbox_metrics` aggregation view.
+    9. Verified `notification_delivery_logs` audit records confirmed zero PII leakage.
+  - Verified clean rollback script execution followed by successful re-application of the forward migration.
+- **Security Regression Test Suite:**
+  - Added `tests/security/notification-outbox-worker.test.ts` with 15 automated test cases:
+    - Exponential backoff delay math ($30s \to 60s \to 120s \to \dots \to 3600s$ cap).
+    - Max attempts thresholding and permanent failure routing to `dead_letter`.
+    - Idempotency key determinism and duplicate prevention.
+    - Concurrent worker atomic claiming (`SKIP LOCKED`) and disjoint job allocation.
+    - Stale lock detection and recovery.
+    - Future `next_retry_at` enforcement.
+    - Institutional recipient active membership enforcement and cross-tenant rejection (`UNAUTHORIZED_RECIPIENT`).
+    - Mock adapter behavior simulation and timeout resilience.
+    - Non-PII delivery audit log sanitization.
+    - Administrative dead-letter requeueing state transitions.
+  - All 15 tests PASSED.
+- **Full Monorepo Test Suite:** 364 / 364 tests PASSED across 28 test files (`npm test`).
+- **Security Test Suite:** 162 / 162 tests PASSED across 15 security test files (`npm run test:security`).
+- **Workspace Typecheck:** PASSED (`npm run typecheck` returned 0 errors across all 7 packages and applications).
+- **Shared Dependency Builds:** PASSED (`npm run build:mobile-deps` compiled types, database, validators, supabase-client).
+- **Next.js Production Web Build:** PASSED (`npm run build --workspace=@edu-platform/web` compiled 106 routes).
+- **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist).
+
 
 

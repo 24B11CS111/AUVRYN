@@ -1460,10 +1460,12 @@ export type NotificationDeliveryStatus =
   | 'pending'
   | 'queued'
   | 'sending'
+  | 'processing'
   | 'sent'
   | 'delivered'
   | 'failed'
   | 'bounced'
+  | 'dead_letter'
   | 'cancelled';
 
 export interface LeaveRequest {

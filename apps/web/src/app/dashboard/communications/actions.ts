@@ -18,6 +18,11 @@ import {
   type NotificationPreferencesUpdateInput,
 } from '@edu-platform/validators';
 import { formatSupabaseError } from '@edu-platform/supabase-client';
+import {
+  NotificationOutboxWorker,
+  type WorkerBatchResult,
+  type OutboxMetrics,
+} from '@/lib/notifications';
 import type {
   Announcement,
   CommunicationThread,
@@ -806,6 +811,100 @@ export async function retryOutboxDeliveryAction(deliveryId: string): Promise<Act
 
     if (error) {
       return { success: false, error: formatSupabaseError(error) };
+    }
+
+    revalidatePath('/dashboard/communications/delivery');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Triggers the notification outbox worker cycle
+ */
+export async function triggerOutboxWorkerAction(
+  batchSize: number = 25
+): Promise<ActionResult<WorkerBatchResult>> {
+  try {
+    const session = await requireInstitution();
+    const membership = session.activeMembership!;
+    if (!canManageCommunications(membership.role)) {
+      return { success: false, error: 'Unauthorized to trigger outbox worker' };
+    }
+
+    const supabase = createClient() as any;
+    const worker = new NotificationOutboxWorker({ batchSize });
+    const result = await worker.processBatch(supabase);
+
+    revalidatePath('/dashboard/communications/delivery');
+    return { success: true, data: result };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Get operational outbox queue metrics
+ */
+export async function getOutboxMetricsAction(): Promise<ActionResult<OutboxMetrics>> {
+  try {
+    const session = await requireInstitution();
+    const membership = session.activeMembership!;
+    if (!canManageCommunications(membership.role)) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const supabase = createClient() as any;
+    const { data, error } = await supabase
+      .from('notification_outbox_metrics')
+      .select('*')
+      .eq('institution_id', membership.institutionId)
+      .maybeSingle();
+
+    if (error) {
+      return { success: false, error: formatSupabaseError(error) };
+    }
+
+    const metrics: OutboxMetrics = {
+      institutionId: membership.institutionId,
+      countQueued: Number(data?.count_queued || 0),
+      countPending: Number(data?.count_pending || 0),
+      countProcessing: Number(data?.count_processing || 0),
+      countDelivered: Number(data?.count_delivered || 0),
+      countFailed: Number(data?.count_failed || 0),
+      countDeadLetter: Number(data?.count_dead_letter || 0),
+      oldestPendingJobAt: data?.oldest_pending_job_at || null,
+      totalDeliveries: Number(data?.total_deliveries || 0),
+    };
+
+    return { success: true, data: metrics };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Requeue a dead-letter delivery back to active queued state
+ */
+export async function requeueDeadLetterDeliveryAction(
+  deliveryId: string
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireInstitution();
+    const membership = session.activeMembership!;
+    if (!canManageCommunications(membership.role)) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const supabase = createClient() as any;
+    const { data, error } = await supabase.rpc('requeue_dead_letter_delivery', {
+      p_delivery_id: deliveryId,
+      p_institution_id: membership.institutionId,
+    });
+
+    if (error || !data?.success) {
+      return { success: false, error: error?.message || data?.error || 'Failed to requeue delivery' };
     }
 
     revalidatePath('/dashboard/communications/delivery');
