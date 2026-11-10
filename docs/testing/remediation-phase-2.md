@@ -1,8 +1,8 @@
 # Platform Remediation Phase 2 — Execution & Verification Log
 
-**Date:** 2026-11-09  
-**Platform Version:** Post-Milestone 11 Testing & Remediation  
-**Status:** In Progress (Phase 2.1, 2.2, 2.3, and 2.4 Completed & Verified)
+**Date:** 2026-11-10  
+**Platform Version:** Post-Milestone 11 Testing & Remediation Complete  
+**Status:** All Remediation Phases Complete & Verified Live (Phase 2.1 through 2.6)
 
 ---
 
@@ -15,7 +15,7 @@
 | **REM-HIGH-02** | Milestone 2, 4, 10 / Storage | **HIGH** | File paths stored in DB without explicit bucket creation & `storage.objects` RLS in migrations. | 1. Created forward migration `20261109121000_storage_security_policies.sql` creating 4 private buckets (`student-documents`, `staff-documents`, `transport-documents`, `academic-documents`) with `public = false`.<br>2. Implemented `public.storage_extract_institution_id()` and `storage_extract_entity_id()` helpers with regex UUID validation.<br>3. Created granular RLS policies on `storage.objects` for SELECT, INSERT, UPDATE, DELETE enforcing institution isolation, staff rights, student self-ownership, and guardian verified child access.<br>4. Strictly restricted DELETE policies on `storage.objects` to `owner` and `admin` roles, preventing student/guardian deletion of compliance records.<br>5. Built centralized storage library `apps/web/src/lib/storage.ts` with file name sanitization, path traversal blocking, double extension prevention, file size/MIME verification, and clamped signed download URLs (30s-3600s).<br>6. Implemented signed URL generation server actions and UI View File buttons across web students, staff, and portal (parent/student).<br>7. Created rollback migration `20261109121000_rollback.sql`. | • `supabase/migrations/20261109121000_storage_security_policies.sql`<br>• `supabase/migrations/rollback/20261109121000_rollback.sql`<br>• `packages/database/src/index.ts`<br>• `apps/web/src/lib/storage.ts`<br>• `apps/web/src/app/dashboard/students/actions.ts`<br>• `apps/web/src/app/dashboard/students/[id]/documents/StudentDocumentsClient.tsx`<br>• `apps/web/src/app/dashboard/staff/actions.ts`<br>• `apps/web/src/app/dashboard/staff/[id]/documents/StaffDocumentsClient.tsx`<br>• `apps/web/src/app/portal/parent/actions.ts`<br>• `apps/web/src/app/portal/student/actions.ts`<br>• `tests/security/storage-security.test.ts` | `tests/security/storage-security.test.ts` (37 tests passing) | **VERIFIED LIVE** on PostgreSQL 17 engine testing all 7 RLS scenarios on `storage.objects` with non-superuser role `test_app_user`. | Supabase S3 storage backend upload simulation requires live bucket service or MinIO for binary byte verification. |
 | **REM-HIGH-03** | Milestone 5, 8, 9 / Notifications | **HIGH** | Notification deliveries remained in `queued` status indefinitely without background consumer, concurrency locking, backoff delays, or dead-letter handling. | 1. Created forward migration `20261109122000_notification_outbox_worker.sql` expanding statuses (`processing`, `sent`, `dead_letter`) and worker columns (`locked_at`, `locked_by`, `next_retry_at`, `provider_message_id`, `provider_response`).<br>2. Implemented `public.claim_notification_deliveries()` with atomic `FOR UPDATE SKIP LOCKED` and stale lock recovery.<br>3. Implemented `public.resolve_notification_delivery()` with exponential backoff delay calculation (`LEAST(3600s, 2^(attempts-1)*30s)`) and non-PII audit logging in `notification_delivery_logs`.<br>4. Implemented admin dead-letter requeue function `public.requeue_dead_letter_delivery()` and metrics aggregation view `public.notification_outbox_metrics`.<br>5. Implemented server-side worker `NotificationOutboxWorker` with active membership verification and multi-channel adapters (`email`, `sms`, `push`, `mock`).<br>6. Implemented Supabase Edge Function `dispatch-notifications` and enhanced UI delivery queue with manual cycle trigger, status filters, and dead-letter requeueing.<br>7. **Security Follow-Up (`20261109123000_harden_notification_worker_rpc_grants.sql`):** Revoked `EXECUTE` on worker RPCs from `PUBLIC`, `anon`, and `authenticated`; restricted execution strictly to `service_role`. Hardened `requeue_dead_letter_delivery` to verify institutional administrative authorization. Updated server actions to use trusted server-side `createAdminClient()`.<br>8. Created rollback migrations `20261109122000_rollback.sql` and `20261109123000_rollback.sql`. | • `supabase/migrations/20261109122000_notification_outbox_worker.sql`<br>• `supabase/migrations/20261109123000_harden_notification_worker_rpc_grants.sql`<br>• `supabase/migrations/rollback/20261109122000_rollback.sql`<br>• `supabase/migrations/rollback/20261109123000_rollback.sql`<br>• `packages/types/src/index.ts`<br>• `apps/web/src/lib/notifications/types.ts`<br>• `apps/web/src/lib/notifications/adapters.ts`<br>• `apps/web/src/lib/notifications/worker.ts`<br>• `apps/web/src/lib/notifications/index.ts`<br>• `supabase/functions/dispatch-notifications/index.ts`<br>• `apps/web/src/app/dashboard/communications/actions.ts`<br>• `apps/web/src/app/dashboard/communications/delivery/DeliveryQueueClient.tsx`<br>• `tests/security/notification-outbox-worker.test.ts` | `tests/security/notification-outbox-worker.test.ts` (19 tests passing) | **VERIFIED LIVE** on PostgreSQL 17 engine with concurrent workers, stale lock recovery, exponential backoff, dead letter requeueing, non-PII audit logging, and RPC privilege revocation (authenticated blocked with 42501). | Production delivery requires live provider secrets (Resend, Twilio, FCM) configured in Supabase Vault / Edge Function secrets. |
 | **REM-MED-01** | Milestone 10 / Mobile Hardware | **MEDIUM** | Mobile lacked `expo-location` and `expo-notifications` native packages, preventing hardware GPS tracking and push notifications. | 1. Installed SDK 52 compatible `expo-location@~18.0.10` and `expo-notifications@~0.29.14` in `@edu-platform/mobile`.<br>2. Configured fine-grained Android permissions (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`) and Expo plugins in `app.json`.<br>3. Implemented permission-aware location service `locationService.ts` with strict role guards (`isRoleAuthorizedForDriverTracking`), ensuring students and guardians cannot broadcast vehicle telemetry. Transmits GPS fixes strictly for authorized drivers during active trips using PostgreSQL atomic procedure `record_vehicle_gps_location_atomic`.<br>4. Implemented native notification channels (`default`, `transport_alerts`) and push token registration in `notificationService.ts`, upserting tokens into `push_device_tokens` bound strictly to authenticated `auth.uid()` and revoking tokens (`is_active = false`) upon sign-out.<br>5. Connected `DashboardScreen.tsx` to handle push token registration on mount, clean token revocation and location teardown on sign out, start/stop driver tracking, and live telemetry rendering.<br>6. Added 14 automated unit and security tests in `tests/security/mobile-hardware-security.test.ts` covering permissions, role restrictions, trip lifecycle, coordinate validation, cleanup, push token registration, token revocation on logout, and multi-tenant RLS isolation. | • `apps/mobile/package.json`<br>• `apps/mobile/app.json`<br>• `apps/mobile/src/lib/locationService.ts`<br>• `apps/mobile/src/lib/notificationService.ts`<br>• `apps/mobile/src/screens/DashboardScreen.tsx`<br>• `tests/security/mobile-hardware-security.test.ts` | `tests/security/mobile-hardware-security.test.ts` (14 tests passing) | **VERIFIED LIVE** with clean Expo Android export (`npx expo export --platform android`) generating Hermes bytecode bundle (2.67 MB). | Physical device deployment requires EAS build with FCM/APNs push certificates and runtime hardware GPS. |
-| **REM-MED-02** | Testing Infrastructure | **MEDIUM** | Missing `tests/integration/` directory causing `npm run test:integration` exit code 1. | *Pending Phase 2.6* | — | — | Pending Phase 2.6 | — |
+| **REM-MED-02** | Testing Infrastructure | **MEDIUM** | Missing `tests/integration/` directory causing `npm run test:integration` exit code 1. | 1. Provisioned isolated PostgreSQL 17 test cluster on port 54333.<br>2. Built `tests/integration/supabase-prelude.sql` establishing mock Supabase roles (`anon`, `authenticated`, `service_role` with `BYPASSRLS`), schemas (`auth`, `storage`), and standard functions.<br>3. Built `tests/integration/global-setup.ts` to manage cluster lifecycle, cleanly apply all 16 platform migrations in sequence, and enforce worker RPC privilege revokes.<br>4. Built `tests/integration/db.ts` with typed helpers (`queryAsUser`, `mutateAsUser`, `queryAsAnon`, `executeAsServiceRole`) and fixture manager (`resetTestFixtures`).<br>5. Authored 4 integration suites covering Scenarios A-G (30 tests) testing multi-tenant isolation, attendance & storage RLS, outbox worker mechanics, GPS telemetry authorization, and financial ledger integrity.<br>6. Configured `vitest.config.ts` with `fileParallelism: false` to enforce deterministic sequential execution and updated `package.json` test scripts. | • `tests/integration/supabase-prelude.sql`<br>• `tests/integration/global-setup.ts`<br>• `tests/integration/db.ts`<br>• `tests/integration/tenant-isolation.integration.test.ts`<br>• `tests/integration/attendance-storage.integration.test.ts`<br>• `tests/integration/notifications-transport.integration.test.ts`<br>• `tests/integration/financial-integrity.integration.test.ts`<br>• `vitest.config.ts`<br>• `package.json` | `tests/integration/*.integration.test.ts` (30 tests passing) | **VERIFIED LIVE** against real PostgreSQL 17 engine cluster across all 30 tests in ~75s. | Production external endpoints (third-party SMS/email providers, physical Android GPS devices) require cloud environment. |
 
 ---
 
@@ -354,11 +354,102 @@
     - Server-side database authorization: unauthenticated rejection, cross-tenant rejection, student/parent rejection, vehicle mismatch rejection, and inactive journey rejection.
   - All 24 tests PASSED.
 - **Security Test Suite:** 190 / 190 tests PASSED across 16 security test suites (`npm run test:security`).
-- **Full Monorepo Test Suite:** 392 / 392 tests PASSED across 29 test suites (`npm test`).
-- **Workspace Typecheck:** PASSED (`npm run typecheck` returned 0 errors across all 7 packages and applications).
+- **Workspace Typecheck:** PASSED (`npm run typecheck` returned 0 errors across all 6 packages and applications).
 - **Shared Dependency Builds:** PASSED (`npm run build:mobile-deps` compiled types, database, validators, supabase-client).
 - **Next.js Production Web Build:** PASSED (`npm run build --workspace=@edu-platform/web` compiled 106 routes).
 - **Expo Android Bundle Export:** PASSED (`npx expo export --platform android` generated Hermes bytecode dist bundle `index-0545950b3050e936335f744564e66039.hbc`, 2.68 MB).
+
+---
+
+## Phase 2.6 — Real Integration Test Harness (REM-MED-02)
+
+### 1. Investigation Findings
+1. **Missing Test Directory:**
+   - The root `package.json` defined `"test:integration": "vitest run tests/integration"`, but no `tests/integration/` directory existed in the codebase.
+   - Any execution of `npm run test:integration` exited immediately with code 1.
+2. **Limitations of Mocked Security Suites:**
+   - Pre-existing security tests in `tests/security/` simulated Supabase client responses and RLS conditions in JavaScript.
+   - Genuine PostgreSQL database features—including PostgreSQL table-level RLS policies, `auth.uid()` evaluation via PostgreSQL session variables, `SECURITY DEFINER` function behavior, `FOR UPDATE SKIP LOCKED` atomic outbox claims, rule-based immutable ledgers, and cascading transaction rollbacks—could only be validated against an actual PostgreSQL engine instance.
+
+### 2. Remediation Architecture
+1. **Isolated PostgreSQL 17 Test Cluster:**
+   - Local PostgreSQL 17 engine cluster operating on dedicated port `54333` with data cluster directory in the persistent brain scratch area.
+   - Runs with strict isolation: never connects to remote Supabase, cloud databases, or production environments. Uses synthetic test fixtures exclusively.
+2. **Supabase Mock Prelude (`tests/integration/supabase-prelude.sql`):**
+   - Provisions standard Supabase database roles: `anon`, `authenticated`, and `service_role` (configured with `BYPASSRLS`).
+   - Mocks schemas `auth` (with `auth.users`) and `storage` (with `storage.buckets`, `storage.objects`).
+   - Implements authentic mock functions: `auth.uid()`, `auth.role()`, `storage.foldername()`, `storage.filename()`, `storage.extension()`.
+   - Provisions backwards-compatible plpgsql overloads for `has_institution_role(uuid, text[])` and `current_user_tenant_ids()`.
+3. **Automated Test Lifecycle & Migration Runner (`tests/integration/global-setup.ts`):**
+   - Manages automatic start and stop of PostgreSQL 17 test cluster on port 54333.
+   - Protects non-integration test runs: verifies `process.argv` before starting cluster so `npm run test:unit` and `npm run test:security` run without database spin-up.
+   - Drops and creates clean `edu_integration_test` database.
+   - Applies `supabase-prelude.sql` and all 16 platform migrations in sequence (`20261105000000_initial_schema.sql` through `20261110090000_harden_transport_gps_authorization.sql`).
+   - Automatically grants usage and permissions to `anon`, `authenticated`, and `service_role`, while explicitly re-applying worker RPC `REVOKE` hardening on `claim_notification_deliveries`, `resolve_notification_delivery`, and `requeue_dead_letter_delivery`.
+4. **Typed Integration Client & Fixture Seeder (`tests/integration/db.ts`):**
+   - Exposes `queryAsUser`, `mutateAsUser`, `queryAsAnon`, and `executeAsServiceRole`.
+   - Simulates JWT authentication by setting `request.jwt.claim.sub = userId` and `role = authenticated`, fully engaging PostgreSQL engine RLS evaluation.
+   - `resetTestFixtures()`: Cascading truncate across 30+ tables and deterministic seeding of `FIXTURES`:
+     - Two institutions: Institution Alpha (`11111111-1111-1111-1111-111111111111`) and Institution Beta (`22222222-2222-2222-2222-222222222222`).
+     - Eight user personas: Alice (Alpha Owner), Bob (Alpha Faculty), Charlie (Alpha Student), Charlie2 (Alpha Peer Student), Dan (Beta Owner), Eve (Alpha Suspended Member), Grace (Alpha Guardian of Charlie), and Henry (Alpha Transport Driver).
+     - Academic sessions, terms, classes, fee structures, assignments, vehicles, routes, and journeys.
+5. **Vitest Harness Configuration (`vitest.config.ts` & `package.json`):**
+   - Configured `testTimeout: 30000` and `hookTimeout: 30000` to allow for database operations.
+   - Set `fileParallelism: false` to enforce sequential test file execution, preventing inter-test database deadlocks during `resetTestFixtures()` cascading truncates.
+   - Configured dedicated scripts in `package.json`:
+     - `test:unit`: `vitest run tests/unit`
+     - `test:security`: `vitest run tests/security`
+     - `test:integration`: `vitest run tests/integration`
+     - `test`: `vitest run tests/unit tests/security tests/integration`
+
+### 3. Integration Test Suites & Scenarios (30 Tests Passing)
+
+#### Scenario A & B: Multi-Tenant Isolation & RBAC (`tenant-isolation.integration.test.ts` — 9 tests)
+- **Cross-Tenant SELECT Isolation**: Institution Alpha owner Alice cannot query Institution Beta students, profiles, or classes under RLS.
+- **Cross-Tenant Mutation Blocking**: Alice cannot update or delete records belonging to Institution Beta.
+- **Suspended Membership Revocation**: Suspended member Eve receives zero rows across all tenant tables.
+- **Multi-Institution User Isolation**: Users with dual memberships only access data for institutions where active membership exists.
+- **Anonymous Block**: Anonymous queries to protected tables return 0 rows.
+- **Student Peer Isolation**: Student Charlie cannot query peer student records (Charlie2).
+- **Guardian Access Scoping**: Guardian Grace can view Charlie's records but receives 0 rows for unrelated students.
+- **Staff Admin Restrictions**: Faculty Bob is blocked from institutional administrative updates.
+- **Cross-Tenant Admin Boundaries**: Institution Beta owner Dan cannot access Institution Alpha data.
+
+#### Scenario C & D: Attendance & Storage Security (`attendance-storage.integration.test.ts` — 8 tests)
+- **Faculty Attendance Creation**: Authorized faculty Bob creates attendance sessions and records student attendance.
+- **Student Attendance Self-Access**: Student Charlie can view own attendance record but receives 0 rows for peer Charlie2.
+- **Guardian Attendance Access**: Verified guardian Grace can view Charlie's attendance but cannot access peer records.
+- **Correction Record Insertion Security**: Student Charlie cannot insert or alter attendance correction records under RLS.
+- **Storage Cross-Tenant Isolation**: Institution Alpha owner Alice can view Alpha documents in `storage.objects` but cannot view Beta documents.
+- **Storage Student Self-Access**: Charlie can read own `birth_cert.pdf` in `student-documents` but cannot read Charlie2's `report_card.pdf`.
+- **Storage Delete Privileges**: Student Charlie is blocked from deleting own documents (`42501`); Institution Alpha owner Alice can delete Alpha storage objects.
+
+#### Scenario E & F: Notifications & Transport Telemetry (`notifications-transport.integration.test.ts` — 9 tests)
+- **Atomic Outbox Claiming**: Service role worker claims pending notification deliveries with `claim_notification_deliveries` using `FOR UPDATE SKIP LOCKED`.
+- **Delivery Resolution & Transitions**: `resolve_notification_delivery` transitions status to `delivered`, computes exponential backoff on transient failure, and routes exhausted retries to `dead_letter`.
+- **Worker RPC Access Revocation**: Calling `claim_notification_deliveries` or `resolve_notification_delivery` as `authenticated` or `anon` fails immediately with `42501 (insufficient_privilege)`.
+- **Push Token Registration**: Calling `register_push_device_token_atomic` safely registers push tokens and handles shared-device account reassignment cleanly without RLS errors.
+- **Driver GPS Submission**: Assigned driver Henry successfully submits GPS coordinates for active journey `journey-alpha-active` via `record_vehicle_gps_location_atomic`.
+- **Cross-Tenant GPS Rejection**: Caller attempting to submit coordinates for another institution's journey is rejected with `42501`.
+- **Unauthorized GPS Rejection**: Students and unrelated faculty attempting GPS submissions are rejected with `42501`.
+- **Inactive Journey GPS Rejection**: GPS submissions for completed journeys are rejected with `P0001 (Journey is not currently active)`.
+- **Vehicle Mismatch Rejection**: GPS submissions specifying an unassigned vehicle are rejected with `22023`.
+
+#### Scenario G: Universal Fees & Financial Integrity (`financial-integrity.integration.test.ts` — 4 tests)
+- **Atomic Fee Payment**: Calling `record_fee_payment_atomic` updates fee assignment balance, inserts payment record, and logs double-entry financial ledger entry in a single atomic transaction.
+- **Overpayment & Advance Balance Wallet**: Overpaying a fee assignment zeroes assignment balance and credits remaining surplus to `student_advance_balances` wallet, logging balanced ledger entries.
+- **Student Fee Mutation Blocks**: Student Charlie cannot alter fee assignments or delete payment records under RLS.
+- **Atomic Refund & Ledger Immutability**: Processing refund via `process_fee_refund_atomic` logs reverse ledger entries; PostgreSQL `DO INSTEAD NOTHING` rules (`financial_ledger_no_update`, `financial_ledger_no_delete`) guarantee ledger rows can never be updated or deleted.
+
+---
+
+### 4. Verification Levels & Unverified External Services
+- **Database Verification Level:** 100% verified against real PostgreSQL 17 engine instance running all 16 platform migrations, RLS policies, triggers, and stored procedures.
+- **API & Client Verification Level:** All 6 workspaces pass TypeScript typechecking (`tsc --noEmit`); Next.js production build compiled 106 routes; Expo Android export bundled 758 modules.
+- **Unverified External Services (Documented Production Pre-Requisites):**
+  - **Third-Party Messaging Providers (SMS/Email/WhatsApp):** Deliveries were validated via mock and test adapters. Sending live SMS via Twilio, emails via Resend/SendGrid, or FCM push requires configuring production API keys and FCM service account JSON in Supabase Vault.
+  - **Physical Android GPS Hardware:** Location tracking logic, background task registration (`TaskManager`), and Android foreground service notifications were validated via Expo bundler and unit/security tests. Live physical GPS satellite fixes require deployment to physical hardware via EAS build.
+
 
 
 
