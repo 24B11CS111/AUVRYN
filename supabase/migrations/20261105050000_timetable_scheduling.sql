@@ -323,7 +323,7 @@ CREATE TABLE IF NOT EXISTS public.schedule_notifications (
   recipient_type schedule_notification_recipient NOT NULL DEFAULT 'class',
   recipient_id UUID,
   timetable_entry_id UUID REFERENCES public.timetable_entries(id) ON DELETE SET NULL,
-  substitution_id REFERENCES public.timetable_substitutions(id) ON DELETE SET NULL,
+  substitution_id UUID REFERENCES public.timetable_substitutions(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   change_type schedule_change_type NOT NULL DEFAULT 'general',
@@ -661,7 +661,7 @@ $$;
 
 -- ==============================================================================
 -- 9. Row-Level Security (RLS) Policies
--- Complete isolation by institution_id = (SELECT auth_institution_id())
+-- Tenant isolation via get_user_institution_ids() and active membership checks
 -- ==============================================================================
 
 ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
@@ -674,15 +674,15 @@ ALTER TABLE public.schedule_notifications ENABLE ROW LEVEL SECURITY;
 -- 9.1 Rooms Policies
 CREATE POLICY "rooms_select"
 ON public.rooms FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "rooms_insert"
 ON public.rooms FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = rooms.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -692,10 +692,10 @@ WITH CHECK (
 CREATE POLICY "rooms_update"
 ON public.rooms FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = rooms.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -705,10 +705,10 @@ USING (
 CREATE POLICY "rooms_delete"
 ON public.rooms FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = rooms.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -718,15 +718,15 @@ USING (
 -- 9.2 Timetable Structures Policies
 CREATE POLICY "structures_select"
 ON public.timetable_structures FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "structures_insert"
 ON public.timetable_structures FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_structures.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -736,10 +736,10 @@ WITH CHECK (
 CREATE POLICY "structures_update"
 ON public.timetable_structures FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_structures.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -749,10 +749,10 @@ USING (
 CREATE POLICY "structures_delete"
 ON public.timetable_structures FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_structures.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -762,15 +762,15 @@ USING (
 -- 9.3 Timetable Periods Policies
 CREATE POLICY "periods_select"
 ON public.timetable_periods FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "periods_insert"
 ON public.timetable_periods FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_periods.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -780,10 +780,10 @@ WITH CHECK (
 CREATE POLICY "periods_update"
 ON public.timetable_periods FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_periods.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -793,10 +793,10 @@ USING (
 CREATE POLICY "periods_delete"
 ON public.timetable_periods FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_periods.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -806,15 +806,15 @@ USING (
 -- 9.4 Timetable Entries Policies
 CREATE POLICY "entries_select"
 ON public.timetable_entries FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "entries_insert"
 ON public.timetable_entries FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_entries.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -824,10 +824,10 @@ WITH CHECK (
 CREATE POLICY "entries_update"
 ON public.timetable_entries FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_entries.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -837,10 +837,10 @@ USING (
 CREATE POLICY "entries_delete"
 ON public.timetable_entries FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_entries.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -850,15 +850,15 @@ USING (
 -- 9.5 Timetable Substitutions Policies
 CREATE POLICY "substitutions_select"
 ON public.timetable_substitutions FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "substitutions_insert"
 ON public.timetable_substitutions FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_substitutions.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')
@@ -868,10 +868,10 @@ WITH CHECK (
 CREATE POLICY "substitutions_update"
 ON public.timetable_substitutions FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_substitutions.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -881,10 +881,10 @@ USING (
 CREATE POLICY "substitutions_delete"
 ON public.timetable_substitutions FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = timetable_substitutions.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -895,12 +895,12 @@ USING (
 CREATE POLICY "sched_notif_select"
 ON public.schedule_notifications FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     -- Administrator or Coordinator
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = schedule_notifications.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -927,10 +927,10 @@ USING (
 CREATE POLICY "sched_notif_insert"
 ON public.schedule_notifications FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = schedule_notifications.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')

@@ -14,7 +14,7 @@ export function DashboardShell({ sessionContext, children }: DashboardShellProps
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-[#F5F7FB]">
       {/* Sidebar */}
       <Sidebar
         memberships={sessionContext.memberships}

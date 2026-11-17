@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import type { ParentPortalData } from './actions';
 import { getParentPortalDataAction } from './actions';
@@ -16,8 +16,12 @@ import {
   Bus,
   Compass,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { TransportMap } from '@/components/transport/TransportMap';
+import { ParentAICompanionView } from '@/components/ai/ParentAICompanionView';
+import { useAuvrynRealtime } from '@/lib/realtime/useAuvrynRealtime';
+import { RealtimeStatusIndicator } from '@/components/realtime/RealtimeStatusIndicator';
 
 interface ParentPortalClientProps {
   initialData: ParentPortalData;
@@ -25,7 +29,7 @@ interface ParentPortalClientProps {
 
 export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
   const [data, setData] = useState<ParentPortalData>(initialData);
-  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave' | 'transport'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ai_companion' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave' | 'transport'>('overview');
   const [isPending, startTransition] = useTransition();
 
   const handleChildSelect = (studentId: string) => {
@@ -40,6 +44,43 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
   const activeChild = data.activeChildDetails?.student;
   const attSummary = data.activeChildDetails?.attendanceSummary;
   const fees = data.activeChildDetails?.fees;
+  const institutionId = (activeChild as any)?.institution_id || (activeChild as any)?.institutionId || '';
+
+  const { connectionState, subscribeToInstitution } = useAuvrynRealtime({
+    institutionId,
+    userRole: 'parent',
+  });
+
+  useEffect(() => {
+    const selectedId = data.selectedChildId;
+    if (!institutionId || !selectedId) return;
+
+    const sub = subscribeToInstitution('academics', (msg) => {
+      if (
+        msg.eventType === 'ATTENDANCE_RECORDED' ||
+        msg.eventType === 'TIMETABLE_UPDATED' ||
+        msg.eventType === 'EXAM_RESULTS_PUBLISHED'
+      ) {
+        handleChildSelect(selectedId);
+      }
+    });
+
+    const opSub = subscribeToInstitution('operations', (msg) => {
+      if (
+        msg.eventType === 'FEE_PAYMENT_RECORDED' ||
+        msg.eventType === 'STUDENT_BOARDED' ||
+        msg.eventType === 'JOURNEY_STARTED' ||
+        msg.eventType === 'JOURNEY_ENDED'
+      ) {
+        handleChildSelect(selectedId);
+      }
+    });
+
+    return () => {
+      sub?.unsubscribe();
+      opSub?.unsubscribe();
+    };
+  }, [institutionId, data.selectedChildId, subscribeToInstitution]);
 
   if (data.children.length === 0) {
     return (
@@ -56,11 +97,15 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
   return (
     <div className="space-y-6">
       {/* Top Banner & Child Switcher */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-sm space-y-4">
+      <div className="p-6 rounded-2xl bg-[#0B1E3F] text-white border border-[#142C4C] shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Parent Portal
+            <div className="flex items-center gap-2.5">
+              <div className="text-[11px] font-semibold text-[#60A5FA] uppercase tracking-wider flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                <span>AUVRYN &bull; Guardian & Family Portal</span>
+              </div>
+              <RealtimeStatusIndicator state={connectionState} />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Family Academic Dashboard</h1>
           </div>
@@ -154,6 +199,7 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-medium">
         {[
           { key: 'overview', label: 'Overview', icon: Layers },
+          { key: 'ai_companion', label: 'AI Companion', icon: Sparkles },
           { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
           { key: 'results', label: 'Exam Results', icon: Award },
           { key: 'timetable', label: 'Timetable', icon: Calendar },
@@ -183,6 +229,10 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
       </div>
 
       {/* Tab Panels */}
+      {activeTab === 'ai_companion' && (
+        <ParentAICompanionView initialStudentId={data.selectedChildId || undefined} />
+      )}
+
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Attendance */}

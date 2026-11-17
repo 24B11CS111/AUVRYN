@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { InstitutionMembership } from '@edu-platform/types';
 import { InstitutionSwitcher } from './InstitutionSwitcher';
+import { AuvrynLogo } from '@/components/branding';
 import {
   LayoutDashboard,
   Building,
@@ -31,6 +32,8 @@ import {
   Library,
   Building2,
   Calendar,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -161,6 +164,24 @@ export function Sidebar({
       roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
     },
     {
+      label: 'AI Assistant',
+      href: '/dashboard/ai-assistant',
+      icon: Sparkles,
+      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
+    },
+    {
+      label: 'AI Drafts & Review',
+      href: '/dashboard/ai-drafts',
+      icon: Layers,
+      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
+    },
+    {
+      label: 'AI Intelligence',
+      href: '/dashboard/ai-intelligence',
+      icon: Sparkles,
+      roles: ['owner', 'admin', 'academic_admin'],
+    },
+    {
       label: 'Parent Portal',
       href: '/portal/parent',
       icon: HeartHandshake,
@@ -208,19 +229,13 @@ export function Sidebar({
         )}
       >
         {/* Top Header / Brand */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/80">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-              E
-            </div>
-            <span className="font-bold text-slate-900 text-sm tracking-tight">
-              EduPlatform
-            </span>
-          </Link>
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/80 bg-white">
+          <AuvrynLogo variant="horizontal" size="sm" showDescriptor={true} href="/dashboard" />
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden"
+            aria-label="Close navigation"
           >
             <X className="w-5 h-5" />
           </button>
@@ -249,13 +264,13 @@ export function Sidebar({
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all',
                   isActive
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-[#EAF2FF] text-[#0B1E3F] font-semibold border-l-2 border-[#2563EB] shadow-xs'
+                    : 'text-[#64748B] hover:bg-slate-50 hover:text-[#0B1E3F]'
                 )}
               >
-                <Icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-white' : 'text-slate-500')} />
+                <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-[#2563EB]' : 'text-slate-400')} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -271,7 +286,7 @@ export function Sidebar({
                 Current Role
               </div>
               <div className="font-semibold text-slate-800 capitalize truncate">
-                {activeMembership?.role.replace('_', ' ')}
+                {activeMembership?.role ? activeMembership.role.replace('_', ' ') : 'Member'}
               </div>
             </div>
           </div>

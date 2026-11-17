@@ -2772,3 +2772,167 @@ export const issueEventCertificateSchema = z.object({
 });
 
 export type IssueEventCertificateInput = z.input<typeof issueEventCertificateSchema>;
+
+// ==========================================
+// 15. AI Intelligence & Automation Schemas
+// ==========================================
+
+export const aiProviderTypeEnum = z.enum([
+  'gemini',
+  'openai',
+  'anthropic',
+  'mock',
+  'custom',
+]);
+
+export const aiTaskTypeEnum = z.enum([
+  'tutor_qa',
+  'concept_explanation',
+  'quiz_generation',
+  'revision_plan',
+  'lesson_plan',
+  'mcq_generation',
+  'exam_paper_draft',
+  'assignment_draft',
+  'rubric_generation',
+  'owner_analytics',
+  'report_generation',
+  'parent_summary',
+]);
+
+export const aiDraftStatusEnum = z.enum([
+  'draft',
+  'reviewed',
+  'approved',
+  'rejected',
+  'archived',
+]);
+
+export const aiMessageRoleEnum = z.enum(['user', 'assistant', 'system']);
+
+export const aiGatewayRequestSchema = z.object({
+  institutionId: z.string().uuid('Valid institution ID is required'),
+  taskType: aiTaskTypeEnum,
+  prompt: z
+    .string()
+    .trim()
+    .min(1, 'Prompt is required')
+    .max(10000, 'Prompt cannot exceed 10000 characters'),
+  conversationId: z.string().uuid('Valid conversation ID').optional(),
+  contextType: z.enum(['subject', 'class', 'student', 'general']).optional().default('general'),
+  contextId: z.string().uuid('Valid context entity ID').optional(),
+  systemContext: z.string().max(20000).optional(),
+  parameters: z.record(z.unknown()).optional().default({}),
+  estimatedTokens: z.number().int().positive().optional().default(1500),
+});
+
+export type AIGatewayRequestInput = z.infer<typeof aiGatewayRequestSchema>;
+
+export const aiUpdateQuotaSchema = z.object({
+  institutionId: z.string().uuid('Valid institution ID is required'),
+  monthlyTokenBudget: z.number().int().min(10000).max(100000000).optional(),
+  monthlyRequestBudget: z.number().int().min(100).max(1000000).optional(),
+  isAiEnabled: z.boolean().optional(),
+  allowedTaskTypes: z.array(aiTaskTypeEnum).min(1).optional(),
+});
+
+export type AIUpdateQuotaInput = z.infer<typeof aiUpdateQuotaSchema>;
+
+export const aiDraftReviewSchema = z.object({
+  draftId: z.string().uuid('Valid draft ID is required'),
+  status: z.enum(['approved', 'rejected']),
+  rejectionReason: z.string().trim().max(1000).optional(),
+});
+
+export type AIDraftReviewInput = z.infer<typeof aiDraftReviewSchema>;
+
+// Structured Educational Schemas
+export const aiLessonPlanSchema = z.object({
+  topic: z.string().min(1),
+  subject: z.string().min(1),
+  gradeLevel: z.string().min(1),
+  durationMinutes: z.number().int().positive(),
+  learningObjectives: z.array(z.string().min(1)).min(1),
+  prerequisites: z.array(z.string()).default([]),
+  materialsNeeded: z.array(z.string()).default([]),
+  phases: z.array(
+    z.object({
+      phaseName: z.string(),
+      durationMinutes: z.number().int(),
+      activities: z.array(z.string()),
+      teacherNotes: z.string().optional(),
+    })
+  ).min(1),
+  assessmentStrategy: z.string().min(1),
+  homework: z.string().optional(),
+});
+
+export type AILessonPlanOutput = z.infer<typeof aiLessonPlanSchema>;
+
+export const aiQuizQuestionSchema = z.object({
+  questionNumber: z.number().int().positive(),
+  questionText: z.string().min(1),
+  options: z.array(z.string().min(1)).min(2).max(6),
+  correctOptionIndex: z.number().int().min(0),
+  explanation: z.string().min(1),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+});
+
+export const aiQuizSchema = z.object({
+  title: z.string().min(1),
+  subject: z.string().min(1),
+  topic: z.string().min(1),
+  totalQuestions: z.number().int().positive(),
+  questions: z.array(aiQuizQuestionSchema).min(1),
+});
+
+export type AIQuizOutput = z.infer<typeof aiQuizSchema>;
+
+export const aiRubricCriterionSchema = z.object({
+  criterion: z.string().min(1),
+  weightMarks: z.number().positive(),
+  levels: z.object({
+    exemplary: z.string().min(1),
+    proficient: z.string().min(1),
+    developing: z.string().min(1),
+    beginning: z.string().min(1),
+  }),
+});
+
+export const aiRubricSchema = z.object({
+  title: z.string().min(1),
+  subject: z.string().min(1),
+  totalMarks: z.number().positive(),
+  criteria: z.array(aiRubricCriterionSchema).min(1),
+});
+
+export type AIRubricOutput = z.infer<typeof aiRubricSchema>;
+
+export const aiExamPaperSectionSchema = z.object({
+  sectionName: z.string().min(1),
+  totalMarks: z.number().positive(),
+  instructions: z.string().optional(),
+  questions: z.array(
+    z.object({
+      questionNumber: z.string().min(1),
+      marks: z.number().positive(),
+      questionText: z.string().min(1),
+      questionType: z.enum(['mcq', 'short_answer', 'long_answer', 'numerical', 'essay']),
+      choices: z.array(z.string()).optional(),
+      markingScheme: z.string().min(1),
+    })
+  ).min(1),
+});
+
+export const aiExamPaperSchema = z.object({
+  title: z.string().min(1),
+  subject: z.string().min(1),
+  gradeLevel: z.string().min(1),
+  durationMinutes: z.number().int().positive(),
+  totalMarks: z.number().positive(),
+  generalInstructions: z.array(z.string()).default([]),
+  sections: z.array(aiExamPaperSectionSchema).min(1),
+});
+
+export type AIExamPaperOutput = z.infer<typeof aiExamPaperSchema>;
+

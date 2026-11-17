@@ -321,7 +321,9 @@ export class PushDeliveryAdapter implements NotificationDeliveryAdapter {
       };
     }
 
-    if (process.env.NODE_ENV === 'test' || !process.env.EXPO_ACCESS_TOKEN) {
+    const accessToken = process.env.EXPO_ACCESS_TOKEN?.trim();
+
+    if (!accessToken) {
       return {
         success: true,
         provider: 'mock-expo-push',
@@ -338,8 +340,9 @@ export class PushDeliveryAdapter implements NotificationDeliveryAdapter {
       const res = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.EXPO_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           to: token,
@@ -396,6 +399,98 @@ export class PushDeliveryAdapter implements NotificationDeliveryAdapter {
         errorCode: isTimeout ? 'TIMEOUT' : 'CONNECTION_ERROR',
         errorMessage: isTimeout ? `Push dispatch timed out after ${timeoutMs}ms.` : err.message,
         isPermanentFailure: false,
+        latencyMs,
+      };
+    }
+  }
+
+  /**
+   * Safe provider connectivity and authentication verification.
+   * Probes Expo's receipt service with a synthetic ID to validate credentials
+   * without sending a push notification to any real user.
+   */
+  async verifyConnectivity(timeoutMs: number = 5000): Promise<{
+    configured: boolean;
+    authenticated: boolean;
+    provider: string;
+    status: number;
+    message: string;
+    latencyMs: number;
+  }> {
+    const startTime = Date.now();
+    const token = process.env.EXPO_ACCESS_TOKEN?.trim();
+
+    if (!token) {
+      return {
+        configured: false,
+        authenticated: false,
+        provider: 'mock-expo-push',
+        status: 200,
+        message: 'EXPO_ACCESS_TOKEN is not configured; fallback to mock-expo-push active.',
+        latencyMs: Date.now() - startTime,
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      // Probe Expo push receipt API: requires valid Bearer token if enhanced push security is enabled,
+      // but never dispatches messages to any physical device.
+      const res = await fetch('https://exp.host/--/api/v2/push/getReceipts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ ids: ['00000000-0000-0000-0000-000000000000'] }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+      const latencyMs = Date.now() - startTime;
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401 || res.status === 403 || data.errors?.[0]?.code === 'UNAUTHORIZED') {
+        return {
+          configured: true,
+          authenticated: false,
+          provider: this.providerName,
+          status: res.status,
+          message: 'Authentication failed: Invalid or expired EXPO_ACCESS_TOKEN.',
+          latencyMs,
+        };
+      }
+
+      if (!res.ok) {
+        return {
+          configured: true,
+          authenticated: false,
+          provider: this.providerName,
+          status: res.status,
+          message: `Expo Push API responded with HTTP ${res.status}.`,
+          latencyMs,
+        };
+      }
+
+      return {
+        configured: true,
+        authenticated: true,
+        provider: this.providerName,
+        status: res.status,
+        message: 'Expo Push Service connection and Bearer authentication verified successfully.',
+        latencyMs,
+      };
+    } catch (err: any) {
+      const latencyMs = Date.now() - startTime;
+      const isTimeout = err.name === 'AbortError';
+      return {
+        configured: true,
+        authenticated: false,
+        provider: this.providerName,
+        status: isTimeout ? 408 : 503,
+        message: isTimeout ? `Connection timed out after ${timeoutMs}ms.` : err.message,
         latencyMs,
       };
     }

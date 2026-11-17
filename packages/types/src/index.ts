@@ -228,7 +228,12 @@ export type Permission =
   | 'events:manage'
   | 'events:view'
   | 'events:register'
-  | 'events:certify';
+  | 'events:certify'
+  | 'ai:analytics'
+  | 'ai:teaching_assistant'
+  | 'ai:tutor'
+  | 'ai:companion'
+  | 'ai:quota_manage';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: [
@@ -314,6 +319,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'events:view',
     'events:register',
     'events:certify',
+    'ai:analytics',
+    'ai:teaching_assistant',
+    'ai:tutor',
+    'ai:companion',
+    'ai:quota_manage',
   ],
   admin: [
     'institution:manage',
@@ -397,6 +407,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'events:view',
     'events:register',
     'events:certify',
+    'ai:analytics',
+    'ai:teaching_assistant',
+    'ai:tutor',
+    'ai:companion',
+    'ai:quota_manage',
   ],
   hr_administrator: [
     'institution:view',
@@ -479,6 +494,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'events:view',
     'events:register',
     'events:certify',
+    'ai:teaching_assistant',
+    'ai:analytics',
   ],
   department_head: [
     'institution:view',
@@ -522,6 +539,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hostel:view',
     'events:view',
     'events:register',
+    'ai:teaching_assistant',
   ],
   admissions_officer: [
     'institution:view',
@@ -582,6 +600,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'library:view',
     'events:view',
     'events:register',
+    'ai:teaching_assistant',
   ],
   staff: [
     'institution:view',
@@ -662,6 +681,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hostel:outpass',
     'events:view',
     'events:register',
+    'ai:tutor',
   ],
   parent: [
     'institution:view',
@@ -689,6 +709,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hostel:outpass',
     'events:view',
     'events:register',
+    'ai:companion',
   ],
 };
 
@@ -3800,3 +3821,243 @@ export interface EventCertificate {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==========================================
+// 15. AI Intelligence & Automation
+// ==========================================
+
+export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'mock' | 'custom';
+
+export type AITaskType =
+  | 'tutor_qa'
+  | 'concept_explanation'
+  | 'quiz_generation'
+  | 'revision_plan'
+  | 'lesson_plan'
+  | 'mcq_generation'
+  | 'exam_paper_draft'
+  | 'assignment_draft'
+  | 'rubric_generation'
+  | 'owner_analytics'
+  | 'report_generation'
+  | 'parent_summary';
+
+export type AIDraftStatus = 'draft' | 'reviewed' | 'approved' | 'rejected' | 'archived';
+
+export type AIMessageRole = 'user' | 'assistant' | 'system';
+
+export interface AIInstitutionQuota {
+  institutionId: string;
+  monthlyTokenBudget: number;
+  monthlyTokensConsumed: number;
+  monthlyRequestBudget: number;
+  monthlyRequestsConsumed: number;
+  isAiEnabled: boolean;
+  allowedTaskTypes: AITaskType[];
+  resetAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIUsageLog {
+  id: string;
+  institutionId: string;
+  userId?: string | null;
+  role: string;
+  taskType: AITaskType;
+  provider: AIProviderType;
+  modelName: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd?: number | null;
+  latencyMs: number;
+  status: 'success' | 'rate_limited' | 'quota_exceeded' | 'error';
+  errorMessage?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AIConversation {
+  id: string;
+  institutionId: string;
+  userId: string;
+  role: string;
+  taskType: AITaskType;
+  title: string;
+  contextType?: 'subject' | 'class' | 'student' | 'general' | null;
+  contextId?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIMessage {
+  id: string;
+  conversationId: string;
+  institutionId: string;
+  senderRole: AIMessageRole;
+  content: string;
+  tokensUsed?: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AIGeneratedDraft {
+  id: string;
+  institutionId: string;
+  authorId: string;
+  taskType: AITaskType;
+  title: string;
+  contentJson: Record<string, unknown>;
+  status: AIDraftStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AICompletionOptions {
+  systemPrompt: string;
+  userPrompt: string;
+  temperature?: number;
+  maxTokens?: number;
+  responseFormat?: 'text' | 'json';
+  schema?: Record<string, unknown>;
+  stopSequences?: string[];
+}
+
+export interface AICompletionResult {
+  content: string;
+  parsed?: unknown;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  model: string;
+  provider: AIProviderType;
+  latencyMs: number;
+}
+
+export interface AIProviderAdapter {
+  readonly providerName: AIProviderType;
+  generateCompletion(options: AICompletionOptions): Promise<AICompletionResult>;
+}
+
+export interface AIGatewayRequest {
+  institutionId: string;
+  taskType: AITaskType;
+  prompt: string;
+  conversationId?: string;
+  contextType?: 'subject' | 'class' | 'student' | 'general';
+  contextId?: string;
+  systemContext?: string;
+  parameters?: Record<string, unknown>;
+  estimatedTokens?: number;
+}
+
+export interface AIGatewayResponse {
+  success: boolean;
+  taskType: AITaskType;
+  content?: string;
+  parsed?: unknown;
+  conversationId?: string;
+  messageId?: string;
+  draftId?: string;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    latencyMs: number;
+    provider: AIProviderType;
+    model: string;
+  };
+  error?: {
+    code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'AI_DISABLED' | 'TOKEN_BUDGET_EXCEEDED' | 'REQUEST_BUDGET_EXCEEDED' | 'RATE_LIMITED' | 'INVALID_REQUEST' | 'PROVIDER_ERROR';
+    message: string;
+  };
+}
+
+// ==========================================
+// 13. AUVRYN Brand & Design Tokens
+// ==========================================
+export * from './tokens';
+
+// ==========================================
+// 14. Real-time Synchronization & Ecosystem Types
+// ==========================================
+
+export type RealtimeConnectionState =
+  | 'DISCONNECTED'
+  | 'CONNECTING'
+  | 'CONNECTED'
+  | 'RECONNECTING'
+  | 'ERROR';
+
+export type RealtimeEventType =
+  // Student & Staff
+  | 'STUDENT_RECORD_CHANGED'
+  | 'STAFF_RECORD_CHANGED'
+  // Attendance & Leave
+  | 'ATTENDANCE_RECORDED'
+  | 'LEAVE_STATUS_CHANGED'
+  // Academics & Timetable
+  | 'TIMETABLE_UPDATED'
+  | 'TIMETABLE_SUBSTITUTION_ASSIGNED'
+  | 'EXAM_RESULTS_PUBLISHED'
+  | 'EXAM_SCHEDULED'
+  // Financial
+  | 'FEE_PAYMENT_RECORDED'
+  | 'FEE_ASSIGNED'
+  // Communications & Notifications
+  | 'ANNOUNCEMENT_PUBLISHED'
+  | 'NOTIFICATION_CREATED'
+  | 'NOTIFICATION_READ'
+  // Transport & GPS
+  | 'GPS_TELEMETRY_UPDATED'
+  | 'JOURNEY_STARTED'
+  | 'JOURNEY_ENDED'
+  | 'STUDENT_BOARDED'
+  // Facilities & Operations
+  | 'LIBRARY_CIRCULATION_UPDATED'
+  | 'HOSTEL_ALLOCATION_UPDATED'
+  | 'EVENT_REGISTERED'
+  // AI & Automation
+  | 'AI_DRAFT_CREATED'
+  | 'AI_DRAFT_APPROVED'
+  | 'AI_DRAFT_REJECTED'
+  // Institutional Analytics
+  | 'KPI_STATS_INVALIDATED';
+
+export interface RealtimeMessage<T = unknown> {
+  id: string;
+  eventType: RealtimeEventType;
+  institutionId: string;
+  timestamp: string;
+  payload: T;
+}
+
+export type RealtimeChannelScope =
+  | 'institution'
+  | 'user'
+  | 'journey'
+  | 'kpi';
+
+export interface RealtimeSubscription {
+  id: string;
+  channelName: string;
+  unsubscribe: () => void;
+}
+
+export interface RealtimeServiceOptions {
+  institutionId?: string;
+  userId?: string;
+  userRole?: string;
+  dedupWindowMs?: number;
+  maxReconnectAttempts?: number;
+  initialBackoffMs?: number;
+  maxBackoffMs?: number;
+}
+
+

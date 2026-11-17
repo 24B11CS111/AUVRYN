@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireInstitution } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { processAttendanceAbsenceNotifications } from '@/lib/attendance/attendanceNotifications';
 import {
   attendanceSessionCreateSchema,
   studentAttendanceCorrectionSchema,
@@ -304,7 +305,24 @@ export async function recordStudentAttendanceAction(input: {
       return { success: false, error: formatSupabaseError(rpcErr) };
     }
 
-    // 3. Audit log
+    // 3. Queue automatic absence notifications for committed absent students
+    // Dual-path protection: if the database procedure already handled notifications (indicated by notifications_queued),
+    // skip application-level queuing. Otherwise, handle via TypeScript service layer.
+    if ((rpcResult as any)?.notifications_queued === undefined) {
+      try {
+        await processAttendanceAbsenceNotifications(supabase, {
+          institutionId,
+          sessionId,
+          sessionDate: s.sessionDate,
+          markedByUserId: userId,
+          records: input.records,
+        });
+      } catch (notifErr) {
+        console.warn('[AttendanceAction] Absence notification dispatch warning:', notifErr);
+      }
+    }
+
+    // 4. Audit log
     await supabase.from('audit_logs').insert({
       institution_id: institutionId,
       user_id: userId,
@@ -368,6 +386,32 @@ export async function correctStudentAttendanceAction(
 
     if (rpcErr) {
       return { success: false, error: formatSupabaseError(rpcErr) };
+    }
+
+    // If student status was corrected to 'absent', queue automatic absence notification
+    // Dual-path protection: skip application-level queuing if already handled by DB procedure
+    if (parsed.data.newStatus === 'absent' && (result as any)?.notifications_queued === undefined) {
+      try {
+        const { data: rec } = await supabase
+          .from('student_attendance_records')
+          .select('session_id, student_id, attendance_sessions (session_date)')
+          .eq('id', parsed.data.recordId)
+          .maybeSingle();
+
+        if (rec) {
+          const sessionDate =
+            (rec as any).attendance_sessions?.session_date || new Date().toISOString().slice(0, 10);
+          await processAttendanceAbsenceNotifications(supabase, {
+            institutionId,
+            sessionId: rec.session_id,
+            sessionDate,
+            markedByUserId: userId,
+            records: [{ studentId: rec.student_id, status: 'absent' }],
+          });
+        }
+      } catch (notifErr) {
+        console.warn('[AttendanceAction] Correction absence notification warning:', notifErr);
+      }
     }
 
     // Audit log

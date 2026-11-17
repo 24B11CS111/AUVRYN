@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'electric';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -26,19 +26,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      'inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.99]';
 
     const variants = {
       primary:
-        'bg-slate-900 text-white hover:bg-slate-800 focus:ring-slate-950 active:bg-slate-950 shadow-sm',
+        'bg-[#0B1E3F] text-white hover:bg-[#142C4C] focus:ring-[#2563EB] active:bg-[#07152B] shadow-sm',
+      electric:
+        'bg-[#2563EB] text-white hover:bg-[#1D4ED8] focus:ring-[#2563EB] active:bg-[#1E40AF] shadow-sm',
       secondary:
-        'bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-400 active:bg-slate-300',
+        'bg-[#F5F7FB] text-[#0B1E3F] border border-[#E2E8F0] hover:bg-[#EAF2FF] hover:border-[#BFDBFE] focus:ring-[#2563EB] active:bg-[#DBEAFE]',
       outline:
-        'border border-slate-300 bg-transparent text-slate-700 hover:bg-slate-50 focus:ring-slate-400',
+        'border border-[#E2E8F0] bg-white text-[#17243A] hover:bg-[#F5F7FB] hover:border-[#CBD5E1] focus:ring-[#2563EB]',
       danger:
-        'bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500 shadow-sm',
+        'bg-[#DC4545] text-white hover:bg-[#B91C1C] focus:ring-[#DC4545] shadow-sm',
       ghost:
-        'bg-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-300',
+        'bg-transparent text-[#17243A] hover:bg-[#EAF2FF] hover:text-[#0B1E3F] focus:ring-[#2563EB]',
     };
 
     const sizes = {
@@ -59,7 +61,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           leftIcon && <span className="shrink-0">{leftIcon}</span>
         )}
-        <span>{children}</span>
+        {children}
         {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
       </button>
     );

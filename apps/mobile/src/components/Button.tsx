@@ -7,11 +7,12 @@ import {
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
+import { AUVRYN_COLORS } from '@edu-platform/types';
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'electric';
   isLoading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
@@ -42,7 +43,7 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'outline' || variant === 'secondary' ? '#0f172a' : '#ffffff'}
+          color={variant === 'outline' || variant === 'secondary' ? AUVRYN_COLORS.primaryNavy : '#ffffff'}
         />
       ) : (
         <Text style={[styles.textBase, styles[`${variant}Text`], textStyle]}>
@@ -62,18 +63,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   primary: {
-    backgroundColor: '#0f172a',
+    backgroundColor: AUVRYN_COLORS.primaryNavy,
+  },
+  electric: {
+    backgroundColor: AUVRYN_COLORS.electricBlue,
   },
   secondary: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#F5F7FB',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#E2E8F0',
   },
   danger: {
-    backgroundColor: '#e11d48',
+    backgroundColor: AUVRYN_COLORS.error,
   },
   disabled: {
     opacity: 0.5,
@@ -85,11 +91,14 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#ffffff',
   },
+  electricText: {
+    color: '#ffffff',
+  },
   secondaryText: {
-    color: '#0f172a',
+    color: AUVRYN_COLORS.primaryNavy,
   },
   outlineText: {
-    color: '#334155',
+    color: AUVRYN_COLORS.primaryText,
   },
   dangerText: {
     color: '#ffffff',

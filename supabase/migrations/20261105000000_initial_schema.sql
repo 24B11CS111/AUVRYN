@@ -218,6 +218,31 @@ AS $$
     AND m.status = 'active';
 $$;
 
+-- 5.1b Helper: Alias current_user_tenant_ids() for multi-tenant isolation
+CREATE OR REPLACE FUNCTION public.current_user_tenant_ids()
+RETURNS TABLE (institution_id UUID)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT m.institution_id
+  FROM public.institution_memberships m
+  WHERE m.user_id = auth.uid()
+    AND m.status = 'active';
+$$;
+
+-- 5.1c Helper: Optional scalar context institution resolver
+CREATE OR REPLACE FUNCTION public.auth_institution_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.institution_id', true), '')::uuid;
+$$;
+
 -- 5.2 Helper: Check if caller holds specific active roles in target institution
 CREATE OR REPLACE FUNCTION public.has_institution_role(
   p_institution_id UUID,
@@ -237,6 +262,22 @@ AS $$
       AND m.status = 'active'
       AND m.role = ANY(p_roles)
   );
+$$;
+
+-- 5.2b Helper: text[] overload for has_institution_role
+CREATE OR REPLACE FUNCTION public.has_institution_role(
+  p_institution_id UUID,
+  p_roles text[]
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN public.has_institution_role(p_institution_id, p_roles::membership_role[]);
+END;
 $$;
 
 -- 5.3 Helper: Check if caller is an active member in target institution

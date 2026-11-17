@@ -11,6 +11,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { AuvrynLogo } from '../components/AuvrynLogo';
+import { AUVRYN_COLORS } from '@edu-platform/types';
 import { loginSchema } from '@edu-platform/validators';
 import { formatMobileAuthError } from '../lib/authErrors';
 import { supabaseConfigError } from '../lib/supabase';
@@ -66,11 +68,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>E</Text>
-          </View>
-          <Text style={styles.title}>EduPlatform</Text>
-          <Text style={styles.subtitle}>Sign in to your institution account</Text>
+          <AuvrynLogo variant="stacked" size="lg" showDescriptor={true} showTagline={true} />
         </View>
 
         {displayedError ? (
@@ -81,7 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 
         <View style={styles.form}>
           <Input
-            label="Email"
+            label="Email Address"
             placeholder="admin@institution.edu"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -102,6 +100,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
             onPress={handleLogin}
             disabled={!supabase}
             isLoading={isLoading}
+            variant="primary"
             style={styles.submitBtn}
           />
 
@@ -120,7 +119,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F5F7FB',
   },
   scrollContent: {
     padding: 24,
@@ -129,53 +128,29 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#0f172a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 4,
+    marginBottom: 28,
   },
   form: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E2E8F0',
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: AUVRYN_COLORS.primaryNavy,
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
   errorBox: {
-    backgroundColor: '#fff1f2',
+    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#fecdd3',
+    borderColor: '#FCA5A5',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#be123c',
+    color: '#DC4545',
     fontSize: 13,
   },
   submitBtn: {
@@ -188,11 +163,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#64748b',
+    color: '#64748B',
   },
   linkText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: '700',
+    color: AUVRYN_COLORS.electricBlue,
   },
 });

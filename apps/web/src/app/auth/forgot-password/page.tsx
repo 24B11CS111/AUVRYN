@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { AuvrynLogo } from '@/components/branding';
 
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -53,19 +54,16 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F5F7FB]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-sm">
-            E
-          </div>
-          <span className="text-xl font-bold text-slate-900">EduPlatform</span>
-        </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+        <div className="flex justify-center mb-4">
+          <AuvrynLogo variant="primary" size="md" showDescriptor={true} showTagline={true} href="/" />
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-[#0B1E3F]">
           Reset your password
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Enter your email address and we will send you a password recovery link
+        <p className="mt-1.5 text-xs text-slate-500">
+          Enter your institutional email address to receive a secure recovery link
         </p>
       </div>
 

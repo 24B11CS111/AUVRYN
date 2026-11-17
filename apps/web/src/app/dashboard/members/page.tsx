@@ -71,7 +71,7 @@ export default async function MembersPage() {
               {members && members.length > 0 ? (
                 members.map((member: any) => {
                   const prof = member.profiles;
-                  const fullName = prof?.full_name || 'Member';
+                  const fullName = (typeof prof?.full_name === 'string' && prof.full_name.trim()) || prof?.email?.split('@')[0] || 'Member';
                   const email = prof?.email || 'Unknown';
                   const isCurrentUser = member.user_id === session.user.id;
 
@@ -80,7 +80,7 @@ export default async function MembersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                            {fullName.charAt(0).toUpperCase()}
+                            {(fullName.charAt(0) || 'M').toUpperCase()}
                           </div>
                           <div>
                             <div className="font-semibold text-slate-900 flex items-center gap-2">

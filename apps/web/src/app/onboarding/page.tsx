@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
+import { AuvrynLogo } from '@/components/branding';
 import {
   GraduationCap,
   Building2,
@@ -241,13 +242,13 @@ export default function OnboardingPage() {
       <div className="max-w-3xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xl mx-auto mb-3 shadow-sm">
-            E
+          <div className="flex justify-center mb-4">
+            <AuvrynLogo variant="primary" size="md" showDescriptor={true} showTagline={true} href="/" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-[#0B1E3F]">
             Institution Onboarding & Setup
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-xs text-slate-500">
             Configure your institutional workspace and multi-tenant security boundaries
           </p>
         </div>

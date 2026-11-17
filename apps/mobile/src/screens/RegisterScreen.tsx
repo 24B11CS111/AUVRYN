@@ -11,6 +11,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { AuvrynLogo } from '../components/AuvrynLogo';
 import { registerSchema } from '@edu-platform/validators';
 import { formatMobileAuthError } from '../lib/authErrors';
 import { registerAdminAccount } from '../lib/registration';
@@ -82,9 +83,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onNavigateToLogi
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>E</Text>
-          </View>
+          <AuvrynLogo variant="stacked" size="md" showDescriptor={true} showTagline={false} />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Set up your administrator profile</Text>
         </View>

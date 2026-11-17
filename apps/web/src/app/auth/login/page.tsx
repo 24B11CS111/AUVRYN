@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { Lock, Mail, Loader2 } from 'lucide-react';
+import { AuvrynLogo } from '@/components/branding';
 
 function LoginForm() {
   const router = useRouter();
@@ -128,18 +129,15 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F5F7FB]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-sm">
-            E
-          </div>
-          <span className="text-xl font-bold text-slate-900">EduPlatform</span>
-        </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+        <div className="flex justify-center mb-4">
+          <AuvrynLogo variant="primary" size="md" showDescriptor={true} showTagline={true} href="/" />
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-[#0B1E3F]">
           Sign in to your account
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-1.5 text-xs text-slate-500">
           Access your institution dashboard and academic workspace
         </p>
       </div>

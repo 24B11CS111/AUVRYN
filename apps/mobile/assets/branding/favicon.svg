@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="auvryn-fav-navy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1E3F" />
+      <stop offset="100%" stop-color="#142C4C" />
+    </linearGradient>
+  </defs>
+
+  <!-- Solid Crisp Navy Rounded Background -->
+  <rect width="32" height="32" rx="7" fill="url(#auvryn-fav-navy)" />
+
+  <!-- Book Base in Pure White -->
+  <path d="M 16 25 C 12 25 7 23.5 5 21 C 5 17 5 14 5 14 C 8 16 12 17.5 16 18 Z" fill="#FFFFFF" />
+  <path d="M 16 25 C 20 25 25 23.5 27 21 C 27 17 27 14 27 14 C 24 16 20 17.5 16 18 Z" fill="#E2E8F0" />
+  <line x1="16" y1="18" x2="16" y2="25" stroke="#0B1E3F" stroke-width="0.75" />
+
+  <!-- Rising Analytics Bars in Electric Blue -->
+  <rect x="11.5" y="14.5" width="2" height="5" rx="1" fill="#60A5FA" />
+  <rect x="15" y="12" width="2" height="7.5" rx="1" fill="#2563EB" />
+  <rect x="18.5" y="9" width="2" height="10.5" rx="1" fill="#3B82F6" />
+
+  <!-- Graduation Cap -->
+  <polygon points="16,4 24,7.5 16,11 8,7.5" fill="#FFFFFF" stroke="#2563EB" stroke-width="0.75" />
+
+  <!-- Spark Accent -->
+  <polygon points="26,3 27,5 29,6 27,7 26,9 25,7 23,6 25,5" fill="#60A5FA" />
+</svg>

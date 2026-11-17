@@ -3,8 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 15, 23, 42;
-  --background-rgb: 248, 250, 252;
+  /* AUVRYN Color Tokens */
+  --foreground-rgb: 23, 36, 58; /* #17243A */
+  --background-rgb: 245, 247, 251; /* #F5F7FB */
+  
+  --auvryn-navy: #0B1E3F;
+  --auvryn-deep-navy: #07152B;
+  --auvryn-secondary-navy: #142C4C;
+  --auvryn-electric-blue: #2563EB;
+  --auvryn-light-blue: #EAF2FF;
+  --auvryn-border: #E2E8F0;
 }
 
 body {
@@ -24,10 +32,20 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #CBD5E1;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #94A3B8;
+}
+
+/* Auvryn keyframe animation utility for subtle glow/pulse */
+@keyframes auvryn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-auvryn-subtle {
+  animation: auvryn-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

@@ -21,6 +21,11 @@ import {
   registerDevicePushTokenAsync,
   unregisterDevicePushTokenAsync,
 } from '../lib/notificationService';
+import { StudentAITutorScreen } from './StudentAITutorScreen';
+import { ParentAICompanionScreen } from './ParentAICompanionScreen';
+import { AuvrynLogo } from '../components/AuvrynLogo';
+import { useMobileRealtime } from '../lib/useAuvrynRealtime';
+import { RealtimeStatusIndicator } from '../components/RealtimeStatusIndicator';
 
 interface DashboardScreenProps {
   userId: string;
@@ -59,6 +64,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
     latestOutpass: any | null;
   } | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [activeAIView, setActiveAIView] = useState<'none' | 'student_tutor' | 'parent_companion'>('none');
+
+  const activeMembership = memberships[0];
+  const activeInstId = (activeMembership as any)?.institutionId || (activeMembership as any)?.institution_id;
+  const activeRole = activeMembership?.role;
+
+  const { connectionState, subscribeToNotifications, subscribeToInstitution } = useMobileRealtime({
+    institutionId: activeInstId,
+    userId,
+    userRole: activeRole,
+  });
 
   const fetchData = async () => {
     const client = supabase;
@@ -298,6 +314,47 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
     };
   }, [userId]);
 
+  // Real-time synchronization subscriptions
+  useEffect(() => {
+    if (!activeInstId || !userId) return;
+
+    const notifSub = subscribeToNotifications((msg) => {
+      if (msg.eventType === 'NOTIFICATION_CREATED') {
+        const item = msg.payload as any;
+        if (item && item.id) {
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === item.id)) return prev;
+            return [item, ...prev];
+          });
+        }
+      }
+    });
+
+    const instSub = subscribeToInstitution('global', (msg) => {
+      if (msg.eventType === 'ANNOUNCEMENT_PUBLISHED') {
+        const item = msg.payload as any;
+        if (item && item.id) {
+          setAnnouncements((prev) => {
+            if (prev.some((a) => a.id === item.id)) return prev;
+            return [item, ...prev];
+          });
+        }
+      }
+    });
+
+    const acadSub = subscribeToInstitution('academics', (msg) => {
+      if (msg.eventType === 'ATTENDANCE_RECORDED' || msg.eventType === 'TIMETABLE_UPDATED') {
+        fetchData();
+      }
+    });
+
+    return () => {
+      notifSub?.unsubscribe();
+      instSub?.unsubscribe();
+      acadSub?.unsubscribe();
+    };
+  }, [activeInstId, userId, subscribeToNotifications, subscribeToInstitution]);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
@@ -411,9 +468,28 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
     );
   }
 
-  const activeMembership = memberships[0];
   const institution = activeMembership?.institution;
   const typeDef = institution ? INSTITUTION_TYPE_DEFINITIONS[institution.type] : null;
+
+  if (activeAIView === 'student_tutor') {
+    return (
+      <StudentAITutorScreen
+        userId={userId}
+        institutionId={institution?.id || ''}
+        onClose={() => setActiveAIView('none')}
+      />
+    );
+  }
+
+  if (activeAIView === 'parent_companion') {
+    return (
+      <ParentAICompanionScreen
+        userId={userId}
+        institutionId={institution?.id || ''}
+        onClose={() => setActiveAIView('none')}
+      />
+    );
+  }
 
   return (
     <ScrollView
@@ -423,6 +499,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* AUVRYN Brand Bar */}
+      <View style={styles.topBrandBar}>
+        <AuvrynLogo variant="horizontal" size="sm" showDescriptor={true} />
+        <RealtimeStatusIndicator state={connectionState} />
+      </View>
+
       {/* Top Bar Header */}
       <View style={styles.header}>
         <View>
@@ -478,6 +560,31 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
           <Text style={styles.metaText}>
             Please complete the onboarding flow on the web dashboard to create or join an institution.
           </Text>
+        </View>
+      )}
+
+      {/* AI Intelligence & Assistance Card */}
+      {institution && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI Intelligence & Assistance</Text>
+          <View style={styles.card}>
+            <Text style={styles.metaText}>
+              Access role-specific conversational tutors, practice assessments, and academic guidance.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+              <Button
+                title="Student AI Tutor"
+                onPress={() => setActiveAIView('student_tutor')}
+                style={{ flex: 1, backgroundColor: '#4f46e5' }}
+              />
+              <Button
+                title="Parent Companion"
+                variant="outline"
+                onPress={() => setActiveAIView('parent_companion')}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
         </View>
       )}
 
@@ -787,6 +894,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: '#64748b',
+  },
+  topBrandBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    marginBottom: 16,
   },
   header: {
     flexDirection: 'row',

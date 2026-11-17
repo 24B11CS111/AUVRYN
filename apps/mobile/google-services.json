@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "906676142758",
+    "project_id": "auvryn-63772",
+    "storage_bucket": "auvryn-63772.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:906676142758:android:459698421a000b8ff9ea67",
+        "android_client_info": {
+          "package_name": "com.school0730.eduplatformmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7mUa13GUeErFxG5MTJOw62--6ceWf6P4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

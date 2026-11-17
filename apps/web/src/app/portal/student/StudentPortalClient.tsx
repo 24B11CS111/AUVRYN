@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { StudentPortalData } from './actions';
 import {
   GraduationCap,
@@ -12,18 +13,54 @@ import {
   Calendar,
   Layers,
   FileCheck2,
+  Sparkles,
 } from 'lucide-react';
+import { StudentAITutorView } from '@/components/ai/StudentAITutorView';
+import { useAuvrynRealtime } from '@/lib/realtime/useAuvrynRealtime';
+import { RealtimeStatusIndicator } from '@/components/realtime/RealtimeStatusIndicator';
 
 interface StudentPortalClientProps {
   initialData: StudentPortalData;
 }
 
 export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
+  const router = useRouter();
   const [data] = useState<StudentPortalData>(initialData);
-  const [activeTab, setActiveTab] = useState<'overview' | 'timetable' | 'homework' | 'results' | 'hall_tickets' | 'fees'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ai_tutor' | 'timetable' | 'homework' | 'results' | 'hall_tickets' | 'fees'>('overview');
 
   const student = data.student;
   const att = data.attendanceSummary;
+  const institutionId = (student as any)?.institution_id || (student as any)?.institutionId || '';
+
+  const { connectionState, subscribeToInstitution } = useAuvrynRealtime({
+    institutionId,
+    userRole: 'student',
+  });
+
+  useEffect(() => {
+    if (!institutionId) return;
+
+    const sub = subscribeToInstitution('academics', (msg) => {
+      if (
+        msg.eventType === 'ATTENDANCE_RECORDED' ||
+        msg.eventType === 'TIMETABLE_UPDATED' ||
+        msg.eventType === 'EXAM_RESULTS_PUBLISHED'
+      ) {
+        router.refresh();
+      }
+    });
+
+    const opSub = subscribeToInstitution('operations', (msg) => {
+      if (msg.eventType === 'FEE_PAYMENT_RECORDED') {
+        router.refresh();
+      }
+    });
+
+    return () => {
+      sub?.unsubscribe();
+      opSub?.unsubscribe();
+    };
+  }, [institutionId, subscribeToInstitution, router]);
 
   if (!student) {
     return (
@@ -40,9 +77,13 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
   return (
     <div className="space-y-6">
       {/* Student Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm space-y-3">
-        <div className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
-          Student Portal
+      <div className="p-6 rounded-2xl bg-[#0B1E3F] text-white border border-[#142C4C] shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-semibold text-[#60A5FA] uppercase tracking-wider flex items-center gap-1.5">
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>AUVRYN &bull; Student Academic Workspace</span>
+          </div>
+          <RealtimeStatusIndicator state={connectionState} />
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -107,6 +148,7 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-medium">
         {[
           { key: 'overview', label: 'Overview', icon: Layers },
+          { key: 'ai_tutor', label: 'AI Tutor', icon: Sparkles },
           { key: 'timetable', label: 'Timetable', icon: Calendar },
           { key: 'homework', label: 'Assignments', icon: BookOpen },
           { key: 'results', label: 'Exam Grades', icon: Award },
@@ -134,6 +176,8 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
       </div>
 
       {/* Panels */}
+      {activeTab === 'ai_tutor' && <StudentAITutorView />}
+
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upcoming Assignments */}

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   type TextInputProps,
 } from 'react-native';
+import { AUVRYN_COLORS } from '@edu-platform/types';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -23,7 +24,7 @@ export const Input: React.FC<InputProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[styles.input, error ? styles.inputError : undefined, style]}
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor="#94A3B8"
         {...props}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -39,7 +40,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: AUVRYN_COLORS.primaryText,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -48,18 +49,19 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#E2E8F0',
     backgroundColor: '#ffffff',
     paddingHorizontal: 14,
     fontSize: 14,
-    color: '#0f172a',
+    color: AUVRYN_COLORS.primaryText,
   },
   inputError: {
-    borderColor: '#f43f5e',
+    borderColor: AUVRYN_COLORS.error,
   },
   errorText: {
-    fontSize: 12,
-    color: '#e11d48',
     marginTop: 4,
+    fontSize: 12,
+    color: AUVRYN_COLORS.error,
+    fontWeight: '500',
   },
 });

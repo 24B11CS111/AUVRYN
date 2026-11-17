@@ -5,8 +5,9 @@ import * as fs from 'fs';
 const PG_BIN = 'C:\\Program Files\\PostgreSQL\\17\\bin';
 const PG_CTL = path.join(PG_BIN, 'pg_ctl.exe');
 const PSQL = path.join(PG_BIN, 'psql.exe');
-const DATA_DIR = 'C:\\Users\\hrixo\\.gemini\\antigravity\\brain\\d4ae1d03-9a08-47bd-bfba-7e01045c7b37\\scratch\\pg_test_db';
-const LOG_FILE = 'C:\\Users\\hrixo\\.gemini\\antigravity\\brain\\d4ae1d03-9a08-47bd-bfba-7e01045c7b37\\scratch\\pg_server.log';
+const INIT_DB = path.join(PG_BIN, 'initdb.exe');
+const DATA_DIR = path.join(process.cwd(), 'scratch', 'integration_pg_data');
+const LOG_FILE = path.join(process.cwd(), 'scratch', 'integration_pg.log');
 const PORT = '54333';
 const DB_NAME = 'edu_integration_test';
 
@@ -40,6 +41,17 @@ export async function setup() {
   console.log('[Integration Setup] Checking PostgreSQL binaries...');
   if (!fs.existsSync(PG_CTL) || !fs.existsSync(PSQL)) {
     throw new Error(`PostgreSQL 17 tools not found at ${PG_BIN}`);
+  }
+
+  if (!fs.existsSync(DATA_DIR) || !fs.existsSync(path.join(DATA_DIR, 'PG_VERSION'))) {
+    console.log('[Integration Setup] Initializing clean PostgreSQL test cluster...');
+    if (fs.existsSync(DATA_DIR)) {
+      fs.rmSync(DATA_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(path.dirname(DATA_DIR), { recursive: true });
+    execFileSync(INIT_DB, ['-D', DATA_DIR, '-U', 'postgres', '-A', 'trust', '--no-sync'], {
+      stdio: 'ignore',
+    });
   }
 
   console.log('[Integration Setup] Checking PostgreSQL status...');

@@ -2,18 +2,19 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'outline';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'navy' | 'outline';
 }
 
 export function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {
   const variants = {
-    default: 'bg-slate-100 text-slate-700 border-slate-200',
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
-    danger: 'bg-rose-50 text-rose-700 border-rose-200',
-    info: 'bg-sky-50 text-sky-700 border-sky-200',
-    purple: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    outline: 'bg-white text-slate-600 border-slate-200',
+    default: 'bg-slate-100 text-[#17243A] border-slate-200',
+    success: 'bg-[#DCFCE7] text-[#16A36A] border-[#86EFAC]',
+    warning: 'bg-[#FEF3C7] text-[#D99A22] border-[#FDE68A]',
+    danger: 'bg-[#FEE2E2] text-[#DC4545] border-[#FCA5A5]',
+    info: 'bg-[#EAF2FF] text-[#2563EB] border-[#BFDBFE]',
+    purple: 'bg-[#EAF2FF] text-[#1D4ED8] border-[#BFDBFE]',
+    navy: 'bg-[#0B1E3F] text-white border-[#07152B]',
+    outline: 'bg-white text-slate-600 border-[#E2E8F0]',
   };
 
   return (

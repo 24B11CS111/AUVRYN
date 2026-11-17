@@ -31,7 +31,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold uppercase tracking-wider text-slate-700"
+            className="block text-xs font-semibold uppercase tracking-wider text-[#17243A]"
           >
             {label}
           </label>
@@ -47,26 +47,27 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             type={type}
             className={cn(
-              'block w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-50 disabled:text-slate-500',
-              leftIcon ? 'pl-10' : '',
-              rightIcon ? 'pr-10' : '',
+              'block w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-[#17243A] placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] disabled:bg-slate-50 disabled:text-slate-500',
+              leftIcon && 'pl-10',
+              rightIcon && 'pr-10',
               error
-                ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                : 'border-slate-300 focus:border-slate-900 focus:ring-slate-900/10',
+                ? 'border-[#DC4545] text-[#DC4545] focus:border-[#DC4545] focus:ring-[#DC4545]/20'
+                : 'border-[#E2E8F0] hover:border-slate-300',
               className
             )}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
               {rightIcon}
             </div>
           )}
         </div>
-        {error && <p className="text-xs text-rose-600 font-medium">{error}</p>}
-        {!error && helperText && (
+        {error ? (
+          <p className="text-xs text-[#DC4545] font-medium">{error}</p>
+        ) : helperText ? (
           <p className="text-xs text-slate-500">{helperText}</p>
-        )}
+        ) : null}
       </div>
     );
   }

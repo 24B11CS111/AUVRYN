@@ -1,12 +1,14 @@
 {
   "expo": {
-    "name": "EduPlatform Mobile",
+    "name": "AUVRYN",
     "slug": "edu-platform-mobile",
+    "owner": "school0730",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,6 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.school0730.eduplatformmobile",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -48,9 +51,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow EduPlatform to track vehicle location during active transport journeys.",
-          "locationAlwaysPermission": "Allow EduPlatform to track bus location in the background during active routes.",
-          "locationWhenInUsePermission": "Allow EduPlatform to access bus GPS location during active transport trips.",
+          "locationAlwaysAndWhenInUsePermission": "Allow AUVRYN to track vehicle location during active transport journeys.",
+          "locationAlwaysPermission": "Allow AUVRYN to track bus location in the background during active routes.",
+          "locationWhenInUsePermission": "Allow AUVRYN to access bus GPS location during active transport trips.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }

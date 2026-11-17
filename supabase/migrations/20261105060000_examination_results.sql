@@ -832,15 +832,15 @@ ALTER TABLE public.exam_revaluations ENABLE ROW LEVEL SECURITY;
 -- 10.1 Grading Scales Policies
 CREATE POLICY "scales_select"
 ON public.grading_scales FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "scales_insert"
 ON public.grading_scales FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = grading_scales.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -850,10 +850,10 @@ WITH CHECK (
 CREATE POLICY "scales_update"
 ON public.grading_scales FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = grading_scales.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -867,7 +867,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.grading_scales gs
     WHERE gs.id = grading_scale_rules.grading_scale_id
-      AND gs.institution_id = (SELECT auth_institution_id())
+      AND gs.institution_id IN (SELECT public.get_user_institution_ids())
   )
 );
 
@@ -877,10 +877,10 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.grading_scales gs
     WHERE gs.id = grading_scale_rules.grading_scale_id
-      AND gs.institution_id = (SELECT auth_institution_id())
+      AND gs.institution_id IN (SELECT public.get_user_institution_ids())
       AND EXISTS (
         SELECT 1 FROM public.institution_memberships
-        WHERE institution_id = (SELECT auth_institution_id())
+        WHERE institution_id = gs.institution_id
           AND user_id = auth.uid()
           AND status = 'active'
           AND role IN ('owner', 'admin', 'academic_admin')
@@ -892,12 +892,12 @@ WITH CHECK (
 CREATE POLICY "exams_select"
 ON public.examinations FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     -- Admins and Faculty can see all exams
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = examinations.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff')
@@ -911,10 +911,10 @@ USING (
 CREATE POLICY "exams_insert"
 ON public.examinations FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = examinations.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -924,10 +924,10 @@ WITH CHECK (
 CREATE POLICY "exams_update"
 ON public.examinations FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = examinations.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -937,10 +937,10 @@ USING (
 CREATE POLICY "exams_delete"
 ON public.examinations FOR DELETE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = examinations.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -950,15 +950,15 @@ USING (
 -- 10.4 Exam Subjects Policies
 CREATE POLICY "exam_subjects_select"
 ON public.exam_subjects FOR SELECT
-USING (institution_id = (SELECT auth_institution_id()));
+USING (institution_id IN (SELECT public.get_user_institution_ids()));
 
 CREATE POLICY "exam_subjects_manage"
 ON public.exam_subjects FOR ALL
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = exam_subjects.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -970,12 +970,12 @@ USING (
 CREATE POLICY "marks_select"
 ON public.student_exam_marks FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     -- Faculty & Admins can view marks
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = student_exam_marks.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')
@@ -1007,10 +1007,10 @@ USING (
 CREATE POLICY "marks_insert_update"
 ON public.student_exam_marks FOR ALL
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = student_exam_marks.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')
@@ -1021,10 +1021,10 @@ USING (
 CREATE POLICY "corrections_select"
 ON public.marks_entry_corrections FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = marks_entry_corrections.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')
@@ -1036,12 +1036,12 @@ USING (
 CREATE POLICY "results_select"
 ON public.student_exam_results FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     -- Administrators & Faculty can inspect draft & published results
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = student_exam_results.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')
@@ -1070,10 +1070,10 @@ USING (
 CREATE POLICY "results_manage"
 ON public.student_exam_results FOR ALL
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = student_exam_results.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -1084,11 +1084,11 @@ USING (
 CREATE POLICY "hall_tickets_select"
 ON public.hall_tickets FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = hall_tickets.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'faculty', 'staff')
@@ -1109,10 +1109,10 @@ USING (
 CREATE POLICY "hall_tickets_manage"
 ON public.hall_tickets FOR ALL
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = hall_tickets.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin')
@@ -1123,11 +1123,11 @@ USING (
 CREATE POLICY "revaluations_select"
 ON public.exam_revaluations FOR SELECT
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = exam_revaluations.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin', 'department_head', 'faculty')
@@ -1142,7 +1142,7 @@ USING (
 CREATE POLICY "revaluations_insert"
 ON public.exam_revaluations FOR INSERT
 WITH CHECK (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   (
     -- Students can apply for revaluation
     student_id IN (
@@ -1152,7 +1152,7 @@ WITH CHECK (
     -- Admins can file on behalf of student
     EXISTS (
       SELECT 1 FROM public.institution_memberships
-      WHERE institution_id = (SELECT auth_institution_id())
+      WHERE institution_id = exam_revaluations.institution_id
         AND user_id = auth.uid()
         AND status = 'active'
         AND role IN ('owner', 'admin', 'academic_admin')
@@ -1163,10 +1163,10 @@ WITH CHECK (
 CREATE POLICY "revaluations_update"
 ON public.exam_revaluations FOR UPDATE
 USING (
-  institution_id = (SELECT auth_institution_id()) AND
+  institution_id IN (SELECT public.get_user_institution_ids()) AND
   EXISTS (
     SELECT 1 FROM public.institution_memberships
-    WHERE institution_id = (SELECT auth_institution_id())
+    WHERE institution_id = exam_revaluations.institution_id
       AND user_id = auth.uid()
       AND status = 'active'
       AND role IN ('owner', 'admin', 'academic_admin', 'department_head')

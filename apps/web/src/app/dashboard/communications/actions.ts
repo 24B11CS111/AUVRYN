@@ -833,10 +833,14 @@ export async function triggerOutboxWorkerAction(
       return { success: false, error: 'Unauthorized to trigger outbox worker' };
     }
 
-    // Use trusted server-side admin client with service_role privileges for worker execution
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? (createAdminClient() as any)
-      : (createClient() as any);
+    // Require trusted server-side admin client with service_role privileges for worker execution
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        success: false,
+        error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required to execute administrative outbox worker operations.',
+      };
+    }
+    const supabase = createAdminClient() as any;
 
     const worker = new NotificationOutboxWorker({ batchSize });
     const result = await worker.processBatch(supabase);
@@ -901,10 +905,14 @@ export async function requeueDeadLetterDeliveryAction(
       return { success: false, error: 'Unauthorized' };
     }
 
-    // Use trusted server-side admin client with service_role privileges
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? (createAdminClient() as any)
-      : (createClient() as any);
+    // Require trusted server-side admin client with service_role privileges
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        success: false,
+        error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required for dead-letter requeueing operations.',
+      };
+    }
+    const supabase = createAdminClient() as any;
 
     const { data, error } = await supabase.rpc('requeue_dead_letter_delivery', {
       p_delivery_id: deliveryId,

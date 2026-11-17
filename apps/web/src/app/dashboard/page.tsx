@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { CampusRow, AcademicYearRow, AuditLogRow } from '@edu-platform/database';
+import { LiveDashboardWatcher } from '@/components/dashboard/LiveDashboardWatcher';
 
 export default async function DashboardPage() {
   const session = await requireInstitution();
@@ -66,6 +67,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <LiveDashboardWatcher institutionId={institution.id} />
       {/* Top Banner: Real Institution Overview */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -248,7 +250,7 @@ export default async function DashboardPage() {
                       Administrator Membership Assigned
                     </span>
                     <span className="text-slate-500 block text-[11px]">
-                      Owner authority assigned to {session.profile.fullName} ({session.profile.email})
+                      Owner authority assigned to {session.profile?.fullName || session.profile?.email || 'User'} ({session.profile?.email || 'No email'})
                     </span>
                   </div>
                 </div>

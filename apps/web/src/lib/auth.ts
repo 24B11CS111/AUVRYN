@@ -1,7 +1,38 @@
 import { redirect } from 'next/navigation';
 import { createClient } from './supabase/server';
-import type { UserSessionContext, InstitutionMembership, Role, Permission } from '@edu-platform/types';
+import type { Database } from '@edu-platform/database';
+import type { UserSessionContext, InstitutionMembership, Role, Permission, Profile } from '@edu-platform/types';
 import { ROLE_PERMISSIONS } from '@edu-platform/types';
+
+export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+
+/**
+ * Maps Supabase Auth user metadata and database `profiles` row into the canonical domain `Profile` type,
+ * guaranteeing complete camelCase normalization and defensive fallbacks for missing/partial fields.
+ */
+export function mapToUserProfile(
+  user: { id: string; email?: string | null; created_at?: string; updated_at?: string; user_metadata?: Record<string, any> },
+  profileRow?: ProfileRow | null
+): Profile {
+  const resolvedFullName =
+    (typeof profileRow?.full_name === 'string' && profileRow.full_name.trim()) ||
+    (typeof (profileRow as any)?.fullName === 'string' && (profileRow as any).fullName.trim()) ||
+    (typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name.trim()) ||
+    (typeof user.user_metadata?.fullName === 'string' && user.user_metadata.fullName.trim()) ||
+    (typeof user.user_metadata?.name === 'string' && user.user_metadata.name.trim()) ||
+    (user.email ? user.email.split('@')[0] : '') ||
+    'User';
+
+  return {
+    id: user.id,
+    email: profileRow?.email || user.email || '',
+    fullName: resolvedFullName,
+    avatarUrl: profileRow?.avatar_url || (profileRow as any)?.avatarUrl || user.user_metadata?.avatar_url || user.user_metadata?.avatarUrl || null,
+    phone: profileRow?.phone || user.user_metadata?.phone || null,
+    createdAt: profileRow?.created_at || (profileRow as any)?.createdAt || user.created_at || new Date().toISOString(),
+    updatedAt: profileRow?.updated_at || (profileRow as any)?.updatedAt || user.updated_at || user.created_at || new Date().toISOString(),
+  };
+}
 
 /**
  * Retrieves the full user session context including profiles and institution memberships.
@@ -19,21 +50,13 @@ export async function getSessionContext(): Promise<UserSessionContext | null> {
   }
 
   // Fetch profile
-  const { data: profile } = await supabase
+  const { data: profile } = (await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .maybeSingle()) as { data: ProfileRow | null; error: any };
 
-  const userProfile = profile || {
-    id: user.id,
-    email: user.email || '',
-    fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-    avatarUrl: user.user_metadata?.avatar_url || null,
-    phone: null,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at || user.created_at,
-  };
+  const userProfile = mapToUserProfile(user, profile);
 
   // Fetch all active memberships for this user
   const { data: rawMemberships } = await supabase

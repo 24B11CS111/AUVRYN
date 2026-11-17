@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { supabase } from './supabase';
+import { getAuvrynRealtime } from '@edu-platform/supabase-client';
 
 export interface LocationCoordinates {
   latitude: number;
@@ -109,6 +110,24 @@ async function processAndTransmitLocationFix(
         p_provider: 'driver_mobile_app',
         p_recorded_at: recordedAt,
       });
+
+      // Broadcast over Supabase Realtime channel for sub-second live map tracking
+      try {
+        const realtime = getAuvrynRealtime(client, {
+          institutionId: options.institutionId,
+          userRole: options.userRole,
+        });
+        realtime.broadcastGpsFix(options.journeyId, {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          speedKmh: Number(speedKmh.toFixed(2)),
+          heading: Number(heading.toFixed(2)),
+          accuracyMeters: Number(accuracyMeters.toFixed(2)),
+          recordedAt,
+          vehicleId: options.vehicleId,
+          driverStaffId: options.driverStaffId,
+        }).catch(() => {});
+      } catch {}
     } catch (dbErr: any) {
       console.warn('[LocationService] Failed to transmit location telemetry:', dbErr.message);
     }
