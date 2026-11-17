@@ -1,0 +1,4 @@
+# Paths here are relative to this package directory (the Netlify base directory).
+[build]
+  command = "npm --workspace @edu-platform/database run build"
+  publish = "dist"
