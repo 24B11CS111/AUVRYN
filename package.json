@@ -13,6 +13,8 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
+    "postinstall": "npm run build:packages",
+    "eas-build-post-install": "npm run build:packages",
     "build:packages": "npm run build --workspace=@edu-platform/types && npm run build --workspace=@edu-platform/database && npm run build --workspace=@edu-platform/validators && npm run build --workspace=@edu-platform/supabase-client",
     "build:web": "npm run build:packages && npm run build --workspace=@edu-platform/web",
     "build": "npm run build:web",
