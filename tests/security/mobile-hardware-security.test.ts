@@ -108,6 +108,26 @@ vi.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: vi.fn(async () => ({ data: state.mockExpoPushToken })),
 }));
 
+vi.mock('expo-constants', () => ({
+  default: {
+    expoConfig: {
+      extra: {
+        eas: {
+          projectId: 'mock-eas-project-id',
+        },
+      },
+    },
+  },
+}));
+
+vi.mock('expo-modules-core', () => ({
+  EventEmitter: class MockEventEmitter {
+    addListener = vi.fn();
+    removeListener = vi.fn();
+    emit = vi.fn();
+  },
+}));
+
 vi.mock('react-native', () => ({
   Platform: {
     OS: 'android',
@@ -115,6 +135,7 @@ vi.mock('react-native', () => ({
   StyleSheet: {
     create: (styles: any) => styles,
   },
+  NativeModules: {},
 }));
 
 vi.mock('expo-secure-store', () => ({

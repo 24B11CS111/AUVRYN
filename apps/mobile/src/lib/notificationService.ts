@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
 let activePushToken: string | null = null;
@@ -64,7 +65,12 @@ export async function registerDevicePushTokenAsync(
     // 3. Acquire native Expo Push Token
     let token: string | null = null;
     try {
-      const tokenResult = await Notifications.getExpoPushTokenAsync();
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ||
+        (Constants as any).easConfig?.projectId;
+      const tokenResult = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
       token = tokenResult.data;
     } catch (tokenErr: any) {
       // In simulator, preview, or testing without EAS credentials, use deterministic fallback

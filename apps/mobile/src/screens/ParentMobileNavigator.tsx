@@ -74,13 +74,23 @@ export const ParentMobileNavigator: React.FC<ParentMobileNavigatorProps> = ({
     }
 
     try {
-      // 1. Resolve guardian record for current user
-      const { data: guardian } = await supabase
+      // 1. Resolve guardian record for current user (by user_id or verified email)
+      let { data: guardian } = await supabase
         .from('guardians')
         .select('id')
         .eq('institution_id', institutionId)
         .eq('user_id', userId)
         .maybeSingle();
+
+      if (!guardian && userEmail) {
+        const { data: guardianByEmail } = await supabase
+          .from('guardians')
+          .select('id')
+          .eq('institution_id', institutionId)
+          .eq('email', userEmail)
+          .maybeSingle();
+        guardian = guardianByEmail;
+      }
 
       if (!guardian) {
         setChildren([]);
@@ -302,17 +312,19 @@ export const ParentMobileNavigator: React.FC<ParentMobileNavigatorProps> = ({
             {/* Preschool Daily Care Module if applicable */}
             {educationType === 'preschool' && (
               <View style={styles.preschoolCard}>
-                <Text style={styles.preschoolTitle}>Preschool Daily Care Digest</Text>
+                <Text style={styles.preschoolTitle}>Preschool Care & Daily Status</Text>
                 <View style={styles.preschoolRow}>
-                  <Text style={styles.preschoolItem}>Morning Temp: 98.4°F</Text>
-                  <Text style={styles.preschoolItem}>Nap: 1h 30m (Rested)</Text>
-                </View>
-                <View style={styles.preschoolRow}>
-                  <Text style={styles.preschoolItem}>Meals: 100% finished</Text>
-                  <Text style={styles.preschoolItem}>Mood: Cheerful & Active</Text>
+                  <Text style={styles.preschoolItem}>
+                    Status: {activeChildDetails?.attendance?.records?.[0]?.status ? activeChildDetails.attendance.records[0].status.toUpperCase() : 'Not recorded today'}
+                  </Text>
+                  <Text style={styles.preschoolItem}>
+                    Total Sessions: {activeChildDetails?.attendance?.total ?? 0}
+                  </Text>
                 </View>
                 <Text style={styles.preschoolNote}>
-                  Teacher Note: Participated enthusiastically in action songs and sensory motor play today.
+                  {activeChildDetails?.attendance?.records?.[0]?.status === 'present'
+                    ? 'Child is marked present in early learning activities today.'
+                    : 'Classroom check-in updates are synced with the attendance register.'}
                 </Text>
               </View>
             )}

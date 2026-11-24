@@ -45,6 +45,8 @@ export const StudentMobileNavigator: React.FC<StudentMobileNavigatorProps> = ({
   const [results, setResults] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [submissionMsg, setSubmissionMsg] = useState<string | null>(null);
+  const [isSubmittingHw, setIsSubmittingHw] = useState(false);
 
   const fetchStudentData = useCallback(async () => {
     if (!supabase || !institutionId) {
@@ -180,16 +182,30 @@ export const StudentMobileNavigator: React.FC<StudentMobileNavigatorProps> = ({
 
   const handleQuickSubmit = async (hwId: string) => {
     if (!supabase || !student) return;
-    await (supabase as any).from('homework_submissions').upsert({
-      assignment_id: hwId,
-      student_id: student.id,
-      institution_id: institutionId,
-      submission_text: 'Submitted via AUVRYN Mobile App',
-      submitted_at: new Date().toISOString(),
-      status: 'submitted',
-    }, { onConflict: 'assignment_id, student_id' });
+    setIsSubmittingHw(true);
+    setSubmissionMsg(null);
+    try {
+      const { error } = await (supabase as any).from('homework_submissions').upsert({
+        assignment_id: hwId,
+        student_id: student.id,
+        institution_id: institutionId,
+        submission_text: 'Submitted via AUVRYN Mobile App',
+        submitted_at: new Date().toISOString(),
+        status: 'submitted',
+      }, { onConflict: 'assignment_id, student_id' });
 
-    fetchStudentData();
+      if (error) {
+        setSubmissionMsg('Submission failed. Please check network and retry.');
+      } else {
+        setSubmissionMsg('Assignment marked as submitted!');
+        fetchStudentData();
+      }
+    } catch {
+      setSubmissionMsg('Network error submitting assignment.');
+    } finally {
+      setIsSubmittingHw(false);
+      setTimeout(() => setSubmissionMsg(null), 3500);
+    }
   };
 
   if (loading) {
@@ -258,21 +274,23 @@ export const StudentMobileNavigator: React.FC<StudentMobileNavigatorProps> = ({
               </View>
             </View>
 
-            {/* Intermediate Stream or University Progress Pill */}
+            {/* Intermediate Stream or University Progress Card */}
             {educationType === 'intermediate' && (
               <View style={styles.streamBadgeBox}>
-                <Text style={styles.streamBadgeTitle}>Junior College Stream: MPC</Text>
+                <Text style={styles.streamBadgeTitle}>
+                  Junior College Stream: {activeEnrollment?.class?.name || 'Intermediate'}
+                </Text>
                 <Text style={styles.streamBadgeSub}>
-                  Target: JEE Main &bull; Mock Percentile: 98.7% &bull; Physics, Maths & Chemistry
+                  Section: {activeEnrollment?.section?.name || 'General'} &bull; {results.length > 0 ? `Latest Result: ${results[0].final_grade || 'Recorded'}` : 'Academic Session Active'}
                 </Text>
               </View>
             )}
 
             {educationType === 'university' && (
               <View style={styles.streamBadgeBox}>
-                <Text style={styles.streamBadgeTitle}>Degree Credit Registry</Text>
+                <Text style={styles.streamBadgeTitle}>Degree Academic Standing</Text>
                 <Text style={styles.streamBadgeSub}>
-                  118 / 160 Credits Completed &bull; CGPA: 8.76 / 10.0 (First Class with Distinction)
+                  Program: {activeEnrollment?.class?.name || 'Degree'} &bull; {results.length > 0 ? `Latest Exam: ${results[0].percentage}% (${results[0].final_grade || 'Passed'})` : 'Enrolled in current term'}
                 </Text>
               </View>
             )}
@@ -338,6 +356,14 @@ export const StudentMobileNavigator: React.FC<StudentMobileNavigatorProps> = ({
         {activeTab === 'academics' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Assignments & Homework</Text>
+
+            {submissionMsg && (
+              <View style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                <Text style={{ color: '#166534', fontSize: 13, fontWeight: '600' }}>
+                  {submissionMsg}
+                </Text>
+              </View>
+            )}
             {homework.length === 0 ? (
               <View style={styles.card}>
                 <Text style={styles.emptyText}>No homework assignments found.</Text>
@@ -353,10 +379,13 @@ export const StudentMobileNavigator: React.FC<StudentMobileNavigatorProps> = ({
                   <Text style={styles.hwDue}>Due: {hw.due_date}</Text>
 
                   <TouchableOpacity
-                    style={styles.submitBtn}
+                    style={[styles.submitBtn, isSubmittingHw && { opacity: 0.6 }]}
+                    disabled={isSubmittingHw}
                     onPress={() => handleQuickSubmit(hw.id)}
                   >
-                    <Text style={styles.submitBtnText}>Quick Submit Online</Text>
+                    <Text style={styles.submitBtnText}>
+                      {isSubmittingHw ? 'Submitting...' : 'Quick Submit Online'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ))

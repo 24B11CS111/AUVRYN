@@ -39,6 +39,10 @@ export const OwnerMobileNavigator: React.FC<OwnerMobileNavigatorProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [studentsCount, setStudentsCount] = useState(0);
   const [staffCount, setStaffCount] = useState(0);
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [searchStudentQuery, setSearchStudentQuery] = useState('');
+  const [searchStaffQuery, setSearchStaffQuery] = useState('');
   const [campuses, setCampuses] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -60,23 +64,36 @@ export const OwnerMobileNavigator: React.FC<OwnerMobileNavigatorProps> = ({
 
     try {
       const [
-        { count: stuCount },
-        { count: stfCount },
+        { count: stuCount, data: stus },
+        { count: stfCount, data: stfs },
         { data: campList },
         { data: ayList },
         { data: annList },
         { data: notifList },
       ] = await Promise.all([
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId).eq('status', 'active'),
-        supabase.from('staff_profiles').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId),
+        supabase
+          .from('students')
+          .select('id, admission_number, first_name, last_name, roll_number, status')
+          .eq('institution_id', institutionId)
+          .eq('status', 'active')
+          .order('first_name', { ascending: true })
+          .limit(30),
+        supabase
+          .from('staff_profiles')
+          .select('id, employee_id, first_name, last_name, designation, email')
+          .eq('institution_id', institutionId)
+          .order('first_name', { ascending: true })
+          .limit(30),
         supabase.from('campuses').select('*').eq('institution_id', institutionId),
         supabase.from('academic_years').select('*').eq('institution_id', institutionId),
         supabase.from('announcements').select('*').eq('institution_id', institutionId).order('published_at', { ascending: false }).limit(10),
         supabase.from('notifications').select('*').eq('institution_id', institutionId).eq('recipient_user_id', userId).order('created_at', { ascending: false }).limit(20),
       ]);
 
-      setStudentsCount(stuCount || 0);
-      setStaffCount(stfCount || 0);
+      setStudentsCount(stuCount || (stus ? stus.length : 0));
+      setStaffCount(stfCount || (stfs ? stfs.length : 0));
+      setStudentsList(stus || []);
+      setStaffList(stfs || []);
       setCampuses(campList || []);
       setAcademicYears(ayList || []);
       setAnnouncements(annList || []);
@@ -213,26 +230,106 @@ export const OwnerMobileNavigator: React.FC<OwnerMobileNavigatorProps> = ({
         {/* TAB 2: STUDENTS */}
         {activeTab === 'students' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Students Overview</Text>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Total Active Students: {studentsCount}</Text>
-              <Text style={styles.itemSub}>
-                To manage individual enrollments and section assignments, access the AUVRYN web administrative console.
-              </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Students Directory</Text>
+              <Text style={{ fontSize: 12, color: '#64748B' }}>{studentsCount} enrolled</Text>
             </View>
+
+            <TextInput
+              value={searchStudentQuery}
+              onChangeText={setSearchStudentQuery}
+              placeholder="Search by name or admission no..."
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 13,
+                marginBottom: 12,
+              }}
+            />
+
+            {studentsList
+              .filter((st) => {
+                if (!searchStudentQuery.trim()) return true;
+                const q = searchStudentQuery.toLowerCase();
+                const name = `${st.first_name || ''} ${st.last_name || ''}`.toLowerCase();
+                const adm = (st.admission_number || '').toLowerCase();
+                return name.includes(q) || adm.includes(q);
+              })
+              .map((st) => (
+                <View key={st.id} style={styles.card}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.itemTitle}>{st.first_name} {st.last_name}</Text>
+                    <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: '#166534', fontSize: 11, fontWeight: '600' }}>Active</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.itemSub}>
+                    Adm: {st.admission_number || 'N/A'}{st.roll_number ? ` • Roll: ${st.roll_number}` : ''}
+                  </Text>
+                </View>
+              ))}
+
+            {studentsList.length === 0 && (
+              <View style={styles.card}>
+                <Text style={styles.emptyText}>No active students found in this institution.</Text>
+              </View>
+            )}
           </View>
         )}
 
         {/* TAB 3: FACULTY */}
         {activeTab === 'faculty' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Faculty & Staff Directory</Text>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Total Active Staff: {staffCount}</Text>
-              <Text style={styles.itemSub}>
-                All faculty allocations and teaching assignments are synchronized across mobile and web.
-              </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Faculty & Staff Directory</Text>
+              <Text style={{ fontSize: 12, color: '#64748B' }}>{staffCount} active</Text>
             </View>
+
+            <TextInput
+              value={searchStaffQuery}
+              onChangeText={setSearchStaffQuery}
+              placeholder="Search faculty by name or role..."
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 13,
+                marginBottom: 12,
+              }}
+            />
+
+            {staffList
+              .filter((stf) => {
+                if (!searchStaffQuery.trim()) return true;
+                const q = searchStaffQuery.toLowerCase();
+                const name = `${stf.first_name || ''} ${stf.last_name || ''}`.toLowerCase();
+                const des = (stf.designation || '').toLowerCase();
+                return name.includes(q) || des.includes(q);
+              })
+              .map((stf) => (
+                <View key={stf.id} style={styles.card}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.itemTitle}>{stf.first_name} {stf.last_name}</Text>
+                    <Text style={{ fontSize: 11, color: '#64748B' }}>{stf.employee_id || ''}</Text>
+                  </View>
+                  <Text style={styles.itemSub}>
+                    Role: {stf.designation || 'Faculty'}{stf.email ? ` • ${stf.email}` : ''}
+                  </Text>
+                </View>
+              ))}
+
+            {staffList.length === 0 && (
+              <View style={styles.card}>
+                <Text style={styles.emptyText}>No faculty records registered for this institution.</Text>
+              </View>
+            )}
           </View>
         )}
 

@@ -107,7 +107,7 @@ export const TeacherMobileNavigator: React.FC<TeacherMobileNavigatorProps> = ({
         setSelectedSectionId(targetSecId);
       }
 
-      // 3. Parallel fetch students, timetable, homework, notifications
+      // 3. Parallel fetch students (by active section enrollment), timetable, homework, notifications
       const [
         { data: studentList },
         { data: ttList },
@@ -116,11 +116,20 @@ export const TeacherMobileNavigator: React.FC<TeacherMobileNavigatorProps> = ({
       ] = await Promise.all([
         targetSecId
           ? client
-              .from('students')
-              .select('id, admission_number, first_name, last_name')
+              .from('student_enrollments')
+              .select(`
+                id,
+                roll_number,
+                student:students (
+                  id,
+                  admission_number,
+                  first_name,
+                  last_name
+                )
+              `)
               .eq('institution_id', institutionId)
-              .eq('status', 'active')
-              .limit(50)
+              .eq('section_id', targetSecId)
+              .eq('status', 'enrolled')
           : Promise.resolve({ data: [] }),
         staffId
           ? client
@@ -145,7 +154,18 @@ export const TeacherMobileNavigator: React.FC<TeacherMobileNavigatorProps> = ({
           .limit(30),
       ]);
 
-      const stData = studentList || [];
+      const rawEnrollments = studentList || [];
+      const stData = rawEnrollments
+        .map((e: any) =>
+          e.student
+            ? {
+                ...e.student,
+                roll_number: e.roll_number || e.student?.roll_number,
+              }
+            : null
+        )
+        .filter(Boolean);
+
       setStudents(stData);
       setTimetable(ttList || []);
       setHomework(hwList || []);
@@ -238,11 +258,11 @@ export const TeacherMobileNavigator: React.FC<TeacherMobileNavigatorProps> = ({
       }
 
       if (sessionId) {
-        const payload = Object.entries(attendanceMap).map(([sId, status]) => ({
+        const payload = students.map((st: any) => ({
           institution_id: institutionId,
           session_id: sessionId,
-          student_id: sId,
-          status,
+          student_id: st.id,
+          status: attendanceMap[st.id] || 'present',
           created_by: userId,
           updated_at: new Date().toISOString(),
         }));
