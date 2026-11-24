@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@edu-platform/database';
+import { validateSupabaseUrlSecurity } from './env';
 
 const AUTH_TIMEOUT_MS = 2000;
 
@@ -71,8 +72,8 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+  const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 
   // Configuration guard
   if (!url || !anonKey) {
@@ -91,17 +92,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Safety guard against connecting to production database in non-production environments
-  if (
-    (url.includes('dhgdjpjgsvbknquetecl') || url.includes('dhgdjpjg')) &&
-    (process.env.NEXT_PUBLIC_APP_ENV === 'staging' ||
-      process.env.VERCEL_ENV === 'preview' ||
-      process.env.NODE_ENV !== 'production' ||
-      process.env.NEXT_PUBLIC_ALLOW_PROD !== 'true')
-  ) {
-    throw new Error(
-      'CRITICAL SAFETY BLOCK: Direct connection to the PRODUCTION Supabase project (dhgdjpjgsvbknquetecl) is strictly prohibited in non-production environments.'
-    );
-  }
+  validateSupabaseUrlSecurity(url);
 
   let response = NextResponse.next({
     request: {

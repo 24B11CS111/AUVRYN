@@ -313,19 +313,23 @@ vi.mock('@/lib/ai/engines/parentCompanion', () => ({
   }),
 }));
 
-vi.mock('@/lib/ai/gateway/draftManager', () => ({
-  reviewAIDraft: vi.fn().mockImplementation((supabase: any, params: any) => {
-    if (params.status === 'rejected' && (!params.rejectionReason || params.rejectionReason.trim() === '')) {
-      throw new Error('Audit review notes are required');
-    }
-    return Promise.resolve({
-      id: params.draftId,
-      status: params.status,
-      reviewedBy: mockSession.user.id,
-      reviewedAt: new Date().toISOString(),
-    });
-  }),
-}));
+vi.mock('@/lib/ai/gateway/draftManager', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/ai/gateway/draftManager')>();
+  return {
+    ...actual,
+    reviewAIDraft: vi.fn().mockImplementation((supabase: any, params: any) => {
+      if (params.status === 'rejected' && (!params.rejectionReason || params.rejectionReason.trim() === '')) {
+        throw new Error('Audit review notes are required');
+      }
+      return Promise.resolve({
+        id: params.draftId,
+        status: params.status,
+        reviewedBy: mockSession.user.id,
+        reviewedAt: new Date().toISOString(),
+      });
+    }),
+  };
+});
 
 import {
   askStudentTutorAction,
