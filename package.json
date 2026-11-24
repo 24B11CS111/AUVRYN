@@ -2,6 +2,7 @@
   "name": "edu-platform-monorepo",
   "version": "1.0.0",
   "private": true,
+  "main": "index.js",
   "description": "Multi-institution unified education management platform",
   "workspaces": [
     "packages/*",

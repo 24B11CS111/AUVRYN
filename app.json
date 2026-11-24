@@ -1,3 +1,71 @@
 {
-  "expo": {}
+  "expo": {
+    "name": "AUVRYN",
+    "slug": "edu-platform-mobile",
+    "scheme": "auvryn",
+    "owner": "school0730",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./apps/mobile/assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./apps/mobile/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./apps/mobile/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.school0730.eduplatformmobile",
+      "googleServicesFile": "./apps/mobile/google-services.json",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./apps/mobile/assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "25a06e93-620b-43f1-943f-9a018bdf21ca"
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow AUVRYN to track vehicle location during active transport journeys.",
+          "locationAlwaysPermission": "Allow AUVRYN to track bus location in the background during active routes.",
+          "locationWhenInUsePermission": "Allow AUVRYN to access bus GPS location during active transport trips.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./apps/mobile/assets/adaptive-icon.png",
+          "color": "#0f172a"
+        }
+      ]
+    ]
+  }
 }
