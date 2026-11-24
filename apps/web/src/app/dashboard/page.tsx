@@ -2,7 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 import { requireInstitution } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { INSTITUTION_TYPE_DEFINITIONS } from '@edu-platform/types';
+import {
+  resolveEducationType,
+  EDUCATION_TYPE_DEFINITIONS,
+  type EducationType,
+} from '@edu-platform/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
@@ -16,16 +20,29 @@ import {
   ArrowRight,
   Clock,
   Sparkles,
+  Baby,
+  GraduationCap,
+  BookOpen,
+  Landmark,
 } from 'lucide-react';
 import type { CampusRow, AcademicYearRow, AuditLogRow } from '@edu-platform/database';
 import { LiveDashboardWatcher } from '@/components/dashboard/LiveDashboardWatcher';
+
+const EDUCATION_ICONS: Record<EducationType, React.ComponentType<{ className?: string }>> = {
+  preschool: Baby,
+  primary_school: GraduationCap,
+  intermediate: BookOpen,
+  university: Landmark,
+};
 
 export default async function DashboardPage() {
   const session = await requireInstitution();
   const supabase = createClient();
   const activeMembership = session.activeMembership!;
   const institution = activeMembership.institution!;
-  const typeDef = INSTITUTION_TYPE_DEFINITIONS[institution.type];
+  const educationType = resolveEducationType(institution);
+  const eduDef = EDUCATION_TYPE_DEFINITIONS[educationType];
+  const EduIcon = EDUCATION_ICONS[educationType] || Building2;
 
   // 1. Fetch real campuses for this institution
   const { data: rawCampuses } = await supabase
@@ -68,17 +85,28 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <LiveDashboardWatcher institutionId={institution.id} />
-      {/* Top Banner: Real Institution Overview */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+
+      {/* Top Banner: Real Institution Overview with Education Level Specifics */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl font-bold tracking-tight text-[#0B1E3F]">
                 {institution.name}
               </h1>
-              <Badge variant="purple">{typeDef.label}</Badge>
+              <div
+                className="px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border"
+                style={{
+                  backgroundColor: eduDef.theme.softBg,
+                  color: eduDef.theme.primary,
+                  borderColor: eduDef.theme.accent + '40',
+                }}
+              >
+                <EduIcon className="w-3.5 h-3.5" />
+                <span>{eduDef.label}</span>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 flex items-center gap-2">
+            <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
               <span>Code: <strong className="text-slate-700">{institution.code}</strong></span>
               <span>&bull;</span>
               <span>Slug: <strong className="text-slate-700">/{institution.slug}</strong></span>
@@ -95,6 +123,18 @@ export default async function DashboardPage() {
             <span className="text-xs text-slate-500 font-mono">
               ID: {institution.id.slice(0, 8)}...
             </span>
+          </div>
+        </div>
+
+        {/* Education Tagline & Hierarchy Terminology Bar */}
+        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
+          <p className="font-medium text-slate-700">
+            {eduDef.tagline}
+          </p>
+          <div className="flex items-center gap-3 text-[11px] text-slate-500 shrink-0">
+            <span>Structure: <strong>{eduDef.departmentLabel}</strong></span>
+            <span>&bull;</span>
+            <span>Cohorts: <strong>{eduDef.cohortLabel}</strong></span>
           </div>
         </div>
       </div>
@@ -192,12 +232,18 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  Institutional Foundation Status
+                  {educationType === 'preschool'
+                    ? 'Early Learning Operational Readiness'
+                    : educationType === 'intermediate'
+                    ? 'Junior College Streams & Examination Readiness'
+                    : educationType === 'university'
+                    ? 'Collegiate & Departmental Governance'
+                    : 'Institutional Foundation Status'}
                 </CardTitle>
                 <Badge variant="success">Core Ready</Badge>
               </div>
               <CardDescription>
-                Core multi-tenant operational records configured for {typeDef.label}.
+                Core operational records configured for {eduDef.label}.
               </CardDescription>
             </CardHeader>
 

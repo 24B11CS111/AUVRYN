@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   InstitutionType,
+  EducationType,
   Role,
   MembershipStatus,
   AcademicRecordStatus,
@@ -12,6 +13,12 @@ import type {
   DocumentType,
   DocumentVerificationStatus,
   AdmissionStatus,
+  IdentityDocumentType,
+  IdentityVerificationStatus,
+  ConsentType,
+  AdmissionCategory,
+  GuardianRelationshipType,
+  EmergencyContactPriority,
 } from '@edu-platform/types';
 
 // ==========================================
@@ -485,6 +492,7 @@ export const documentVerificationStatusEnum = z.enum([
 ]) satisfies z.ZodType<DocumentVerificationStatus>;
 
 export const admissionStatusEnum = z.enum([
+  'draft',
   'submitted',
   'received',
   'documents_pending',
@@ -2935,4 +2943,389 @@ export const aiExamPaperSchema = z.object({
 });
 
 export type AIExamPaperOutput = z.infer<typeof aiExamPaperSchema>;
+
+// ==========================================
+// 19. Student Identity, Aadhaar & Parent Registration Schemas
+// ==========================================
+
+export const educationTypeEnum = z.enum([
+  'preschool',
+  'primary_school',
+  'intermediate',
+  'university',
+]) satisfies z.ZodType<EducationType>;
+
+export const identityDocumentTypeEnum = z.enum([
+  'masked_aadhaar',
+  'birth_certificate',
+  'passport',
+  'ration_card',
+  'school_leaving_certificate',
+  'transfer_certificate',
+  'national_id',
+  'pan_card',
+  'voter_id',
+  'other',
+]) satisfies z.ZodType<IdentityDocumentType>;
+
+export const identityVerificationStatusEnum = z.enum([
+  'not_submitted',
+  'submitted',
+  'pending_verification',
+  'verified',
+  'rejected',
+  'expired',
+]) satisfies z.ZodType<IdentityVerificationStatus>;
+
+export const consentTypeEnum = z.enum([
+  'registration_terms',
+  'privacy_notice',
+  'photo_media_publication',
+  'non_essential_communications',
+  'emergency_medical_treatment',
+]) satisfies z.ZodType<ConsentType>;
+
+export const admissionCategoryEnum = z.enum([
+  'general',
+  'merit',
+  'management',
+  'sports',
+  'sibling',
+  'staff_ward',
+  'ews_rte',
+  'international',
+  'other',
+]) satisfies z.ZodType<AdmissionCategory>;
+
+export const guardianRelationshipTypeEnum = z.enum([
+  'father',
+  'mother',
+  'legal_guardian',
+  'foster_parent',
+  'grandparent',
+  'sibling',
+  'other',
+]) satisfies z.ZodType<GuardianRelationshipType>;
+
+export const emergencyContactPriorityEnum = z.enum([
+  'primary',
+  'secondary',
+]) satisfies z.ZodType<EmergencyContactPriority>;
+
+export const ALLOWED_DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const;
+
+export const MAX_DOCUMENT_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+// Identity Document Item Schema
+export const identityDocumentSchema = z
+  .object({
+    documentType: identityDocumentTypeEnum,
+    maskedReference: z
+      .string()
+      .trim()
+      .min(2, 'Document reference or masked identifier is required')
+      .max(20, 'Document identifier cannot exceed 20 characters'),
+    documentFilePath: z.string().trim().min(3, 'Document file path is required'),
+    fileName: z.string().trim().min(1, 'File name is required').max(255),
+    fileSize: z
+      .number()
+      .int()
+      .positive('File size must be positive')
+      .max(MAX_DOCUMENT_FILE_SIZE_BYTES, 'File size exceeds 5MB limit'),
+    mimeType: z.enum(ALLOWED_DOCUMENT_MIME_TYPES, {
+      errorMap: () => ({ message: 'Invalid file format. Allowed formats: PDF, JPEG, PNG, WEBP.' }),
+    }),
+    issuingAuthority: z.string().trim().max(100).optional().or(z.literal('')),
+    issueDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid issue date (YYYY-MM-DD)')
+      .optional()
+      .or(z.literal('')),
+    expiryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid expiry date (YYYY-MM-DD)')
+      .optional()
+      .or(z.literal('')),
+  })
+  .refine(
+    (doc) => {
+      // Compliance check: STRICTLY prohibit raw 12-digit Aadhaar
+      if (/^\d{12}$/.test(doc.maskedReference.replace(/\s+/g, ''))) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'Full unmasked 12-digit Aadhaar number is prohibited. Please provide masked reference showing only the last 4 digits (e.g. XXXX-XXXX-1234 or 1234).',
+      path: ['maskedReference'],
+    }
+  );
+
+export type IdentityDocumentInput = z.infer<typeof identityDocumentSchema>;
+
+// Emergency Contact & Authorized Pickup Schema
+export const emergencyContactSchema = z.object({
+  priority: emergencyContactPriorityEnum.default('primary'),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Contact name must be at least 2 characters')
+    .max(100, 'Contact name cannot exceed 100 characters'),
+  relationship: z
+    .string()
+    .trim()
+    .min(2, 'Relationship is required')
+    .max(50, 'Relationship cannot exceed 50 characters'),
+  phonePrimary: z
+    .string()
+    .trim()
+    .min(7, 'Primary emergency phone number is required')
+    .max(20, 'Phone number cannot exceed 20 characters'),
+  phoneSecondary: z.string().trim().max(20).optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email address').optional().or(z.literal('')),
+  isAuthorizedPickup: z.boolean().default(false),
+  pickupIdType: z.string().trim().max(50).optional().or(z.literal('')),
+  pickupIdMaskedRef: z.string().trim().max(20).optional().or(z.literal('')),
+  pickupPhotoUrl: z.string().trim().optional().or(z.literal('')),
+});
+
+export type EmergencyContactInput = z.infer<typeof emergencyContactSchema>;
+
+// Guardian Registration Schema (Parent 1, Parent 2, or Legal Guardian)
+export const guardianRegistrationSchema = z.object({
+  relationship: guardianRelationshipTypeEnum,
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters'),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(50, 'Last name cannot exceed 50 characters'),
+  phone: z
+    .string()
+    .trim()
+    .min(7, 'Valid primary phone number is required')
+    .max(20, 'Phone number cannot exceed 20 characters'),
+  phoneSecondary: z.string().trim().max(20).optional().or(z.literal('')),
+  email: z.string().trim().email('Valid email address is required').optional().or(z.literal('')),
+  occupation: z.string().trim().max(100).optional().or(z.literal('')),
+  employer: z.string().trim().max(100).optional().or(z.literal('')),
+  annualIncomeRange: z.string().trim().max(50).optional().or(z.literal('')),
+  educationQualification: z.string().trim().max(100).optional().or(z.literal('')),
+  address: z.string().trim().max(250).optional().or(z.literal('')),
+  workplaceAddress: z.string().trim().max(250).optional().or(z.literal('')),
+  preferredCommunicationChannel: z.enum(['whatsapp', 'sms', 'email', 'portal']).default('whatsapp'),
+  preferredLanguage: z.string().trim().default('en'),
+  portalAccessRequired: z.boolean().default(true),
+  identityDocument: identityDocumentSchema.optional(),
+});
+
+export type GuardianRegistrationInput = z.infer<typeof guardianRegistrationSchema>;
+
+// Sibling Info Schema
+export const siblingInfoSchema = z.object({
+  name: z.string().trim().min(2, 'Sibling name required'),
+  admissionNumber: z.string().trim().optional().or(z.literal('')),
+  className: z.string().trim().optional().or(z.literal('')),
+  institutionId: z.string().uuid().optional().or(z.literal('')),
+});
+
+// Comprehensive Multi-Step Student Registration Schema
+export const studentRegistrationSchema = z
+  .object({
+    institutionId: z.string().uuid('Valid institution ID is required'),
+    educationType: educationTypeEnum,
+    academicYearId: z.string().uuid('Valid academic year ID is required'),
+    programId: z.string().uuid('Valid program ID is required'),
+    classId: z.string().uuid('Invalid class ID').optional().nullable().or(z.literal('')),
+    admissionCategory: admissionCategoryEnum.default('general'),
+
+    // Step 1: Student Personal Details
+    firstName: z
+      .string()
+      .trim()
+      .min(2, 'First name must be at least 2 characters')
+      .max(50, 'First name cannot exceed 50 characters'),
+    middleName: z.string().trim().max(50).optional().or(z.literal('')),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, 'Last name is required')
+      .max(50, 'Last name cannot exceed 50 characters'),
+    preferredName: z.string().trim().max(50).optional().or(z.literal('')),
+    dateOfBirth: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth (YYYY-MM-DD) is required'),
+    gender: studentGenderEnum,
+    bloodGroup: z.string().trim().max(10).optional().or(z.literal('')),
+    email: z.string().trim().email('Invalid email address').optional().or(z.literal('')),
+    phone: z.string().trim().max(20).optional().or(z.literal('')),
+    photoUrl: z.string().trim().optional().or(z.literal('')),
+
+    address: z
+      .string()
+      .trim()
+      .min(5, 'Residential address must be at least 5 characters')
+      .max(250, 'Address cannot exceed 250 characters'),
+    city: z
+      .string()
+      .trim()
+      .min(2, 'City is required')
+      .max(60, 'City cannot exceed 60 characters'),
+    state: z
+      .string()
+      .trim()
+      .min(2, 'State is required')
+      .max(60, 'State cannot exceed 60 characters'),
+    country: z.string().trim().default('India'),
+    postalCode: z
+      .string()
+      .trim()
+      .min(3, 'PIN / Postal code is required')
+      .max(12, 'Postal code cannot exceed 12 characters'),
+    nationality: z.string().trim().default('Indian'),
+
+    motherTongue: z.string().trim().max(50).optional().or(z.literal('')),
+    secondLanguage: z.string().trim().max(50).optional().or(z.literal('')),
+    religion: z.string().trim().max(50).optional().or(z.literal('')),
+    casteCategory: z.string().trim().max(50).optional().or(z.literal('')),
+    birthplaceCity: z.string().trim().max(60).optional().or(z.literal('')),
+    birthplaceState: z.string().trim().max(60).optional().or(z.literal('')),
+    birthplaceCountry: z.string().trim().max(60).optional().or(z.literal('')),
+    identificationMark1: z.string().trim().max(100).optional().or(z.literal('')),
+    identificationMark2: z.string().trim().max(100).optional().or(z.literal('')),
+
+    previousSchoolName: z.string().trim().max(120).optional().or(z.literal('')),
+    previousGradeOrScore: z.string().trim().max(50).optional().or(z.literal('')),
+    transportRequired: z.boolean().default(false),
+    transportPickupStop: z.string().trim().max(100).optional().or(z.literal('')),
+    transportDropStop: z.string().trim().max(100).optional().or(z.literal('')),
+    hostelRequired: z.boolean().default(false),
+    hostelRoomPreference: z.string().trim().max(50).optional().or(z.literal('')),
+    siblingInfo: z.array(siblingInfoSchema).optional().default([]),
+
+    medicalAlerts: z
+      .object({
+        allergies: z.array(z.string()).optional(),
+        medications: z.array(z.string()).optional(),
+        conditions: z.array(z.string()).optional(),
+        bloodGroupConfirmed: z.boolean().optional(),
+        dietaryRestrictions: z.array(z.string()).optional(),
+        emergencyHospital: z.string().optional(),
+        familyDoctorName: z.string().optional(),
+        familyDoctorPhone: z.string().optional(),
+        notes: z.string().optional(),
+      })
+      .optional()
+      .default({}),
+
+    specialNeeds: z
+      .object({
+        hasSpecialNeeds: z.boolean().default(false),
+        details: z.string().optional(),
+        accommodationsRequested: z.array(z.string()).optional(),
+      })
+      .optional()
+      .default({ hasSpecialNeeds: false }),
+
+    // Step 2: Identity Documents (Aadhaar Opt-in/Alternative ID)
+    aadhaarProvided: z.boolean().default(false),
+    identityDocuments: z.array(identityDocumentSchema).min(1, 'At least one identity document must be provided'),
+
+    // Step 3: Parents & Guardians (Single Parent Support)
+    primaryGuardian: guardianRegistrationSchema,
+    secondaryGuardian: guardianRegistrationSchema.optional(),
+    hasLegalGuardian: z.boolean().default(false),
+    legalGuardian: guardianRegistrationSchema.optional(),
+
+    // Step 4: Emergency Contacts & Pickups
+    primaryEmergencyContact: emergencyContactSchema,
+    secondaryEmergencyContact: emergencyContactSchema.optional(),
+    authorizedPickups: z.array(emergencyContactSchema).optional().default([]),
+
+    // Step 5: Consents (DPDP Act Compliant)
+    registrationTermsAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'You must confirm that all submitted details are true and accurate.' }),
+    }),
+    privacyNoticeAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'You must acknowledge the institution privacy policy.' }),
+    }),
+    photoMediaConsent: z.boolean().default(false),
+    nonEssentialCommunicationsConsent: z.boolean().default(false),
+    emergencyMedicalTreatmentAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'Emergency medical treatment authorization is required.' }),
+    }),
+    consentedByName: z.string().trim().min(2, 'Name of consenting parent/guardian is required'),
+    consentedByRelationship: z.string().trim().min(2, 'Relationship of consenting person is required'),
+  })
+  .refine(
+    (data) => {
+      // If Aadhaar is NOT provided, verify that at least one valid non-Aadhaar identity document is attached
+      if (!data.aadhaarProvided) {
+        const hasAlternative = data.identityDocuments.some(
+          (doc) => doc.documentType !== 'masked_aadhaar'
+        );
+        return hasAlternative;
+      }
+      return true;
+    },
+    {
+      message: 'If Aadhaar is not provided, an alternative document (Birth Certificate, Passport, etc.) is required.',
+      path: ['identityDocuments'],
+    }
+  );
+
+export type StudentRegistrationInput = z.infer<typeof studentRegistrationSchema>;
+
+// Draft Application Save Schema
+export const registrationDraftSaveSchema = z.object({
+  institutionId: z.string().uuid('Valid institution ID is required'),
+  educationType: educationTypeEnum.optional(),
+  academicYearId: z.string().uuid().optional(),
+  programId: z.string().uuid().optional(),
+  classId: z.string().uuid().optional().nullable(),
+  formData: z.record(z.unknown()),
+  applicationId: z.string().uuid().optional(),
+  draftAccessToken: z.string().optional(),
+});
+
+export type RegistrationDraftSaveInput = z.infer<typeof registrationDraftSaveSchema>;
+
+// Document Verification Review Schema
+export const verifyIdentityDocumentSchema = z.object({
+  documentId: z.string().uuid('Valid document ID is required'),
+  verificationStatus: identityVerificationStatusEnum,
+  verificationNotes: z.string().trim().max(400).optional().or(z.literal('')),
+});
+
+export type VerifyIdentityDocumentInput = z.infer<typeof verifyIdentityDocumentSchema>;
+
+// Consent Withdrawal Schema
+export const withdrawConsentSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  consentType: consentTypeEnum,
+  withdrawalReason: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+export type WithdrawConsentInput = z.infer<typeof withdrawConsentSchema>;
+
+// Parent Emergency Contact Update Schema
+export const parentEmergencyContactsUpdateSchema = z.object({
+  studentId: z.string().uuid('Valid student ID is required'),
+  primaryEmergencyContact: emergencyContactSchema,
+  secondaryEmergencyContact: emergencyContactSchema.optional(),
+  authorizedPickups: z.array(emergencyContactSchema).optional().default([]),
+});
+
+export type ParentEmergencyContactsUpdateInput = z.infer<typeof parentEmergencyContactsUpdateSchema>;
+
 

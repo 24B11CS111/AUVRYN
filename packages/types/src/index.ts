@@ -14,6 +14,148 @@ export type InstitutionType =
   | 'engineering_college'
   | 'university';
 
+export type EducationType =
+  | 'preschool'
+  | 'primary_school'
+  | 'intermediate'
+  | 'university';
+
+export interface EducationTypeDefinition {
+  type: EducationType;
+  label: string;
+  categoryName: string;
+  tagline: string;
+  departmentLabel: string;
+  cohortLabel: string;
+  learnerLabel: string;
+  educatorLabel: string;
+  icon: string;
+  theme: {
+    primary: string;
+    accent: string;
+    badgeVariant: 'sky' | 'blue' | 'indigo' | 'purple';
+    softBg: string;
+  };
+}
+
+export const EDUCATION_TYPE_DEFINITIONS: Record<EducationType, EducationTypeDefinition> = {
+  preschool: {
+    type: 'preschool',
+    label: 'Preschool & Early Childhood',
+    categoryName: 'Early Learning Academy',
+    tagline: 'Warm, foundational development with parent-first transparency',
+    departmentLabel: 'Age Groups & Wings',
+    cohortLabel: 'Playgroups & Nursery',
+    learnerLabel: 'Children / Little Learners',
+    educatorLabel: 'Early Educators / Caregivers',
+    icon: 'Baby',
+    theme: {
+      primary: '#0284C7',
+      accent: '#38BDF8',
+      badgeVariant: 'sky',
+      softBg: '#F0F9FF',
+    },
+  },
+  primary_school: {
+    type: 'primary_school',
+    label: 'Primary & K-12 School',
+    categoryName: 'K-12 Schooling',
+    tagline: 'Holistic foundational education, curriculum and report cards',
+    departmentLabel: 'Grade Levels & Wings',
+    cohortLabel: 'Classes & Sections',
+    learnerLabel: 'Students',
+    educatorLabel: 'Teachers',
+    icon: 'GraduationCap',
+    theme: {
+      primary: '#2563EB',
+      accent: '#60A5FA',
+      badgeVariant: 'blue',
+      softBg: '#EFF6FF',
+    },
+  },
+  intermediate: {
+    type: 'intermediate',
+    label: 'Intermediate & Junior College',
+    categoryName: '+2 & Junior College',
+    tagline: 'Analytical streams, faculty allocation and competitive prep (MPC, BiPC, CEC)',
+    departmentLabel: 'Academic Streams',
+    cohortLabel: 'Streams & Groups',
+    learnerLabel: 'Students & Aspirants',
+    educatorLabel: 'Faculty & Lecturers',
+    icon: 'BookOpen',
+    theme: {
+      primary: '#4F46E5',
+      accent: '#818CF8',
+      badgeVariant: 'indigo',
+      softBg: '#EEF2FF',
+    },
+  },
+  university: {
+    type: 'university',
+    label: 'University & Higher Education',
+    categoryName: 'Higher Education Institute',
+    tagline: 'Enterprise academic management, semesters, credits and research governance',
+    departmentLabel: 'Faculties & Departments',
+    cohortLabel: 'Programmes & Semesters',
+    learnerLabel: 'Undergraduates & Scholars',
+    educatorLabel: 'Professors & Faculty',
+    icon: 'Landmark',
+    theme: {
+      primary: '#0B1E3F',
+      accent: '#2563EB',
+      badgeVariant: 'purple',
+      softBg: '#F5F7FB',
+    },
+  },
+};
+
+export function resolveEducationType(
+  institution?: Partial<Institution> | { name?: string; slug?: string; type?: string; settings?: Record<string, any> } | null
+): EducationType {
+  if (!institution) return 'primary_school';
+
+  const settings = institution.settings as (Record<string, any> | undefined);
+  const configured =
+    settings?.education_type ||
+    settings?.educationType ||
+    (institution as any)?.education_type ||
+    (institution as any)?.educationType;
+
+  if (
+    configured === 'preschool' ||
+    configured === 'primary_school' ||
+    configured === 'intermediate' ||
+    configured === 'university'
+  ) {
+    return configured;
+  }
+
+  const instType = institution.type;
+  if (instType === 'junior_college') return 'intermediate';
+  if (
+    instType === 'degree_college' ||
+    instType === 'engineering_college' ||
+    instType === 'university'
+  ) {
+    return 'university';
+  }
+
+  const rawName = (institution as any).name || (institution as any).slug || '';
+  const name = typeof rawName === 'string' ? rawName.toLowerCase() : '';
+  if (
+    name.includes('preschool') ||
+    name.includes('kindergarten') ||
+    name.includes('playschool') ||
+    name.includes('montessori') ||
+    name.includes('nursery') ||
+    name.includes('toddler')
+  ) {
+    return 'preschool';
+  }
+
+  return 'primary_school';
+}
+
 export type InstitutionStatus =
   | 'active'
   | 'pending_verification'
@@ -28,6 +170,7 @@ export interface InstitutionSettings {
   academicTermType?: 'semester' | 'trimester' | 'annual';
   allowSelfRegistration?: boolean;
   featuresEnabled?: string[];
+  education_type?: EducationType;
 }
 
 export interface Institution {
@@ -36,6 +179,7 @@ export interface Institution {
   slug: string;
   code: string;
   type: InstitutionType;
+  education_type?: EducationType;
   status: InstitutionStatus;
   logoUrl?: string | null;
   website?: string | null;
@@ -139,6 +283,27 @@ export type Role =
   | 'accountant'
   | 'student'
   | 'parent';
+
+export type PlatformRole = 'hrix_admin';
+
+export type PlatformPermission =
+  | 'platform:institutions:onboard'
+  | 'platform:institutions:approve'
+  | 'platform:institutions:suspend'
+  | 'platform:subscriptions:manage'
+  | 'platform:billing:view'
+  | 'platform:analytics:view'
+  | 'platform:system:health'
+  | 'platform:audit:view'
+  | 'platform:tickets:manage';
+
+export interface PlatformAdminUser {
+  id: string;
+  email: string;
+  role: 'hrix_admin';
+  isPlatformAdmin: true;
+  authorizedAt: string;
+}
 
 export type MembershipStatus =
   | 'active'
@@ -1035,6 +1200,7 @@ export type DocumentVerificationStatus =
   | 'rejected';
 
 export type AdmissionStatus =
+  | 'draft'
   | 'submitted'
   | 'received'
   | 'documents_pending'
@@ -1044,6 +1210,160 @@ export type AdmissionStatus =
   | 'waitlisted'
   | 'confirmed'
   | 'enrolled';
+
+// --- Student Identity, Aadhaar & Consent Types ---
+
+export type IdentityDocumentType =
+  | 'masked_aadhaar'
+  | 'birth_certificate'
+  | 'passport'
+  | 'ration_card'
+  | 'school_leaving_certificate'
+  | 'transfer_certificate'
+  | 'national_id'
+  | 'pan_card'
+  | 'voter_id'
+  | 'other';
+
+export type IdentityVerificationStatus =
+  | 'not_submitted'
+  | 'submitted'
+  | 'pending_verification'
+  | 'verified'
+  | 'rejected'
+  | 'expired';
+
+export type ConsentType =
+  | 'registration_terms'
+  | 'privacy_notice'
+  | 'photo_media_publication'
+  | 'non_essential_communications'
+  | 'emergency_medical_treatment';
+
+export type AdmissionCategory =
+  | 'general'
+  | 'merit'
+  | 'management'
+  | 'sports'
+  | 'sibling'
+  | 'staff_ward'
+  | 'ews_rte'
+  | 'international'
+  | 'other';
+
+export type GuardianRelationshipType =
+  | 'father'
+  | 'mother'
+  | 'legal_guardian'
+  | 'foster_parent'
+  | 'grandparent'
+  | 'sibling'
+  | 'other';
+
+export type EmergencyContactPriority =
+  | 'primary'
+  | 'secondary';
+
+export interface StudentMedicalAlerts {
+  allergies?: string[];
+  medications?: string[];
+  conditions?: string[];
+  bloodGroupConfirmed?: boolean;
+  dietaryRestrictions?: string[];
+  emergencyHospital?: string;
+  familyDoctorName?: string;
+  familyDoctorPhone?: string;
+  notes?: string;
+}
+
+export interface StudentSpecialNeeds {
+  hasSpecialNeeds: boolean;
+  details?: string;
+  accommodationsRequested?: string[];
+}
+
+export interface StudentSiblingInfo {
+  name: string;
+  admissionNumber?: string;
+  className?: string;
+  institutionId?: string;
+}
+
+export interface StudentIdentityDocument {
+  id: string;
+  institutionId: string;
+  studentId?: string | null;
+  applicationId?: string | null;
+  guardianId?: string | null;
+  documentType: IdentityDocumentType;
+  maskedReference: string; // e.g. "XXXX-XXXX-1234" (Strictly NO full 12-digit Aadhaar!)
+  documentFilePath: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  issuingAuthority?: string | null;
+  issueDate?: string | null;
+  expiryDate?: string | null;
+  verificationStatus: IdentityVerificationStatus;
+  verificationNotes?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  uploadedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentEmergencyContact {
+  id: string;
+  institutionId: string;
+  studentId?: string | null;
+  applicationId?: string | null;
+  priority: EmergencyContactPriority;
+  name: string;
+  relationship: string;
+  phonePrimary: string;
+  phoneSecondary?: string | null;
+  email?: string | null;
+  isAuthorizedPickup: boolean;
+  pickupIdType?: string | null;
+  pickupIdMaskedRef?: string | null;
+  pickupPhotoUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentConsentRecord {
+  id: string;
+  institutionId: string;
+  studentId?: string | null;
+  applicationId?: string | null;
+  consentType: ConsentType;
+  granted: boolean;
+  grantedByName: string;
+  grantedByRelationship: string;
+  grantedByUserId?: string | null;
+  grantedAt: string;
+  consentVersion: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  withdrawn: boolean;
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IdentityDocumentAuditLog {
+  id: string;
+  institutionId: string;
+  documentId: string;
+  actorUserId: string;
+  action: 'view' | 'download' | 'verify' | 'reject' | 'delete';
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+}
 
 export interface Student {
   id: string;
@@ -1070,6 +1390,23 @@ export interface Student {
   status: StudentStatus;
   dateOfJoining: string;
   userId?: string | null;
+  educationType?: EducationType | string | null;
+  admissionCategory?: AdmissionCategory | null;
+  preferredName?: string | null;
+  motherTongue?: string | null;
+  secondLanguage?: string | null;
+  religion?: string | null;
+  casteCategory?: string | null;
+  birthplaceCity?: string | null;
+  birthplaceState?: string | null;
+  birthplaceCountry?: string | null;
+  identificationMark1?: string | null;
+  identificationMark2?: string | null;
+  medicalAlerts?: StudentMedicalAlerts | null;
+  specialNeeds?: StudentSpecialNeeds | null;
+  transportRequired?: boolean;
+  hostelRequired?: boolean;
+  siblingInfo?: StudentSiblingInfo[];
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -1077,6 +1414,9 @@ export interface Student {
   // Joins
   currentEnrollment?: StudentEnrollment | null;
   guardians?: StudentGuardianJoin[];
+  identityDocuments?: StudentIdentityDocument[];
+  emergencyContacts?: StudentEmergencyContact[];
+  consentRecords?: StudentConsentRecord[];
 }
 
 export interface Guardian {
@@ -1087,11 +1427,23 @@ export interface Guardian {
   email?: string | null;
   phone: string;
   relationshipDefault?: string | null;
+  relationshipType?: GuardianRelationshipType | null;
+  phoneSecondary?: string | null;
   occupation?: string | null;
+  employer?: string | null;
+  annualIncomeRange?: string | null;
+  educationQualification?: string | null;
   address?: string | null;
+  workplaceAddress?: string | null;
   city?: string | null;
   state?: string | null;
   country?: string | null;
+  preferredCommunicationChannel?: 'whatsapp' | 'sms' | 'email' | 'portal';
+  preferredLanguage?: string;
+  portalAccessRequired?: boolean;
+  phoneVerified?: boolean;
+  emailVerified?: boolean;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
   userId?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -1168,9 +1520,12 @@ export interface AdmissionApplication {
   academicYearId: string;
   programId: string;
   classId?: string | null;
+  educationType?: EducationType | string | null;
+  admissionCategory?: AdmissionCategory | null;
   firstName: string;
   middleName?: string | null;
   lastName: string;
+  preferredName?: string | null;
   dateOfBirth: string;
   gender: StudentGender;
   bloodGroup?: string | null;
@@ -1182,6 +1537,23 @@ export interface AdmissionApplication {
   country?: string | null;
   postalCode?: string | null;
   nationality: string;
+  motherTongue?: string | null;
+  secondLanguage?: string | null;
+  religion?: string | null;
+  casteCategory?: string | null;
+  birthplaceCity?: string | null;
+  birthplaceState?: string | null;
+  birthplaceCountry?: string | null;
+  identificationMark1?: string | null;
+  identificationMark2?: string | null;
+  medicalAlerts?: StudentMedicalAlerts | null;
+  specialNeeds?: StudentSpecialNeeds | null;
+  transportRequired?: boolean;
+  transportPickupStop?: string | null;
+  transportDropStop?: string | null;
+  hostelRequired?: boolean;
+  hostelRoomPreference?: string | null;
+  siblingInfo?: StudentSiblingInfo[];
   previousSchoolName?: string | null;
   previousGradeOrScore?: string | null;
   primaryGuardianName: string;
@@ -1193,6 +1565,8 @@ export interface AdmissionApplication {
   secondaryGuardianRelationship?: string | null;
   secondaryGuardianPhone?: string | null;
   secondaryGuardianEmail?: string | null;
+  isDraft?: boolean;
+  draftAccessToken?: string | null;
   status: AdmissionStatus;
   internalRemarks?: string | null;
   convertedStudentId?: string | null;
@@ -1206,6 +1580,9 @@ export interface AdmissionApplication {
   program?: AcademicProgram | null;
   academicClass?: AcademicClass | null;
   documents?: StudentDocument[];
+  identityDocuments?: StudentIdentityDocument[];
+  emergencyContacts?: StudentEmergencyContact[];
+  consentRecords?: StudentConsentRecord[];
 }
 
 export interface AdmissionStatusHistory {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { LibraryNav } from '../LibraryNav';
 import {
   getLibraryFinesAction,
@@ -22,14 +22,14 @@ export default function LibraryFinesPage() {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadFines = async () => {
+  const loadFines = useCallback(async () => {
     const res = await getLibraryFinesAction({ status: statusFilter || undefined });
     if (res.success && res.data) setFines(res.data);
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadFines();
-  }, [statusFilter]);
+  }, [loadFines]);
 
   const handleConfirmAction = (e: React.FormEvent) => {
     e.preventDefault();

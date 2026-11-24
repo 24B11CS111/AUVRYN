@@ -52,11 +52,13 @@ export function ParentAICompanionView({ initialStudentId }: { initialStudentId?:
     async function loadChildren() {
       const res = await getParentLinkedStudentsAction();
       if (res.success && res.data && res.data.length > 0) {
-        setChildren(res.data);
-        const first = res.data[0];
-        if (first && (!selectedChildId || !res.data.some((c) => c.id === selectedChildId))) {
-          setSelectedChildId(first.id);
-        }
+        const studentList = res.data;
+        setChildren(studentList);
+        setSelectedChildId((prevId) => {
+          if (prevId && studentList.some((c) => c.id === prevId)) return prevId;
+          if (initialStudentId && studentList.some((c) => c.id === initialStudentId)) return initialStudentId;
+          return studentList[0]?.id || '';
+        });
       }
     }
     loadChildren();
@@ -273,7 +275,7 @@ export function ParentAICompanionView({ initialStudentId }: { initialStudentId?:
           {isSending && (
             <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-2xl w-fit text-xs text-slate-500">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-pink-600" />
-              Looking into your child's records with care and guidance...
+              Looking into your child&apos;s records with care and guidance...
             </div>
           )}
         </div>

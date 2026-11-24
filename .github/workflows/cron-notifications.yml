@@ -1,0 +1,79 @@
+name: Notification Outbox Scheduler
+
+on:
+  schedule:
+    # Runs every 10 minutes to process queued outbox deliveries (urgent absence alerts, announcements, etc.)
+    # Fully free on GitHub Actions without requiring Vercel Pro
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Batch size for outbox claiming (default: 50, max: 100)'
+        required: false
+        default: '50'
+
+concurrency:
+  group: cron-notifications-scheduler
+  cancel-in-progress: false
+
+jobs:
+  dispatch-outbox:
+    name: Dispatch Notification Outbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate Secrets Presence
+        env:
+          APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::error::Secret VERCEL_APP_URL is not configured in repository secrets."
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Secret CRON_SECRET is not configured in repository secrets."
+            exit 1
+          fi
+          echo "Repository secrets verified."
+
+      - name: Trigger Notification Outbox Runner
+        env:
+          APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || '50' }}
+        run: |
+          # Strip any trailing slash from APP_URL
+          CLEAN_URL="${APP_URL%/}"
+          
+          # Ensure URL has protocol
+          if [[ ! "$CLEAN_URL" =~ ^https?:// ]]; then
+            CLEAN_URL="https://$CLEAN_URL"
+          fi
+
+          TARGET_ENDPOINT="$CLEAN_URL/api/cron/notifications"
+          echo "Triggering notification outbox runner at: $TARGET_ENDPOINT"
+
+          # Execute curl with silent secret handling
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$TARGET_ENDPOINT" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHub-Actions-Cron/1.0" \
+            -d "{\"batchSize\": $BATCH_SIZE}" \
+            --max-time 60)
+
+          # Parse body and status code
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n1)
+
+          echo "HTTP Status Code: $HTTP_STATUS"
+          echo "Response Payload: $HTTP_BODY"
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error::Notification runner failed with HTTP status $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "Outbox dispatch cycle executed successfully."

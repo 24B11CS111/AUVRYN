@@ -113,7 +113,8 @@ export interface ParentPortalData {
 }
 
 export async function getParentPortalDataAction(
-  selectedStudentId?: string
+  selectedStudentId?: string,
+  isPreview?: boolean
 ): Promise<ActionResult<ParentPortalData>> {
   try {
     const session = await requireInstitution();
@@ -141,7 +142,14 @@ export async function getParentPortalDataAction(
         studentIds = (links || []).map((l: any) => l.student_id);
       }
     } else if (membership.role === 'owner' || membership.role === 'admin') {
-      // Admin/Owner can preview parent portal with any student
+      // Owners & administrators must not automatically acquire parent data without explicit preview
+      if (!isPreview) {
+        return {
+          success: false,
+          error: 'Unauthorized: Administrative accounts require an explicit audited preview request (?preview=true) to view the parent portal.',
+        };
+      }
+      // Audited Admin Preview mode
       const { data: anyStudents } = await supabase
         .from('students')
         .select('id')
@@ -152,7 +160,7 @@ export async function getParentPortalDataAction(
     } else {
       return {
         success: false,
-        error: 'Unauthorized: parent portal access requires parent, guardian, or administrative role.',
+        error: 'Unauthorized: Parent portal access requires an explicit parent/guardian role.',
       };
     }
 
@@ -591,5 +599,313 @@ export async function getParentChildDocumentSignedUrlAction(
     return { success: true, data: { signedUrl } };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error generating document URL.' };
+  }
+}
+
+/**
+ * 3. Fetch Student Identity, Emergency Contacts, and Consents for Parent View
+ */
+export async function getParentStudentIdentityAndConsentsAction(
+  studentId: string
+): Promise<ActionResult<{
+  identityDocuments: any[];
+  emergencyContacts: any[];
+  consents: any[];
+}>> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+    const supabase = createClient() as any;
+
+    if (role === 'parent' || (role as string) === 'guardian') {
+      const { data: guardianRel } = await supabase
+        .from('student_guardians')
+        .select('student_id, guardians!inner(user_id)')
+        .eq('student_id', studentId)
+        .eq('guardians.user_id', session.user.id)
+        .maybeSingle();
+
+      if (!guardianRel) {
+        return { success: false, error: 'Access denied: You are not authorized to view this student.' };
+      }
+    } else if (role !== 'owner' && role !== 'admin') {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    // Fetch masked identity documents
+    const { data: idDocs } = await supabase
+      .from('student_identity_documents')
+      .select('id, document_type, masked_reference, verification_status, verification_notes, verified_at, created_at')
+      .eq('student_id', studentId)
+      .eq('institution_id', institutionId);
+
+    // Fetch emergency contacts & pickups
+    const { data: contacts } = await supabase
+      .from('student_emergency_contacts')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('institution_id', institutionId)
+      .order('priority', { ascending: true });
+
+    // Fetch consent records
+    const { data: consents } = await supabase
+      .from('student_consent_records')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: true });
+
+    return {
+      success: true,
+      data: {
+        identityDocuments: idDocs || [],
+        emergencyContacts: contacts || [],
+        consents: consents || [],
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch student identity details.' };
+  }
+}
+
+/**
+ * 4. Update Parent Emergency Contacts
+ */
+export async function updateParentEmergencyContactsAction(
+  studentId: string,
+  primaryContact: {
+    name: string;
+    relationship: string;
+    phonePrimary: string;
+    phoneSecondary?: string;
+    email?: string;
+  },
+  secondaryContact?: {
+    name: string;
+    relationship: string;
+    phonePrimary: string;
+    phoneSecondary?: string;
+    email?: string;
+  },
+  authorizedPickups?: Array<{
+    name: string;
+    relationship: string;
+    phonePrimary: string;
+    pickupIdType?: string;
+    pickupIdMaskedRef?: string;
+  }>
+): Promise<ActionResult> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+    const supabase = createClient() as any;
+
+    if (role === 'parent' || (role as string) === 'guardian') {
+      const { data: guardianRel } = await supabase
+        .from('student_guardians')
+        .select('student_id, guardians!inner(user_id)')
+        .eq('student_id', studentId)
+        .eq('guardians.user_id', session.user.id)
+        .maybeSingle();
+
+      if (!guardianRel) {
+        return { success: false, error: 'Access denied: You are not authorized to edit contacts for this student.' };
+      }
+    } else if (role !== 'owner' && role !== 'admin') {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    // Delete existing emergency contacts and insert updated
+    await supabase
+      .from('student_emergency_contacts')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('institution_id', institutionId);
+
+    const payloads: any[] = [
+      {
+        institution_id: institutionId,
+        student_id: studentId,
+        priority: 'primary',
+        name: primaryContact.name,
+        relationship: primaryContact.relationship,
+        phone_primary: primaryContact.phonePrimary,
+        phone_secondary: primaryContact.phoneSecondary || null,
+        email: primaryContact.email || null,
+        is_authorized_pickup: true,
+      },
+    ];
+
+    if (secondaryContact) {
+      payloads.push({
+        institution_id: institutionId,
+        student_id: studentId,
+        priority: 'secondary',
+        name: secondaryContact.name,
+        relationship: secondaryContact.relationship,
+        phone_primary: secondaryContact.phonePrimary,
+        phone_secondary: secondaryContact.phoneSecondary || null,
+        email: secondaryContact.email || null,
+        is_authorized_pickup: false,
+      });
+    }
+
+    if (authorizedPickups && authorizedPickups.length > 0) {
+      for (const p of authorizedPickups) {
+        payloads.push({
+          institution_id: institutionId,
+          student_id: studentId,
+          priority: 'secondary',
+          name: p.name,
+          relationship: p.relationship,
+          phone_primary: p.phonePrimary,
+          is_authorized_pickup: true,
+          pickup_id_type: p.pickupIdType || null,
+          pickup_id_masked_ref: p.pickupIdMaskedRef || null,
+        });
+      }
+    }
+
+    const { error: insErr } = await supabase
+      .from('student_emergency_contacts')
+      .insert(payloads);
+
+    if (insErr) {
+      return { success: false, error: formatSupabaseError(insErr) };
+    }
+
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      institution_id: institutionId,
+      actor_user_id: session.user.id,
+      action: 'parent.emergency_contacts_updated',
+      entity_type: 'students',
+      entity_id: studentId,
+      metadata: { count: payloads.length },
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update emergency contacts.' };
+  }
+}
+
+/**
+ * 5. Withdraw Optional Consent (DPDP Act Compliance)
+ */
+export async function withdrawParentConsentAction(
+  studentId: string,
+  consentType: string,
+  reason?: string
+): Promise<ActionResult> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+    const supabase = createClient() as any;
+
+    if (role === 'parent' || (role as string) === 'guardian') {
+      const { data: guardianRel } = await supabase
+        .from('student_guardians')
+        .select('student_id, guardians!inner(user_id)')
+        .eq('student_id', studentId)
+        .eq('guardians.user_id', session.user.id)
+        .maybeSingle();
+
+      if (!guardianRel) {
+        return { success: false, error: 'Access denied: You are not authorized to manage consent for this student.' };
+      }
+    } else if (role !== 'owner' && role !== 'admin') {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    // Update consent record to withdrawn
+    const { data: updatedConsent, error: updErr } = await supabase
+      .from('student_consent_records')
+      .update({
+        granted: false,
+        withdrawn: true,
+        withdrawn_at: new Date().toISOString(),
+        withdrawn_by: session.user.id,
+        withdrawal_reason: reason || 'Withdrawn by parent via portal',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('student_id', studentId)
+      .eq('consent_type', consentType)
+      .eq('institution_id', institutionId)
+      .select()
+      .single();
+
+    if (updErr) {
+      return { success: false, error: formatSupabaseError(updErr) };
+    }
+
+    // Audit log for consent withdrawal
+    await supabase.from('audit_logs').insert({
+      institution_id: institutionId,
+      actor_user_id: session.user.id,
+      action: 'parent.consent_withdrawn',
+      entity_type: 'student_consent_records',
+      entity_id: updatedConsent.id,
+      metadata: { consent_type: consentType, student_id: studentId, reason },
+    });
+
+    return { success: true, data: updatedConsent };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to withdraw consent.' };
+  }
+}
+
+/**
+ * 6. Request Student Identity / Record Correction
+ */
+export async function requestStudentCorrectionAction(
+  studentId: string,
+  fieldToCorrect: string,
+  proposedValue: string,
+  reason: string
+): Promise<ActionResult> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+    const supabase = createClient() as any;
+
+    if (role === 'parent' || (role as string) === 'guardian') {
+      const { data: guardianRel } = await supabase
+        .from('student_guardians')
+        .select('student_id, guardians!inner(user_id)')
+        .eq('student_id', studentId)
+        .eq('guardians.user_id', session.user.id)
+        .maybeSingle();
+
+      if (!guardianRel) {
+        return { success: false, error: 'Access denied: You are not authorized to request corrections for this student.' };
+      }
+    } else if (role !== 'owner' && role !== 'admin') {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    // Record correction request in audit_logs
+    await supabase.from('audit_logs').insert({
+      institution_id: institutionId,
+      actor_user_id: session.user.id,
+      action: 'parent.correction_requested',
+      entity_type: 'students',
+      entity_id: studentId,
+      metadata: {
+        field: fieldToCorrect,
+        proposed_value: proposedValue,
+        reason,
+        status: 'pending_review',
+        requested_at: new Date().toISOString(),
+      },
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to submit correction request.' };
   }
 }

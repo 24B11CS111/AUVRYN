@@ -13,14 +13,22 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+site_url = "https://web-lpo1tyz08-anurags-projects-157b861e.vercel.app"
+additional_redirect_urls = [
+  "https://web-lpo1tyz08-anurags-projects-157b861e.vercel.app/**",
+  "https://web-8eu92rhsp-anurags-projects-157b861e.vercel.app/**",
+  "https://*.vercel.app/**",
+  "http://localhost:3000/**"
+]
 jwt_expiry = 3600
 enable_signup = true
+
+[auth.email]
+enable_confirmations = false
 
 [storage]
 enabled = true

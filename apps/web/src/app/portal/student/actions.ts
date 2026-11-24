@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { requireInstitution } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { STORAGE_BUCKETS, createSignedDownloadUrl } from '@/lib/storage';
@@ -94,7 +95,9 @@ export interface StudentPortalData {
   }>;
 }
 
-export async function getStudentPortalDataAction(): Promise<ActionResult<StudentPortalData>> {
+export async function getStudentPortalDataAction(
+  isPreview?: boolean
+): Promise<ActionResult<StudentPortalData>> {
   try {
     const session = await requireInstitution();
     const membership = session.activeMembership!;
@@ -114,7 +117,13 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
         studentId = st.id;
       }
     } else if (membership.role === 'owner' || membership.role === 'admin') {
-      // Admin/Owner previewing student portal: fetch first student
+      if (!isPreview) {
+        return {
+          success: false,
+          error: 'Unauthorized: Administrative accounts require an explicit audited preview request (?preview=true) to view the student portal.',
+        };
+      }
+      // Audited Admin Preview Mode
       const { data: anyStudent } = await supabase
         .from('students')
         .select('id')
@@ -128,7 +137,7 @@ export async function getStudentPortalDataAction(): Promise<ActionResult<Student
     } else {
       return {
         success: false,
-        error: 'Unauthorized: Access to the student portal requires a student or administrative role.',
+        error: 'Unauthorized: Access to the student portal requires an explicit student role.',
       };
     }
 
@@ -427,5 +436,115 @@ export async function getStudentOwnDocumentSignedUrlAction(
     return { success: true, data: { signedUrl } };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error generating document URL.' };
+  }
+}
+
+/**
+ * Submit student homework assignment
+ */
+export async function submitStudentHomeworkAction(params: {
+  assignmentId: string;
+  submissionText?: string;
+  attachments?: any[];
+}): Promise<ActionResult<{ submissionId: string }>> {
+  try {
+    const session = await requireInstitution();
+    const institutionId = session.activeMembership!.institutionId;
+    const role = session.activeMembership?.role;
+
+    if (role !== 'student') {
+      return { success: false, error: 'Unauthorized: only students can submit homework.' };
+    }
+
+    const supabase = createClient() as any;
+
+    // Resolve student record
+    const { data: student, error: stErr } = await supabase
+      .from('students')
+      .select('id, first_name, last_name')
+      .eq('institution_id', institutionId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (stErr || !student) {
+      return { success: false, error: 'Student record not found for active user.' };
+    }
+
+    // Verify assignment exists and is published
+    const { data: assignment, error: hwErr } = await supabase
+      .from('homework_assignments')
+      .select('id, title, due_date, due_time, allow_late_submissions, faculty_staff_id, subject:academic_subjects(name)')
+      .eq('id', params.assignmentId)
+      .eq('institution_id', institutionId)
+      .single();
+
+    if (hwErr || !assignment) {
+      return { success: false, error: 'Assignment not found.' };
+    }
+
+    // Determine if late
+    const dueDateTime = new Date(`${assignment.due_date}T${assignment.due_time || '23:59:59'}`);
+    const now = new Date();
+    const isLate = now > dueDateTime;
+
+    if (isLate && !assignment.allow_late_submissions) {
+      return { success: false, error: 'Submission rejected: Late submissions are closed for this assignment.' };
+    }
+
+    // Upsert submission
+    const { data: sub, error: subError } = await supabase
+      .from('homework_submissions')
+      .upsert(
+        {
+          assignment_id: params.assignmentId,
+          student_id: student.id,
+          submission_text: params.submissionText || null,
+          attachments: params.attachments || [],
+          submitted_at: now.toISOString(),
+          is_late: isLate,
+          status: isLate ? 'late' : 'submitted',
+        },
+        { onConflict: 'assignment_id, student_id' }
+      )
+      .select('id')
+      .single();
+
+    if (subError || !sub) {
+      return { success: false, error: subError?.message || 'Failed to submit homework' };
+    }
+
+    // Notify allocated teacher if faculty_staff_id is known
+    if (assignment.faculty_staff_id) {
+      const { data: staff } = await supabase
+        .from('staff_profiles')
+        .select('user_id')
+        .eq('id', assignment.faculty_staff_id)
+        .single();
+
+      if (staff?.user_id) {
+        await supabase.from('notifications').insert({
+          institution_id: institutionId,
+          recipient_user_id: staff.user_id,
+          category: 'academic',
+          title: `Homework Submitted: ${assignment.title}`,
+          body: `${student.first_name} ${student.last_name} submitted homework for ${assignment.subject?.name || 'Subject'}.`,
+          priority: 'normal',
+          data: {
+            deep_link: '/portal/teacher',
+            entity_type: 'homework_submission',
+            entity_id: sub.id,
+          },
+          is_read: false,
+          created_at: now.toISOString(),
+        });
+      }
+    }
+
+    revalidatePath('/portal/student');
+    revalidatePath('/portal/teacher');
+
+    return { success: true, data: { submissionId: sub.id } };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to submit assignment' };
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { HostelNav } from '../HostelNav';
 import {
   getHostelAllocationsAction,
@@ -26,7 +26,7 @@ export default function HostelAllocationsPage() {
     new Date().toISOString().split('T')[0] || ''
   );
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const [aRes, bRes] = await Promise.all([
       getHostelAllocationsAction({ status: statusFilter || undefined }),
       getHostelBedsAction(),
@@ -36,11 +36,11 @@ export default function HostelAllocationsPage() {
     if (bRes.success && bRes.data) {
       setAvailableBeds(bRes.data.filter((b: any) => b.status === 'available'));
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const handleAllocateBed = (e: React.FormEvent) => {
     e.preventDefault();

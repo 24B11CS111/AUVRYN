@@ -2,6 +2,7 @@
   "expo": {
     "name": "AUVRYN",
     "slug": "edu-platform-mobile",
+    "scheme": "auvryn",
     "owner": "school0730",
     "version": "1.0.0",
     "orientation": "portrait",

@@ -7,56 +7,77 @@
 -- ==============================================================================
 
 -- 1. Ensure Storage Schema & Standard Tables (Idempotent for local/test Postgres)
-CREATE SCHEMA IF NOT EXISTS storage;
-
-CREATE TABLE IF NOT EXISTS storage.buckets (
-  id text PRIMARY KEY,
-  name text NOT NULL,
-  owner uuid,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  public boolean DEFAULT false,
-  avif_autodetection boolean DEFAULT false,
-  file_size_limit bigint,
-  allowed_mime_types text[]
-);
-
-CREATE TABLE IF NOT EXISTS storage.objects (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  bucket_id text REFERENCES storage.buckets(id),
-  name text,
-  owner uuid,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  last_accessed_at timestamptz DEFAULT now(),
-  metadata jsonb,
-  version text
-);
+DO $$ BEGIN
+  IF to_regclass('storage.buckets') IS NULL THEN
+    CREATE SCHEMA IF NOT EXISTS storage;
+    CREATE TABLE storage.buckets (
+      id text PRIMARY KEY,
+      name text NOT NULL,
+      owner uuid,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      public boolean DEFAULT false,
+      avif_autodetection boolean DEFAULT false,
+      file_size_limit bigint,
+      allowed_mime_types text[]
+    );
+  END IF;
+  IF to_regclass('storage.objects') IS NULL THEN
+    CREATE TABLE storage.objects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      bucket_id text REFERENCES storage.buckets(id),
+      name text,
+      owner uuid,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      last_accessed_at timestamptz DEFAULT now(),
+      metadata jsonb,
+      version text
+    );
+  END IF;
+END $$;
 
 -- 2. Storage Helper Functions (if not already defined by Supabase Storage)
-CREATE OR REPLACE FUNCTION storage.foldername(name text)
-RETURNS text[]
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT string_to_array(name, '/');
-$$;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'storage' AND p.proname = 'foldername'
+  ) THEN
+    CREATE OR REPLACE FUNCTION storage.foldername(name text)
+    RETURNS text[]
+    LANGUAGE sql
+    IMMUTABLE
+    AS $f$
+      SELECT string_to_array(name, '/');
+    $f$;
+  END IF;
 
-CREATE OR REPLACE FUNCTION storage.filename(name text)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT split_part(name, '/', array_length(string_to_array(name, '/'), 1));
-$$;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'storage' AND p.proname = 'filename'
+  ) THEN
+    CREATE OR REPLACE FUNCTION storage.filename(name text)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    AS $f$
+      SELECT split_part(name, '/', array_length(string_to_array(name, '/'), 1));
+    $f$;
+  END IF;
 
-CREATE OR REPLACE FUNCTION storage.extension(name text)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT split_part(name, '.', array_length(string_to_array(name, '.'), 1));
-$$;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'storage' AND p.proname = 'extension'
+  ) THEN
+    CREATE OR REPLACE FUNCTION storage.extension(name text)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    AS $f$
+      SELECT split_part(name, '.', array_length(string_to_array(name, '.'), 1));
+    $f$;
+  END IF;
+END $$;
 
 -- 3. Path Extraction Helpers for Multi-Tenant Scoping
 -- Storage paths follow: {institution_id}/{category}/{entity_id}/{file_name}
@@ -134,9 +155,15 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- 5. Enable RLS on Storage Tables
-ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- 5. Enable RLS on Storage Tables (if owned by current user; already enabled in hosted Supabase)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON c.relowner = r.oid WHERE c.relname = 'buckets' AND c.relnamespace = 'storage'::regnamespace AND r.rolname = current_user) THEN
+    ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON c.relowner = r.oid WHERE c.relname = 'objects' AND c.relnamespace = 'storage'::regnamespace AND r.rolname = current_user) THEN
+    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- 6. Bucket RLS Policies
 DROP POLICY IF EXISTS "storage_buckets_authenticated_select" ON storage.buckets;
@@ -446,9 +473,19 @@ CREATE POLICY "storage_objects_academic_docs_delete" ON storage.objects
   );
 
 -- 11. Security Grants
-GRANT USAGE ON SCHEMA storage TO authenticated, anon;
-GRANT SELECT ON storage.buckets TO authenticated;
-GRANT ALL ON storage.objects TO authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO authenticated;
+DO $$ BEGIN
+  EXECUTE 'GRANT USAGE ON SCHEMA storage TO authenticated, anon';
+  EXECUTE 'GRANT SELECT ON storage.buckets TO authenticated';
+  EXECUTE 'GRANT ALL ON storage.objects TO authenticated';
+EXCEPTION
+  WHEN insufficient_privilege THEN null;
+END $$;
+
+DO $$ BEGIN
+  EXECUTE 'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO authenticated';
+EXCEPTION
+  WHEN insufficient_privilege THEN null;
+END $$;
+
 GRANT EXECUTE ON FUNCTION public.storage_extract_institution_id(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.storage_extract_entity_id(text) TO authenticated;

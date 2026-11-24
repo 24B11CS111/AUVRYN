@@ -118,5 +118,18 @@ export function resolveMobileSupabaseConfig(
     return { config: null, error: SUPABASE_PUBLIC_KEY_ERROR };
   }
 
+  if (
+    (url.includes('dhgdjpjgsvbknquetecl') || url.includes('dhgdjpjg')) &&
+    (process.env.APP_ENV === 'staging' ||
+      process.env.EAS_BUILD_PROFILE === 'preview' ||
+      process.env.NODE_ENV !== 'production' ||
+      process.env.ALLOW_PROD !== 'true')
+  ) {
+    return {
+      config: null,
+      error: 'CRITICAL SAFETY BLOCK: Direct connection to PRODUCTION Supabase project (dhgdjpjgsvbknquetecl) is prohibited in non-production builds.',
+    };
+  }
+
   return { config: { url: url.replace(/\/+$/, ''), anonKey }, error: null };
 }

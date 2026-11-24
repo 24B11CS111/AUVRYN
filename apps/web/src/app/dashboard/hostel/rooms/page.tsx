@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { HostelNav } from '../HostelNav';
 import { getHostelRoomsAction, getHostelBuildingsAction, createHostelRoomAction } from '../actions';
 import { DoorOpen, Plus, Loader2, Wind, Bath } from 'lucide-react';
@@ -22,7 +22,7 @@ export default function HostelRoomsPage() {
   const [isAttachedWashroom, setIsAttachedWashroom] = useState(true);
   const [baseFeeMonthly, setBaseFeeMonthly] = useState(5000);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const [rRes, bRes] = await Promise.all([
       getHostelRoomsAction(selectedBuildingId || undefined),
       getHostelBuildingsAction(),
@@ -35,11 +35,11 @@ export default function HostelRoomsPage() {
         // default to first
       }
     }
-  };
+  }, [selectedBuildingId]);
 
   useEffect(() => {
     loadData();
-  }, [selectedBuildingId]);
+  }, [loadData]);
 
   const handleCreateRoom = (e: React.FormEvent) => {
     e.preventDefault();

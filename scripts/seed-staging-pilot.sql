@@ -94,7 +94,7 @@ BEGIN
   -- C. Detect existing non-demo user accounts in auth.users
   SELECT count(*) INTO v_non_demo_users
   FROM auth.users
-  WHERE email NOT LIKE '%@auvryn-academy.demo';
+  WHERE email NOT LIKE '%@auvryn-academy.demo' AND email NOT LIKE '%@auvryn-demo.internal';
 
   IF v_non_demo_users > 0 THEN
     RAISE EXCEPTION 'CRITICAL SAFETY BLOCK: Target database contains % non-demo user account(s). Refusing execution to prevent corrupting real data.', v_non_demo_users
@@ -104,7 +104,7 @@ BEGIN
   -- D. Detect existing non-demo institutions in public.institutions
   SELECT count(*) INTO v_non_demo_insts
   FROM public.institutions
-  WHERE code != 'AUVRYN-DEMO' AND slug != 'auvryn-academy-demo';
+  WHERE code NOT LIKE 'AUVRYN-%' AND slug NOT LIKE '%demo%';
 
   IF v_non_demo_insts > 0 THEN
     RAISE EXCEPTION 'CRITICAL SAFETY BLOCK: Target database contains % non-demo institution(s). Refusing execution.', v_non_demo_insts

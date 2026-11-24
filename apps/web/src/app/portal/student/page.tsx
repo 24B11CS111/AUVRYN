@@ -1,12 +1,24 @@
 import React from 'react';
 import { requirePortalRole } from '@/lib/auth';
+import { resolveEducationType } from '@edu-platform/types';
 import { getStudentPortalDataAction } from './actions';
 import { StudentPortalClient } from './StudentPortalClient';
 
-export default async function StudentPortalPage() {
-  await requirePortalRole(['student', 'owner', 'admin']);
+interface StudentPortalPageProps {
+  searchParams?: { preview?: string };
+}
 
-  const res = await getStudentPortalDataAction();
+export default async function StudentPortalPage({ searchParams }: StudentPortalPageProps) {
+  const portalContext = await requirePortalRole(['student'], {
+    allowAdminPreview: true,
+    searchParams,
+  });
+
+  const institution = portalContext.activeMembership?.institution;
+  const educationType = resolveEducationType(institution);
+  const institutionName = institution?.name || 'AUVRYN Institution';
+
+  const res = await getStudentPortalDataAction(portalContext.isPreview);
   const data = res.success && res.data
     ? res.data
     : {
@@ -23,7 +35,14 @@ export default async function StudentPortalPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <StudentPortalClient initialData={data} />
+      <StudentPortalClient
+        initialData={data}
+        institutionName={institutionName}
+        educationType={educationType}
+        userEmail={portalContext.user.email}
+        userName={portalContext.profile.fullName}
+        isPreview={portalContext.isPreview}
+      />
     </div>
   );
 }

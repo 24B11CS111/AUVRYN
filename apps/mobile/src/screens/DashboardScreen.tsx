@@ -23,6 +23,10 @@ import {
 } from '../lib/notificationService';
 import { StudentAITutorScreen } from './StudentAITutorScreen';
 import { ParentAICompanionScreen } from './ParentAICompanionScreen';
+import { ParentMobileNavigator } from './ParentMobileNavigator';
+import { StudentMobileNavigator } from './StudentMobileNavigator';
+import { TeacherMobileNavigator } from './TeacherMobileNavigator';
+import { OwnerMobileNavigator } from './OwnerMobileNavigator';
 import { AuvrynLogo } from '../components/AuvrynLogo';
 import { useMobileRealtime } from '../lib/useAuvrynRealtime';
 import { RealtimeStatusIndicator } from '../components/RealtimeStatusIndicator';
@@ -487,6 +491,65 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userId, userEm
         userId={userId}
         institutionId={institution?.id || ''}
         onClose={() => setActiveAIView('none')}
+      />
+    );
+  }
+
+  // Role-Specific Mobile Navigator Router
+  if (activeRole === 'parent' || (activeRole as string) === 'guardian') {
+    return (
+      <ParentMobileNavigator
+        userId={userId}
+        userEmail={userEmail}
+        institutionId={institution?.id || activeInstId || ''}
+        institutionName={institution?.name || 'AUVRYN Institution'}
+        educationType={institution?.type || 'primary_school'}
+        connectionState={connectionState}
+        onSignOut={handleSignOut}
+        onOpenAICompanion={() => setActiveAIView('parent_companion')}
+      />
+    );
+  }
+
+  if (activeRole === 'student') {
+    return (
+      <StudentMobileNavigator
+        userId={userId}
+        userEmail={userEmail}
+        institutionId={institution?.id || activeInstId || ''}
+        institutionName={institution?.name || 'AUVRYN Institution'}
+        educationType={institution?.type || 'primary_school'}
+        connectionState={connectionState}
+        onSignOut={handleSignOut}
+        onOpenAITutor={() => setActiveAIView('student_tutor')}
+      />
+    );
+  }
+
+  if (activeRole === 'faculty' || (activeRole as string) === 'teacher') {
+    return (
+      <TeacherMobileNavigator
+        userId={userId}
+        userEmail={userEmail}
+        institutionId={institution?.id || activeInstId || ''}
+        institutionName={institution?.name || 'AUVRYN Institution'}
+        educationType={institution?.type || 'primary_school'}
+        connectionState={connectionState}
+        onSignOut={handleSignOut}
+      />
+    );
+  }
+
+  if (activeRole === 'owner' || activeRole === 'admin') {
+    return (
+      <OwnerMobileNavigator
+        userId={userId}
+        userEmail={userEmail}
+        institutionId={institution?.id || activeInstId || ''}
+        institutionName={institution?.name || 'AUVRYN Institution'}
+        educationType={institution?.type || 'primary_school'}
+        connectionState={connectionState}
+        onSignOut={handleSignOut}
       />
     );
   }

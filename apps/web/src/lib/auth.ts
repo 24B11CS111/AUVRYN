@@ -136,7 +136,20 @@ export async function getSessionContext(): Promise<UserSessionContext | null> {
     };
   });
 
-  const activeMembership = memberships[0] || null;
+  // Resolve active institution from cookie if present, otherwise default to first membership
+  let activeInstIdFromCookie: string | null = null;
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = cookies();
+    activeInstIdFromCookie = cookieStore.get('active_institution_id')?.value || null;
+  } catch {
+    // cookies() might be called outside a request context in tests or scripts
+  }
+
+  const activeMembership =
+    (activeInstIdFromCookie && memberships.find((m) => m.institutionId === activeInstIdFromCookie)) ||
+    memberships[0] ||
+    null;
   const activeInstitutionId = activeMembership?.institutionId || null;
 
   return {
@@ -152,6 +165,80 @@ export async function getSessionContext(): Promise<UserSessionContext | null> {
 }
 
 /**
+ * Authoritative Server-Side Platform Admin Validator.
+ * Never trusts user-supplied role, query parameters or institution membership.
+ */
+export function isPlatformAdmin(user: { id?: string; email?: string | null; app_metadata?: any; user_metadata?: any } | null | undefined): boolean {
+  if (!user) return false;
+
+  // 1. Check Supabase app_metadata (set only via service-role / secure auth hooks, never client editable)
+  if (user.app_metadata?.is_platform_admin === true || user.app_metadata?.role === 'hrix_admin') {
+    return true;
+  }
+
+  // 2. Check explicitly authorized platform admin emails from server environment
+  const envAdminEmails = (process.env.HRIX_PLATFORM_ADMIN_EMAILS || 'admin@auvryn.com,platform@auvryn.com,hrix@auvryn.com')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (user.email && envAdminEmails.includes(user.email.toLowerCase())) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Post-Authentication Smart Router.
+ * Determines the authorized destination for the user without requiring manual role selection prior to login:
+ * 1. Platform Admin -> /hrix-admin
+ * 2. Multiple active memberships -> /auth/select-institution
+ * 3. Parent / Guardian -> /portal/parent
+ * 4. Student -> /portal/student
+ * 5. Faculty / Teacher -> /portal/teacher
+ * 6. Institution Admins & Staff -> /dashboard
+ * 7. Zero memberships -> /onboarding
+ */
+export function getPostLoginRedirect(
+  context: UserSessionContext,
+  userRaw?: { id?: string; email?: string | null; app_metadata?: any }
+): string {
+  // 1. Platform admin takes highest precedence
+  if (isPlatformAdmin(userRaw || context.user)) {
+    return '/hrix-admin';
+  }
+
+  const activeMemberships = context.memberships.filter((m) => m.status === 'active');
+
+  // 2. No memberships -> Onboarding
+  if (activeMemberships.length === 0) {
+    return '/onboarding';
+  }
+
+  // 3. Multiple active institution memberships -> Institution selection screen
+  if (activeMemberships.length > 1) {
+    return '/auth/select-institution';
+  }
+
+  // 4. Single active membership -> Role-specific portal routing
+  const first = activeMemberships[0];
+  const role = first ? first.role : 'owner';
+  if (role === 'parent' || (role as string) === 'guardian') {
+    return '/portal/parent';
+  }
+  if (role === 'student') {
+    return '/portal/student';
+  }
+  if (role === 'faculty' || (role as string) === 'teacher') {
+    return '/portal/teacher';
+  }
+
+  // Institutional owners, administrators, HR, accountants, etc.
+  return '/dashboard';
+}
+
+/**
  * Guard: Requires authentication. Redirects to /auth/login if not logged in.
  */
 export async function requireAuth(): Promise<UserSessionContext> {
@@ -159,6 +246,31 @@ export async function requireAuth(): Promise<UserSessionContext> {
   if (!context) {
     redirect('/auth/login');
   }
+  return context;
+}
+
+/**
+ * Guard: Requires HRIX Platform Super Admin privileges.
+ * Strictly verifies identity server-side; unauthorized users are redirected.
+ */
+export async function requirePlatformAdmin(): Promise<UserSessionContext> {
+  const supabase = createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect('/auth/login?redirectTo=/hrix-admin');
+  }
+
+  if (!isPlatformAdmin(user)) {
+    // Reject non-platform users immediately
+    redirect('/dashboard?error=unauthorized_platform_admin');
+  }
+
+  const context = await getSessionContext();
+  if (!context) {
+    redirect('/auth/login?redirectTo=/hrix-admin');
+  }
+
   return context;
 }
 
@@ -175,13 +287,21 @@ export async function requireInstitution(): Promise<UserSessionContext> {
   return context;
 }
 
+export interface PortalRoleOptions {
+  allowAdminPreview?: boolean;
+  searchParams?: { preview?: string };
+  fallbackRedirect?: string;
+}
+
 /**
- * Guard: Requires specific portal roles. Redirects to fallback route (e.g. /dashboard) if unauthorized.
+ * Guard: Requires specific portal roles.
+ * Strict RBAC: Owners and administrators DO NOT automatically acquire parent, student or teacher permissions.
+ * Only explicit role assignments or an explicit, audited preview mechanism (?preview=true) is permitted.
  */
 export async function requirePortalRole(
   allowedRoles: Role[],
-  fallbackRedirect: string = '/dashboard'
-): Promise<UserSessionContext> {
+  options?: PortalRoleOptions
+): Promise<UserSessionContext & { isPreview?: boolean }> {
   const context = await requireInstitution();
   const membership = context.activeMembership;
 
@@ -190,15 +310,40 @@ export async function requirePortalRole(
   }
 
   const role = membership.role;
-  const isAllowed =
+  const isDirectlyAllowed =
     allowedRoles.includes(role) ||
-    (allowedRoles.includes('parent') && (role as string) === 'guardian');
+    (allowedRoles.includes('parent') && (role as string) === 'guardian') ||
+    (allowedRoles.includes('faculty') && (role as string) === 'teacher');
 
-  if (!isAllowed) {
-    redirect(fallbackRedirect);
+  if (isDirectlyAllowed) {
+    return context;
   }
 
-  return context;
+  // Check for explicit, audited admin preview mechanism
+  const isAdmin = role === 'owner' || role === 'admin';
+  const hasExplicitPreviewParam = options?.searchParams?.preview === 'true';
+
+  if (isAdmin && options?.allowAdminPreview && hasExplicitPreviewParam) {
+    // Record audit event for administrative preview inspection
+    try {
+      const supabase = createClient();
+      await (supabase.from('audit_logs') as any).insert({
+        institution_id: membership.institutionId,
+        actor_id: context.user.id,
+        action: 'PORTAL_AUDITED_ADMIN_PREVIEW',
+        entity_type: allowedRoles[0] || 'portal',
+        details: { preview_target_roles: allowedRoles },
+      });
+    } catch {
+      // Non-fatal if audit logging encounters transient network block
+    }
+
+    return { ...context, isPreview: true };
+  }
+
+  // Owners and administrators do NOT automatically acquire permissions without explicit assignment
+  const fallback = options?.fallbackRedirect || '/dashboard?error=unauthorized_portal_role';
+  redirect(fallback);
 }
 
 /**

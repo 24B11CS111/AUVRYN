@@ -3,7 +3,13 @@
 import React, { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import type { ParentPortalData } from './actions';
-import { getParentPortalDataAction } from './actions';
+import {
+  getParentPortalDataAction,
+  getParentStudentIdentityAndConsentsAction,
+  updateParentEmergencyContactsAction,
+  withdrawParentConsentAction,
+  requestStudentCorrectionAction,
+} from './actions';
 import {
   Users,
   CalendarCheck,
@@ -17,20 +23,74 @@ import {
   Compass,
   ShieldCheck,
   Sparkles,
+  Lock,
+  Phone,
+  CheckCircle2,
+  Edit3,
 } from 'lucide-react';
+import type { EducationType } from '@edu-platform/types';
 import { TransportMap } from '@/components/transport/TransportMap';
 import { ParentAICompanionView } from '@/components/ai/ParentAICompanionView';
 import { useAuvrynRealtime } from '@/lib/realtime/useAuvrynRealtime';
 import { RealtimeStatusIndicator } from '@/components/realtime/RealtimeStatusIndicator';
+import { PortalTopNav } from '@/components/portal/PortalTopNav';
+import { PreschoolDailyCareWidget } from '@/components/portal/preschool/PreschoolDailyCareWidget';
 
 interface ParentPortalClientProps {
   initialData: ParentPortalData;
+  institutionName?: string;
+  educationType?: EducationType;
+  userEmail?: string;
+  userName?: string;
+  isPreview?: boolean;
 }
 
-export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
+export function ParentPortalClient({
+  initialData,
+  institutionName = 'AUVRYN Institution',
+  educationType = 'primary_school',
+  userEmail = 'parent@auvryn.edu',
+  userName,
+  isPreview = false,
+}: ParentPortalClientProps) {
   const [data, setData] = useState<ParentPortalData>(initialData);
-  const [activeTab, setActiveTab] = useState<'overview' | 'ai_companion' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave' | 'transport'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ai_companion' | 'attendance' | 'results' | 'timetable' | 'fees' | 'homework' | 'leave' | 'transport' | 'identity_consent'>('overview');
   const [isPending, startTransition] = useTransition();
+
+  // Identity & Consents state
+  const [studentIdentityData, setStudentIdentityData] = useState<{
+    identityDocuments: any[];
+    emergencyContacts: any[];
+    consents: any[];
+  } | null>(null);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+  const [correctionField, setCorrectionField] = useState('address');
+  const [correctionProposedVal, setCorrectionProposedVal] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [portalActionMsg, setPortalActionMsg] = useState<string | null>(null);
+
+  // Emergency contact edit state
+  const [editPrimaryName, setEditPrimaryName] = useState('');
+  const [editPrimaryPhone, setEditPrimaryPhone] = useState('');
+  const [editPrimaryRel, setEditPrimaryRel] = useState('Father');
+
+  const fetchIdentityAndConsents = async (studentId: string) => {
+    try {
+      const res = await getParentStudentIdentityAndConsentsAction(studentId);
+      if (res.success && res.data) {
+        setStudentIdentityData(res.data);
+        const prim = res.data.emergencyContacts.find((c: any) => c.priority === 'primary');
+        if (prim) {
+          setEditPrimaryName(prim.name);
+          setEditPrimaryPhone(prim.phone_primary);
+          setEditPrimaryRel(prim.relationship);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const handleChildSelect = (studentId: string) => {
     startTransition(async () => {
@@ -82,6 +142,12 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
     };
   }, [institutionId, data.selectedChildId, subscribeToInstitution]);
 
+  useEffect(() => {
+    if (data.selectedChildId) {
+      fetchIdentityAndConsents(data.selectedChildId);
+    }
+  }, [data.selectedChildId]);
+
   if (data.children.length === 0) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 text-center">
@@ -96,6 +162,15 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
 
   return (
     <div className="space-y-6">
+      <PortalTopNav
+        institutionName={institutionName}
+        educationType={educationType}
+        role="parent"
+        userEmail={userEmail}
+        userName={userName}
+        isPreview={isPreview}
+      />
+
       {/* Top Banner & Child Switcher */}
       <div className="p-6 rounded-2xl bg-[#0B1E3F] text-white border border-[#142C4C] shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -207,6 +282,7 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
           { key: 'homework', label: 'Homework', icon: BookOpen },
           { key: 'leave', label: 'Leave History', icon: CalendarOff },
           { key: 'transport', label: 'School Transport', icon: Bus },
+          { key: 'identity_consent', label: 'Identity & Consents', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -234,7 +310,15 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
       )}
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          {educationType === 'preschool' && (
+            <PreschoolDailyCareWidget
+              childName={activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Child'}
+              className={activeChild?.className || 'Preschool Class'}
+            />
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Attendance */}
           <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
@@ -299,6 +383,7 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {activeTab === 'attendance' && (
@@ -634,6 +719,387 @@ export function ParentPortalClient({ initialData }: ParentPortalClientProps) {
               );
             })()
           )}
+        </div>
+      )}
+
+      {/* IDENTITY & CONSENTS TAB */}
+      {activeTab === 'identity_consent' && (
+        <div className="space-y-6">
+          {portalActionMsg && (
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-xs text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{portalActionMsg}</span>
+            </div>
+          )}
+
+          {/* Student Identity & Document Card */}
+          <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Verified Student Identity & Enrollment</h2>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                    Active Enrollment
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Institution-scoped admission record and verified document references.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCorrectionModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 self-start sm:self-auto"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Request Record Correction
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-medium">Student Legal Name</span>
+                <span className="font-bold text-slate-800">{activeChild?.firstName} {activeChild?.lastName}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-medium">Admission Number</span>
+                <span className="font-mono font-bold text-blue-700">{activeChild?.admissionNumber}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-medium">Class & Cohort</span>
+                <span className="font-semibold text-slate-800">{activeChild?.className || 'Class N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-medium">Roll Number</span>
+                <span className="font-medium text-slate-800">{activeChild?.rollNumber || 'Unassigned'}</span>
+              </div>
+            </div>
+
+            {/* Verified Identity Documents List */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                Verified Identity Documents
+              </span>
+
+              {(!studentIdentityData?.identityDocuments || studentIdentityData.identityDocuments.length === 0) ? (
+                <div className="p-3 rounded-xl border border-slate-100 bg-slate-50 text-xs text-slate-500">
+                  Identity documents registered during institutional admission.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {studentIdentityData.identityDocuments.map((doc: any) => (
+                    <div
+                      key={doc.id}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-800 capitalize">
+                            {doc.document_type.replace('_', ' ')}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            doc.verification_status === 'verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {doc.verification_status}
+                          </span>
+                        </div>
+                        <span className="text-slate-500 block text-[11px] font-mono mt-0.5">
+                          Masked Ref: {doc.masked_reference}
+                        </span>
+                      </div>
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900">
+                <Lock className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
+                <p>
+                  <strong>Legal Privacy Compliance:</strong> In accordance with UIDAI regulations and the Digital Personal Data Protection (DPDP) Act, raw unmasked 12-digit Aadhaar numbers are never stored in AUVRYN systems. Only audited masked tokens and encrypted files are retained.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Emergency Contacts & Authorized Pickups */}
+          <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Emergency Contacts & Authorized Pickups</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Designated family members and guardians authorized for immediate contact and dismissal.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEmergencyModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                Update Emergency Contacts
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(!studentIdentityData?.emergencyContacts || studentIdentityData.emergencyContacts.length === 0) ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 col-span-2 text-center">
+                  No separate emergency records found. Click &quot;Update Emergency Contacts&quot; to register primary contact.
+                </div>
+              ) : (
+                studentIdentityData.emergencyContacts.map((contact: any) => (
+                  <div
+                    key={contact.id}
+                    className={`p-4 rounded-xl border text-xs space-y-1.5 ${
+                      contact.priority === 'primary'
+                        ? 'border-rose-200 bg-rose-50/30'
+                        : 'border-slate-200 bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-900">{contact.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        contact.priority === 'primary' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {contact.priority}
+                      </span>
+                    </div>
+                    <p className="text-slate-600">Relationship: <strong>{contact.relationship}</strong></p>
+                    <p className="text-slate-600">Phone: <strong>{contact.phone_primary}</strong></p>
+                    {contact.is_authorized_pickup && (
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                        Authorized Pickup
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Consent Management (DPDP Act Compliance) */}
+          <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">Consent Management & Data Rights</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Under the DPDP Act, you have the right to review and withdraw optional consents at any time.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {(!studentIdentityData?.consents || studentIdentityData.consents.length === 0) ? (
+                <p className="text-xs text-slate-500 italic py-2">Consent records recorded during online admission.</p>
+              ) : (
+                studentIdentityData.consents.map((cr: any) => (
+                  <div
+                    key={cr.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 uppercase">
+                          {cr.consent_type.replace(/_/g, ' ')}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          cr.granted && !cr.withdrawn ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {cr.withdrawn ? 'Withdrawn' : cr.granted ? 'Active Consent' : 'Not Granted'}
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-[11px]">
+                        Granted by {cr.granted_by_name} ({cr.granted_by_relationship}) • Version {cr.consent_version}
+                      </p>
+                      {cr.withdrawn && (
+                        <p className="text-rose-600 text-[11px]">
+                          Consent was withdrawn on {new Date(cr.withdrawn_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Allow withdrawal for optional media or communication consent */}
+                    {(cr.consent_type === 'photo_media_publication' || cr.consent_type === 'non_essential_communications') && cr.granted && !cr.withdrawn && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!data.selectedChildId) return;
+                          const res = await withdrawParentConsentAction(data.selectedChildId, cr.consent_type, 'Parent revoked via portal');
+                          if (res.success) {
+                            setPortalActionMsg('Optional consent successfully withdrawn.');
+                            fetchIdentityAndConsents(data.selectedChildId);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 font-semibold text-xs whitespace-nowrap self-start sm:self-auto"
+                      >
+                        Withdraw Consent
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Update Emergency Contacts */}
+      {isEmergencyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-base font-bold text-slate-900">Update Emergency Contact</h3>
+            <p className="text-slate-500">
+              Provide updated primary emergency responder information for school records.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  value={editPrimaryName}
+                  onChange={(e) => setEditPrimaryName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  placeholder="Contact Name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Relationship to Student *</label>
+                <input
+                  type="text"
+                  value={editPrimaryRel}
+                  onChange={(e) => setEditPrimaryRel(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  placeholder="e.g. Father / Mother / Guardian"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Primary Phone Number *</label>
+                <input
+                  type="text"
+                  value={editPrimaryPhone}
+                  onChange={(e) => setEditPrimaryPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  placeholder="10-digit mobile"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsEmergencyModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!data.selectedChildId || !editPrimaryName.trim() || !editPrimaryPhone.trim()) return;
+                  const res = await updateParentEmergencyContactsAction(
+                    data.selectedChildId,
+                    {
+                      name: editPrimaryName,
+                      relationship: editPrimaryRel,
+                      phonePrimary: editPrimaryPhone,
+                    }
+                  );
+                  if (res.success) {
+                    setPortalActionMsg('Emergency contacts updated successfully.');
+                    setIsEmergencyModalOpen(false);
+                    fetchIdentityAndConsents(data.selectedChildId);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              >
+                Save Contacts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Request Correction */}
+      {isCorrectionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-base font-bold text-slate-900">Request Record Correction</h3>
+            <p className="text-slate-500">
+              Parents cannot directly alter verified academic records. Submit a correction request with reason for administrative verification.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Field to Correct</label>
+                <select
+                  value={correctionField}
+                  onChange={(e) => setCorrectionField(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                >
+                  <option value="address">Residential Address</option>
+                  <option value="phone">Guardian Phone Number</option>
+                  <option value="email">Guardian Email</option>
+                  <option value="student_name_spelling">Student Name Spelling</option>
+                  <option value="blood_group">Blood Group</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Proposed Correct Value *</label>
+                <input
+                  type="text"
+                  value={correctionProposedVal}
+                  onChange={(e) => setCorrectionProposedVal(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  placeholder="New value"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Reason for Correction *</label>
+                <textarea
+                  value={correctionReason}
+                  onChange={(e) => setCorrectionReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  placeholder="Describe why this correction is needed and attach supporting document reference"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsCorrectionModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!data.selectedChildId || !correctionProposedVal.trim() || !correctionReason.trim()) return;
+                  const res = await requestStudentCorrectionAction(
+                    data.selectedChildId,
+                    correctionField,
+                    correctionProposedVal,
+                    correctionReason
+                  );
+                  if (res.success) {
+                    setPortalActionMsg('Correction request submitted for administrative review.');
+                    setIsCorrectionModalOpen(false);
+                    setCorrectionProposedVal('');
+                    setCorrectionReason('');
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

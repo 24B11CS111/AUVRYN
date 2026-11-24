@@ -12,8 +12,12 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "build:mobile-deps": "npm run build --workspace=@edu-platform/types && npm run build --workspace=@edu-platform/database && npm run build --workspace=@edu-platform/validators && npm run build --workspace=@edu-platform/supabase-client",
+    "build:packages": "npm run build --workspace=@edu-platform/types && npm run build --workspace=@edu-platform/database && npm run build --workspace=@edu-platform/validators && npm run build --workspace=@edu-platform/supabase-client",
+    "build:web": "npm run build:packages && npm run build --workspace=@edu-platform/web",
+    "build": "npm run build:web",
+    "build:mobile-deps": "npm run build:packages",
+    "start:web": "npm run start --workspace=@edu-platform/web",
+    "start": "npm run start:web",
     "test": "vitest run tests/unit tests/security tests/integration",
     "test:unit": "vitest run tests/unit",
     "test:security": "vitest run tests/security",

@@ -21,6 +21,8 @@ export function NewAnnouncementClient() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [scope, setScope] = useState<any>('institution');
+  const [targetRole, setTargetRole] = useState<string>('parent');
+  const [targetEntityId, setTargetEntityId] = useState<string>('');
   const [priority, setPriority] = useState<any>('standard');
   const [status, setStatus] = useState<any>('published');
   const [requiresAcknowledgement, setRequiresAcknowledgement] = useState(false);
@@ -53,6 +55,8 @@ export function NewAnnouncementClient() {
         title: title.trim(),
         content: content.trim(),
         scope,
+        targetRole: scope === 'role' ? (targetRole as any) : undefined,
+        targetEntityId: scope !== 'institution' && scope !== 'role' && targetEntityId ? targetEntityId : undefined,
         priority,
         status,
         requiresAcknowledgement,
@@ -119,10 +123,10 @@ export function NewAnnouncementClient() {
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
             >
               <option value="institution">Whole Institution</option>
-              <option value="campus">Campus</option>
-              <option value="department">Department</option>
+              <option value="role">Specific Role</option>
               <option value="class">Class</option>
-              <option value="role">Role (e.g. Faculty, Parents)</option>
+              <option value="department">Department</option>
+              <option value="campus">Campus</option>
             </select>
           </div>
 
@@ -156,6 +160,43 @@ export function NewAnnouncementClient() {
             </select>
           </div>
         </div>
+
+        {scope === 'role' && (
+          <div className="p-3.5 rounded-lg border border-indigo-100 bg-indigo-50/50">
+            <label className="block text-xs font-semibold text-indigo-950 mb-1">
+              Select Recipient Audience Role *
+            </label>
+            <select
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              className="w-full sm:w-72 px-3 py-2 text-xs rounded-lg border border-indigo-200 bg-white text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+            >
+              <option value="parent">Parents &amp; Guardians Only</option>
+              <option value="student">Students Only</option>
+              <option value="faculty">Faculty / Teaching Staff Only</option>
+              <option value="staff">Administrative Staff Only</option>
+            </select>
+            <p className="text-[11px] text-indigo-600/80 mt-1.5">
+              Only users assigned to this institutional role will receive notifications and feed visibility.
+            </p>
+          </div>
+        )}
+
+        {(scope === 'class' || scope === 'department' || scope === 'campus') && (
+          <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70">
+            <label className="block text-xs font-semibold text-slate-800 mb-1">
+              Target {scope.charAt(0).toUpperCase() + scope.slice(1)} Identifier / ID *
+            </label>
+            <input
+              type="text"
+              required
+              value={targetEntityId}
+              onChange={(e) => setTargetEntityId(e.target.value)}
+              placeholder={`Enter the target ${scope} UUID or code`}
+              className="w-full sm:w-96 px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">

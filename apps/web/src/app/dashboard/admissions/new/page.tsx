@@ -41,6 +41,8 @@ export default async function NewAdmissionPage() {
 
   return (
     <NewAdmissionForm
+      institutionId={institution.id}
+      institutionName={institution.name}
       years={years}
       programs={programs}
       classes={classes}

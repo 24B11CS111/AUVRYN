@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { HostelNav } from '../HostelNav';
 import { getHostelOutpassesAction, updateHostelOutpassStatusAction } from '../actions';
 import { LogOut } from 'lucide-react';
@@ -11,14 +11,14 @@ export default function HostelLeavePage() {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const res = await getHostelOutpassesAction({ status: statusFilter || undefined });
     if (res.success && res.data) setOutpasses(res.data);
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const handleUpdateStatus = (
     outpassId: string,

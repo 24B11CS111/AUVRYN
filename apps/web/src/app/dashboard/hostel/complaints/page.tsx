@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { HostelNav } from '../HostelNav';
 import { getHostelComplaintsAction, resolveHostelComplaintAction } from '../actions';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -13,14 +13,14 @@ export default function HostelComplaintsPage() {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const res = await getHostelComplaintsAction({ status: statusFilter || undefined });
     if (res.success && res.data) setComplaints(res.data);
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const handleResolve = (e: React.FormEvent) => {
     e.preventDefault();

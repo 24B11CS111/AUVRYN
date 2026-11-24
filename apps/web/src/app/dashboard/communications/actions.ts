@@ -20,6 +20,7 @@ import {
 import { formatSupabaseError } from '@edu-platform/supabase-client';
 import {
   NotificationOutboxWorker,
+  fanoutAnnouncementNotifications,
   type WorkerBatchResult,
   type OutboxMetrics,
 } from '@/lib/notifications';
@@ -247,6 +248,31 @@ export async function createAnnouncementAction(input: AnnouncementCreateInput): 
       return { success: false, error: formatSupabaseError(error) };
     }
 
+    // Automated Notification Fan-Out for Published Announcements
+    if (validated.status === 'published') {
+      try {
+        await fanoutAnnouncementNotifications(supabase, {
+          announcementId: data.id,
+          institutionId: membership.institutionId,
+          scope: validated.scope as any,
+          targetRoles: validated.targetRole ? [validated.targetRole as any] : [],
+          targetClassId: validated.scope === 'class' ? validated.targetEntityId : null,
+          targetSectionId: validated.scope === 'section' ? validated.targetEntityId : null,
+          targetDepartmentId: validated.scope === 'department' ? validated.targetEntityId : null,
+          title: validated.title,
+          body: validated.content.length > 150 ? validated.content.slice(0, 147) + '...' : validated.content,
+          category: 'announcements',
+          priority: validated.priority === 'urgent' ? 'urgent' : validated.priority === 'important' ? 'high' : 'normal',
+          authorId: membership.userId,
+          metadata: {
+            deepLinkRoute: `/dashboard/communications/announcements`,
+          },
+        });
+      } catch (fanoutErr) {
+        console.warn('[Announcements] Automated notification fan-out non-fatal warning:', fanoutErr);
+      }
+    }
+
     revalidatePath('/dashboard/communications');
     revalidatePath('/dashboard/communications/announcements');
 
@@ -274,6 +300,139 @@ export async function createAnnouncementAction(input: AnnouncementCreateInput): 
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
+    };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Teacher announcement composer:
+ * Publishes updates strictly scoped to teacher's assigned classes or sections.
+ * Prevents unauthorized institution-wide broadcast while notifying allocated students and parents.
+ */
+export async function createTeacherClassAnnouncementAction(input: {
+  sectionId: string;
+  title: string;
+  content: string;
+  priority?: 'standard' | 'important' | 'urgent';
+  targetAudience?: 'all' | 'students' | 'parents';
+  attachments?: any[];
+}): Promise<ActionResult<Announcement>> {
+  try {
+    const session = await requireInstitution();
+    const membership = session.activeMembership!;
+    const supabase = createClient() as any;
+
+    if (!input.title || !input.content || !input.sectionId) {
+      return { success: false, error: 'Section ID, title, and content are required' };
+    }
+
+    // 1. Strict Authorization: Verify teacher has active allocation for this section
+    const { data: staffData } = await supabase
+      .from('staff_profiles')
+      .select('id')
+      .eq('institution_id', membership.institutionId)
+      .eq('user_id', membership.userId)
+      .maybeSingle();
+
+    if (!staffData && membership.role !== 'owner' && membership.role !== 'admin') {
+      return {
+        success: false,
+        error: 'Forbidden: Publishing class announcements requires an assigned staff profile.',
+      };
+    }
+
+    if (staffData && membership.role !== 'owner' && membership.role !== 'admin') {
+      const { data: allocation } = await supabase
+        .from('faculty_allocations')
+        .select('id, class_id')
+        .eq('institution_id', membership.institutionId)
+        .eq('staff_id', staffData.id)
+        .eq('section_id', input.sectionId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (!allocation) {
+        return {
+          success: false,
+          error: 'Forbidden: You are not authorized to publish announcements to this section.',
+        };
+      }
+    }
+
+    // Determine target roles based on targetAudience choice
+    let targetRoles: any[] = ['student', 'parent'];
+    if (input.targetAudience === 'students') targetRoles = ['student'];
+    if (input.targetAudience === 'parents') targetRoles = ['parent'];
+
+    // 2. Insert Announcement Scoped to Section
+    const insertPayload = {
+      institution_id: membership.institutionId,
+      title: input.title,
+      content: input.content,
+      scope: 'section',
+      section_id: input.sectionId,
+      target_roles: targetRoles,
+      priority: input.priority || 'standard',
+      status: 'published',
+      published_at: new Date().toISOString(),
+      attachments: input.attachments || [],
+      author_id: membership.userId,
+    };
+
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert(insertPayload)
+      .select('*, creator:profiles!announcements_created_by_fkey(id, full_name, email)')
+      .single();
+
+    if (error) {
+      return { success: false, error: formatSupabaseError(error) };
+    }
+
+    // 3. Automated Notification Fan-Out to section's students and parents
+    try {
+      await fanoutAnnouncementNotifications(supabase, {
+        announcementId: data.id,
+        institutionId: membership.institutionId,
+        scope: 'section',
+        targetSectionId: input.sectionId,
+        targetRoles,
+        title: input.title,
+        body: input.content.length > 150 ? input.content.slice(0, 147) + '...' : input.content,
+        category: 'announcements',
+        priority: input.priority === 'urgent' ? 'urgent' : input.priority === 'important' ? 'high' : 'normal',
+        authorId: membership.userId,
+        metadata: {
+          deepLinkRoute: `/portal/student`,
+          sectionId: input.sectionId,
+        },
+      });
+    } catch (fanoutErr) {
+      console.warn('[Teacher Announcements] Fan-out notification non-fatal warning:', fanoutErr);
+    }
+
+    revalidatePath('/portal/teacher');
+    revalidatePath('/portal/parent');
+    revalidatePath('/portal/student');
+
+    return {
+      success: true,
+      data: {
+        id: data.id,
+        institutionId: data.institution_id,
+        title: data.title,
+        content: data.content,
+        scope: data.scope,
+        priority: data.priority,
+        status: data.status,
+        publishedAt: data.published_at,
+        attachments: data.attachments || [],
+        createdBy: data.author_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as any,
     };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -675,6 +834,42 @@ export async function markNotificationReadAction(notificationId: string): Promis
     revalidatePath('/dashboard/communications');
     revalidatePath('/dashboard/communications/notifications');
     return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Mark all unread notifications as read for current user
+ */
+export async function markAllNotificationsReadAction(): Promise<ActionResult<{ updatedCount: number }>> {
+  try {
+    const session = await requireInstitution();
+    const membership = session.activeMembership!;
+    const supabase = createClient() as any;
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString(),
+      })
+      .eq('recipient_user_id', membership.userId)
+      .eq('institution_id', membership.institutionId)
+      .eq('is_read', false)
+      .select('id');
+
+    if (error) {
+      return { success: false, error: formatSupabaseError(error) };
+    }
+
+    revalidatePath('/dashboard/communications');
+    revalidatePath('/dashboard/communications/notifications');
+    revalidatePath('/portal/parent');
+    revalidatePath('/portal/student');
+    revalidatePath('/portal/teacher');
+
+    return { success: true, data: { updatedCount: data?.length || 0 } };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
   }

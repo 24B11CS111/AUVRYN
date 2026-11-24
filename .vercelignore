@@ -1,0 +1,10 @@
+# Vercel Deployment Ignore Rules
+scratch/
+backups/
+.expo-home/
+apps/mobile/builds/
+docs/acceptance-screenshots/
+docs/acceptance-screenshots.zip
+.git
+.github
+tests/

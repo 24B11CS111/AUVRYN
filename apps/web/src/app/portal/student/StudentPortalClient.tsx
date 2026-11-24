@@ -18,12 +18,29 @@ import {
 import { StudentAITutorView } from '@/components/ai/StudentAITutorView';
 import { useAuvrynRealtime } from '@/lib/realtime/useAuvrynRealtime';
 import { RealtimeStatusIndicator } from '@/components/realtime/RealtimeStatusIndicator';
+import type { EducationType } from '@edu-platform/types';
+import { PortalTopNav } from '@/components/portal/PortalTopNav';
+import { IntermediateStreamTracker } from '@/components/portal/intermediate/IntermediateStreamTracker';
+import { UniversityCreditRegistry } from '@/components/portal/university/UniversityCreditRegistry';
+import { submitStudentHomeworkAction } from './actions';
 
 interface StudentPortalClientProps {
   initialData: StudentPortalData;
+  institutionName?: string;
+  educationType?: EducationType;
+  userEmail?: string;
+  userName?: string;
+  isPreview?: boolean;
 }
 
-export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
+export function StudentPortalClient({
+  initialData,
+  institutionName = 'AUVRYN Institution',
+  educationType = 'primary_school',
+  userEmail = 'student@auvryn.edu',
+  userName,
+  isPreview = false,
+}: StudentPortalClientProps) {
   const router = useRouter();
   const [data] = useState<StudentPortalData>(initialData);
   const [activeTab, setActiveTab] = useState<'overview' | 'ai_tutor' | 'timetable' | 'homework' | 'results' | 'hall_tickets' | 'fees'>('overview');
@@ -76,6 +93,15 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
 
   return (
     <div className="space-y-6">
+      <PortalTopNav
+        institutionName={institutionName}
+        educationType={educationType}
+        role="student"
+        userEmail={userEmail}
+        userName={userName}
+        isPreview={isPreview}
+      />
+
       {/* Student Banner */}
       <div className="p-6 rounded-2xl bg-[#0B1E3F] text-white border border-[#142C4C] shadow-sm space-y-3">
         <div className="flex items-center justify-between">
@@ -179,7 +205,18 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
       {activeTab === 'ai_tutor' && <StudentAITutorView />}
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          {educationType === 'intermediate' && (
+            <IntermediateStreamTracker />
+          )}
+
+          {educationType === 'university' && (
+            <UniversityCreditRegistry
+              studentName={`${student.firstName} ${student.lastName}`}
+            />
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upcoming Assignments */}
           <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
@@ -211,7 +248,7 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
 
           {/* Today's Timetable */}
           <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
-            <h3 className="text-sm font-bold text-slate-900">Today's Class Schedule</h3>
+            <h3 className="text-sm font-bold text-slate-900">Today&apos;s Class Schedule</h3>
             <div className="space-y-2">
               {data.timetable.slice(0, 4).map((tt) => (
                 <div key={tt.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs space-y-0.5">
@@ -240,6 +277,7 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {activeTab === 'timetable' && (
@@ -296,6 +334,22 @@ export function StudentPortalClient({ initialData }: StudentPortalClientProps) {
                     <div className="text-xs font-bold text-slate-900 mt-1">
                       {hw.marksObtained} / {hw.maxMarks}
                     </div>
+                  )}
+                  {hw.submissionStatus === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        await submitStudentHomeworkAction({
+                          assignmentId: hw.id,
+                          submissionText: 'Submitted online via Student Workspace',
+                        });
+                        router.refresh();
+                      }}
+                      className="mt-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-600 text-white hover:bg-blue-700 transition block ml-auto"
+                    >
+                      Quick Submit
+                    </button>
                   )}
                 </div>
               </Link>

@@ -97,7 +97,7 @@ export function AttendanceDashboardClient({
         <Card className="border-slate-200 shadow-xs">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Today's Attendance Rate</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Today&apos;s Attendance Rate</p>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-2xl font-bold text-slate-900">{stats.attendanceRate}%</span>
                 <span className="text-xs text-slate-500">

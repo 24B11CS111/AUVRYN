@@ -251,6 +251,7 @@ export function TopNav({
           >
             <div className="w-8 h-8 rounded-full bg-[#0B1E3F] text-white flex items-center justify-center text-xs font-bold overflow-hidden">
               {profile?.avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={profile.avatarUrl}
                   alt={displayName}

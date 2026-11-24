@@ -33,7 +33,7 @@ export const LiveTrackingClient: React.FC<LiveTrackingClientProps> = ({ initialJ
   // Calculate fix freshness
   const freshness = useMemo(() => {
     if (!liveLoc?.recorded_at) return 'stale';
-    const fixAgeMs = Date.now() - new Date(liveLoc.recorded_at).getTime();
+    const fixAgeMs = (lastFixTime || Date.now()) - new Date(liveLoc.recorded_at).getTime();
     if (fixAgeMs < 35000) return 'fresh'; // under 35 seconds
     if (fixAgeMs < 120000) return 'aging'; // under 2 minutes
     return 'stale';

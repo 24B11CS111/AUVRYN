@@ -4,7 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import type { InstitutionMembership } from '@edu-platform/types';
+import type { InstitutionMembership, EducationType } from '@edu-platform/types';
+import { resolveEducationType, EDUCATION_TYPE_DEFINITIONS } from '@edu-platform/types';
 import { InstitutionSwitcher } from './InstitutionSwitcher';
 import { AuvrynLogo } from '@/components/branding';
 import {
@@ -34,6 +35,8 @@ import {
   Calendar,
   Sparkles,
   Layers,
+  Baby,
+  Landmark,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -42,6 +45,13 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const EDUCATION_ICONS: Record<EducationType, React.ComponentType<{ className?: string }>> = {
+  preschool: Baby,
+  primary_school: GraduationCap,
+  intermediate: BookOpen,
+  university: Landmark,
+};
 
 export function Sidebar({
   memberships,
@@ -54,162 +64,205 @@ export function Sidebar({
   const activeMembership =
     memberships.find((m) => m.institutionId === activeInstitutionId) || memberships[0];
 
-  const navItems = [
-    {
-      label: 'Overview',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
-    },
-    {
-      label: 'Campuses',
-      href: '/dashboard/campuses',
-      icon: Building,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff'],
-    },
-    {
-      label: 'Members & Roles',
-      href: '/dashboard/members',
-      icon: Users,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty'],
-    },
-    {
-      label: 'Academics',
-      href: '/dashboard/academics',
-      icon: GraduationCap,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'student'],
-    },
-    {
-      label: 'Students',
-      href: '/dashboard/students',
-      icon: UserCheck,
-      roles: ['owner', 'admin', 'academic_admin', 'admissions_officer', 'faculty', 'staff', 'student', 'parent'],
-    },
-    {
-      label: 'Admissions',
-      href: '/dashboard/admissions',
-      icon: ClipboardList,
-      roles: ['owner', 'admin', 'academic_admin', 'admissions_officer'],
-    },
-    {
-      label: 'Staff & Faculty',
-      href: '/dashboard/staff',
-      icon: UserCog,
-      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'accountant', 'staff'],
-    },
-    {
-      label: 'Attendance',
-      href: '/dashboard/attendance',
-      icon: CalendarCheck,
-      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
-    },
-    {
-      label: 'Timetable',
-      href: '/dashboard/timetable',
-      icon: CalendarDays,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant'],
-    },
-    {
-      label: 'Examinations',
-      href: '/dashboard/examinations',
-      icon: Award,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
-    },
-    {
-      label: 'Fees & Payments',
-      href: '/dashboard/fees',
-      icon: CreditCard,
-      roles: ['owner', 'admin', 'accountant', 'academic_admin', 'department_head', 'admissions_officer', 'student', 'parent'],
-    },
-    {
-      label: 'Communications',
-      href: '/dashboard/communications',
-      icon: Megaphone,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant', 'hr_administrator'],
-    },
-    {
-      label: 'Assignments',
-      href: '/dashboard/assignments',
-      icon: BookOpen,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'student', 'parent'],
-    },
-    {
-      label: 'Leave Management',
-      href: '/dashboard/leave',
-      icon: CalendarOff,
-      roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'accountant'],
-    },
-    {
-      label: 'Transport',
-      href: '/dashboard/transport',
-      icon: Bus,
-      roles: ['owner', 'admin', 'academic_admin', 'staff', 'faculty', 'student', 'parent'],
-    },
-    {
-      label: 'Library',
-      href: '/dashboard/library',
-      icon: Library,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
-    },
-    {
-      label: 'Hostel',
-      href: '/dashboard/hostel',
-      icon: Building2,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
-    },
-    {
-      label: 'Events',
-      href: '/dashboard/events',
-      icon: Calendar,
-      roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
-    },
-    {
-      label: 'AI Assistant',
-      href: '/dashboard/ai-assistant',
-      icon: Sparkles,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
-    },
-    {
-      label: 'AI Drafts & Review',
-      href: '/dashboard/ai-drafts',
-      icon: Layers,
-      roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
-    },
-    {
-      label: 'AI Intelligence',
-      href: '/dashboard/ai-intelligence',
-      icon: Sparkles,
-      roles: ['owner', 'admin', 'academic_admin'],
-    },
-    {
-      label: 'Parent Portal',
-      href: '/portal/parent',
-      icon: HeartHandshake,
-      roles: ['owner', 'admin', 'parent'],
-    },
-    {
-      label: 'Student Portal',
-      href: '/portal/student',
-      icon: User,
-      roles: ['owner', 'admin', 'student'],
-    },
-    {
-      label: 'Audit Trail',
-      href: '/dashboard/audit',
-      icon: FileClock,
-      roles: ['owner', 'admin'],
-    },
-    {
-      label: 'Settings',
-      href: '/dashboard/settings',
-      icon: Settings,
-      roles: ['owner', 'admin'],
-    },
-  ];
+  const institution = activeMembership?.institution;
+  const educationType = resolveEducationType(institution);
+  const eduDef = EDUCATION_TYPE_DEFINITIONS[educationType];
+  const EduIcon = EDUCATION_ICONS[educationType] || GraduationCap;
+
+  // Build education-aware navigation items
+  const getNavItems = () => {
+    const isPreschool = educationType === 'preschool';
+    const isIntermediate = educationType === 'intermediate';
+    const isUniversity = educationType === 'university';
+
+    return [
+      {
+        label: 'Overview',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
+      },
+      {
+        label: 'Campuses',
+        href: '/dashboard/campuses',
+        icon: Building,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff'],
+      },
+      {
+        label: 'Members & Roles',
+        href: '/dashboard/members',
+        icon: Users,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty'],
+      },
+      {
+        label: isUniversity
+          ? 'Faculties & Depts'
+          : isIntermediate
+          ? 'Streams & Groups'
+          : 'Academics',
+        href: '/dashboard/academics',
+        icon: GraduationCap,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty', 'student'],
+      },
+      {
+        label: isPreschool
+          ? 'Child Profiles'
+          : isIntermediate
+          ? 'Students & Aspirants'
+          : 'Students',
+        href: '/dashboard/students',
+        icon: UserCheck,
+        roles: ['owner', 'admin', 'academic_admin', 'admissions_officer', 'faculty', 'staff', 'student', 'parent'],
+      },
+      {
+        label: isUniversity
+          ? 'Enrolment & Admissions'
+          : isPreschool
+          ? 'Little Admissions'
+          : 'Admissions',
+        href: '/dashboard/admissions',
+        icon: ClipboardList,
+        roles: ['owner', 'admin', 'academic_admin', 'admissions_officer'],
+      },
+      {
+        label: isIntermediate ? 'Faculty Allocation' : 'Staff & Faculty',
+        href: '/dashboard/staff',
+        icon: UserCog,
+        roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'accountant', 'staff'],
+      },
+      {
+        label: isPreschool ? 'Daily Attendance' : 'Attendance',
+        href: '/dashboard/attendance',
+        icon: CalendarCheck,
+        roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
+      },
+      {
+        label: 'Timetable',
+        href: '/dashboard/timetable',
+        icon: CalendarDays,
+        roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant'],
+      },
+      // Formal examinations are hidden for preschools
+      ...(!isPreschool
+        ? [
+            {
+              label: isUniversity
+                ? 'Semesters & Transcripts'
+                : isIntermediate
+                ? 'Internal & Prep Exams'
+                : 'Examinations',
+              href: '/dashboard/examinations',
+              icon: Award,
+              roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent'],
+            },
+          ]
+        : []),
+      {
+        label: 'Fees & Payments',
+        href: '/dashboard/fees',
+        icon: CreditCard,
+        roles: ['owner', 'admin', 'accountant', 'academic_admin', 'department_head', 'admissions_officer', 'student', 'parent'],
+      },
+      {
+        label: isPreschool ? 'Parent Updates' : 'Communications',
+        href: '/dashboard/communications',
+        icon: Megaphone,
+        roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'admissions_officer', 'accountant', 'hr_administrator'],
+      },
+      {
+        label: isPreschool ? 'Daily Activities' : 'Assignments',
+        href: '/dashboard/assignments',
+        icon: BookOpen,
+        roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty', 'student', 'parent'],
+      },
+      {
+        label: 'Leave Management',
+        href: '/dashboard/leave',
+        icon: CalendarOff,
+        roles: ['owner', 'admin', 'hr_administrator', 'academic_admin', 'department_head', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+      },
+      {
+        label: isPreschool ? 'Pickup & Transport' : 'Transport',
+        href: '/dashboard/transport',
+        icon: Bus,
+        roles: ['owner', 'admin', 'academic_admin', 'staff', 'faculty', 'student', 'parent'],
+      },
+      {
+        label: 'Library',
+        href: '/dashboard/library',
+        icon: Library,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+      },
+      // Hostel is hidden for preschools
+      ...(!isPreschool
+        ? [
+            {
+              label: 'Hostel',
+              href: '/dashboard/hostel',
+              icon: Building2,
+              roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent', 'accountant'],
+            },
+          ]
+        : []),
+      {
+        label: 'Events',
+        href: '/dashboard/events',
+        icon: Calendar,
+        roles: ['owner', 'admin', 'academic_admin', 'faculty', 'staff', 'student', 'parent'],
+      },
+      {
+        label: 'Teacher Portal',
+        href: '/portal/teacher',
+        icon: GraduationCap,
+        roles: ['owner', 'admin', 'faculty'],
+      },
+      {
+        label: 'Parent Portal',
+        href: '/portal/parent',
+        icon: HeartHandshake,
+        roles: ['owner', 'admin', 'parent'],
+      },
+      {
+        label: 'Student Portal',
+        href: '/portal/student',
+        icon: User,
+        roles: ['owner', 'admin', 'student'],
+      },
+      {
+        label: 'AI Assistant',
+        href: '/dashboard/ai-assistant',
+        icon: Sparkles,
+        roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
+      },
+      {
+        label: 'AI Drafts & Review',
+        href: '/dashboard/ai-drafts',
+        icon: Layers,
+        roles: ['owner', 'admin', 'academic_admin', 'department_head', 'faculty'],
+      },
+      {
+        label: 'AI Intelligence',
+        href: '/dashboard/ai-intelligence',
+        icon: Sparkles,
+        roles: ['owner', 'admin', 'academic_admin'],
+      },
+      {
+        label: 'Audit Trail',
+        href: '/dashboard/audit',
+        icon: FileClock,
+        roles: ['owner', 'admin'],
+      },
+      {
+        label: 'Settings',
+        href: '/dashboard/settings',
+        icon: Settings,
+        roles: ['owner', 'admin'],
+      },
+    ];
+  };
 
   const userRole = activeMembership?.role || 'student';
-
-  const filteredNavItems = navItems.filter((item) => item.roles.includes(userRole));
+  const filteredNavItems = getNavItems().filter((item) => item.roles.includes(userRole));
 
   return (
     <>
@@ -242,11 +295,29 @@ export function Sidebar({
         </div>
 
         {/* Institution Switcher */}
-        <div className="p-3 border-b border-slate-100">
+        <div className="p-3 border-b border-slate-100 space-y-2">
           <InstitutionSwitcher
             memberships={memberships}
             activeInstitutionId={activeInstitutionId}
           />
+
+          {/* Education Level Badge Indicator */}
+          <div
+            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-between border"
+            style={{
+              backgroundColor: eduDef.theme.softBg,
+              color: eduDef.theme.primary,
+              borderColor: eduDef.theme.accent + '40',
+            }}
+          >
+            <span className="flex items-center gap-1.5 truncate">
+              <EduIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{eduDef.label}</span>
+            </span>
+            <span className="uppercase text-[9px] font-black tracking-wider opacity-85 shrink-0">
+              {eduDef.categoryName}
+            </span>
+          </div>
         </div>
 
         {/* Navigation Menu */}

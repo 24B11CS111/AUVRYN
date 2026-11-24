@@ -136,7 +136,7 @@ export const TransportOverviewClient: React.FC<TransportOverviewClientProps> = (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-500" />
-              <h2 className="text-sm font-bold text-slate-900">Today's Dispatch Board</h2>
+              <h2 className="text-sm font-bold text-slate-900">Today&apos;s Dispatch Board</h2>
             </div>
             <Link
               href="/dashboard/transport/journeys"

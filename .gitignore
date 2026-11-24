@@ -48,3 +48,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & Local Test Databases
+scratch/
+backups/
+.expo-home/
+
+.vercel
+.env*

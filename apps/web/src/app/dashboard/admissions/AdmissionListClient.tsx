@@ -132,12 +132,20 @@ export function AdmissionListClient({
         </div>
 
         {canManage && (
-          <Link href="/dashboard/admissions/new">
-            <Button className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              New Application
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admissions/register" target="_blank">
+              <Button variant="outline" className="flex items-center gap-1.5 text-xs">
+                <FileText className="w-3.5 h-3.5" />
+                Public Registration Portal
+              </Button>
+            </Link>
+            <Link href="/dashboard/admissions/new">
+              <Button className="flex items-center gap-2 text-xs">
+                <Plus className="w-4 h-4" />
+                New Application Wizard
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 

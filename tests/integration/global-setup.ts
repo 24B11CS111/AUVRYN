@@ -79,11 +79,12 @@ export async function setup() {
   const preludePath = path.resolve(__dirname, 'supabase-prelude.sql');
   runPsqlFile(preludePath, DB_NAME);
 
-  console.log('[Integration Setup] Applying 16 platform migrations in sequence...');
   const migrationsDir = path.resolve(__dirname, '../../supabase/migrations');
   const migrationFiles = fs.readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql') && !f.includes('rollback'))
     .sort();
+
+  console.log(`[Integration Setup] Applying ${migrationFiles.length} platform migrations in sequence...`);
 
   for (const file of migrationFiles) {
     const fullPath = path.join(migrationsDir, file);

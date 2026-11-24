@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   listAIDraftsAction,
   reviewAIDraftAction,
@@ -40,7 +40,7 @@ export function AIDraftReviewHub() {
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const fetchDrafts = async () => {
+  const fetchDrafts = useCallback(async () => {
     setLoading(true);
     const res = await listAIDraftsAction({
       status: statusFilter !== 'all' ? (statusFilter as AIDraftStatus) : undefined,
@@ -55,11 +55,11 @@ export function AIDraftReviewHub() {
         setSelectedDraft(null);
       }
     }
-  };
+  }, [statusFilter, typeFilter, selectedDraft]);
 
   useEffect(() => {
     fetchDrafts();
-  }, [statusFilter, typeFilter]);
+  }, [fetchDrafts]);
 
   const selectDraftItem = (item: any) => {
     setSelectedDraft(item);

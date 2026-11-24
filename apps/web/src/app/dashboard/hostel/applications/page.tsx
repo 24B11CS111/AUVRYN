@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { HostelNav } from '../HostelNav';
 import { getHostelApplicationsAction, reviewHostelApplicationAction } from '../actions';
 import { UserPlus, Loader2 } from 'lucide-react';
@@ -14,14 +14,14 @@ export default function HostelApplicationsPage() {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const res = await getHostelApplicationsAction(statusFilter || undefined);
     if (res.success && res.data) setApplications(res.data);
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();

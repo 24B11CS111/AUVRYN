@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { LibraryNav } from '../LibraryNav';
 import {
   getLibraryCirculationsAction,
@@ -30,7 +30,7 @@ export default function CirculationDeskPage() {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [loanDays, setLoanDays] = useState(14);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const [cRes, cpRes, mRes] = await Promise.all([
       getLibraryCirculationsAction({ status: statusFilter || undefined }),
       getLibraryCopiesAction(),
@@ -40,11 +40,11 @@ export default function CirculationDeskPage() {
     if (cRes.success && cRes.data) setCirculations(cRes.data);
     if (cpRes.success && cpRes.data) setCopies(cpRes.data.filter((c: any) => c.status === 'available'));
     if (mRes.success && mRes.data) setMembers(mRes.data.filter((m: any) => m.status === 'active'));
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const handleIssueBook = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { EventsNav } from '../EventsNav';
 import {
   getEventsAction,
@@ -29,15 +29,15 @@ export default function EventAttendancePage() {
     })();
   }, []);
 
-  const loadRegistrations = async () => {
+  const loadRegistrations = useCallback(async () => {
     if (!selectedEventId) return;
     const res = await getEventRegistrationsAction({ eventId: selectedEventId });
     if (res.success && res.data) setRegistrations(res.data);
-  };
+  }, [selectedEventId]);
 
   useEffect(() => {
     loadRegistrations();
-  }, [selectedEventId]);
+  }, [loadRegistrations]);
 
   const handleCheckIn = (registrationId: string) => {
     setErrorMsg(null);

@@ -118,8 +118,10 @@ export function BrandIntro({
     };
     window.addEventListener('keydown', onKeyDown);
 
+    const timeoutsToClear = timeoutRef.current;
+
     return () => {
-      timeoutRef.current.forEach(clearTimeout);
+      timeoutsToClear.forEach(clearTimeout);
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [durationMs, forcePlay, handleFinish, onComplete, staticFallback, storageKey]);

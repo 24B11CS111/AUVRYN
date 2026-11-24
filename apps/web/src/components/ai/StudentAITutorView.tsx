@@ -378,7 +378,7 @@ export function StudentAITutorView() {
                 >
                   <option value="easy">Easy (Concept Recall)</option>
                   <option value="medium">Medium (Analytical Application)</option>
-                  <option value="hard">Hard (Bloom's Synthesis)</option>
+                  <option value="hard">Hard (Bloom&apos;s Synthesis)</option>
                 </select>
               </div>
 
@@ -407,7 +407,7 @@ export function StudentAITutorView() {
               {isGeneratingQuiz ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Generating Bloom's Taxonomy Quiz...
+                  Generating Bloom&apos;s Taxonomy Quiz...
                 </>
               ) : (
                 <>
