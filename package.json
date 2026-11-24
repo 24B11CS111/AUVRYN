@@ -29,6 +29,7 @@
     "dev:mobile": "npm run start --workspace=apps/mobile"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
