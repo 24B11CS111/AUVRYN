@@ -1,4 +1,4 @@
-export type MobileAuthOperation = 'sign-in' | 'registration';
+export type MobileAuthOperation = 'sign-in' | 'registration' | 'password-reset';
 
 interface AuthErrorDetails {
   code?: unknown;
@@ -46,9 +46,13 @@ export function formatMobileAuthError(
     return 'The authentication service is temporarily unavailable. Try again later.';
   }
   if (status !== undefined && status >= 400) {
-    return operation === 'registration'
-      ? 'Supabase rejected the registration request. Check the email and password details and try again.'
-      : 'Supabase rejected the sign-in request. Check your email and password.';
+    if (operation === 'registration') {
+      return 'Supabase rejected the registration request. Check the email and password details and try again.';
+    }
+    if (operation === 'password-reset') {
+      return 'Supabase rejected the password reset request. Check your email and try again.';
+    }
+    return 'Supabase rejected the sign-in request. Check your email and password.';
   }
 
   return 'Unable to complete the authentication request. Check your connection and try again.';

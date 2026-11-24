@@ -116,5 +116,11 @@ describe('AUVRYN Mobile — Production Readiness & Quality Suite', () => {
       const formatted = formatMobileAuthError(err, 'sign-in');
       expect(formatted).toContain('Email confirmation is required');
     });
+
+    it('normalizes password reset errors gracefully', () => {
+      const err = { status: 400, message: 'User not found' };
+      const formatted = formatMobileAuthError(err, 'password-reset');
+      expect(formatted).toContain('rejected the password reset request');
+    });
   });
 });

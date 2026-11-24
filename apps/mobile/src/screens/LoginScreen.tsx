@@ -25,10 +25,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     if (!supabase) {
       setErrorMessage(supabaseConfigError);
@@ -59,6 +63,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
     }
   };
 
+  const handleResetPassword = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address to reset password.');
+      return;
+    }
+
+    if (!supabase) {
+      setErrorMessage(supabaseConfigError);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+      if (error) {
+        setErrorMessage(formatMobileAuthError(error, 'password-reset'));
+      } else {
+        setResetSent(true);
+        setSuccessMessage('A password recovery email has been sent to your address.');
+      }
+    } catch (err) {
+      setErrorMessage(formatMobileAuthError(err, 'password-reset'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const displayedError = errorMessage ?? supabaseConfigError;
 
   return (
@@ -77,39 +112,101 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
           </View>
         ) : null}
 
-        <View style={styles.form}>
-          <Input
-            label="Email Address"
-            placeholder="admin@institution.edu"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          <Input
-            label="Password"
-            placeholder="••••••••"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <Button
-            title="Sign In"
-            onPress={handleLogin}
-            disabled={!supabase}
-            isLoading={isLoading}
-            variant="primary"
-            style={styles.submitBtn}
-          />
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={onNavigateToRegister}>
-              <Text style={styles.linkText}>Register here</Text>
-            </TouchableOpacity>
+        {successMessage ? (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>{successMessage}</Text>
           </View>
+        ) : null}
+
+        <View style={styles.form}>
+          {isForgotPassword ? (
+            <>
+              <Text style={styles.formTitle}>Reset Password</Text>
+              <Text style={styles.formSubtitle}>
+                Enter your institutional email to receive recovery instructions.
+              </Text>
+
+              <Input
+                label="Email Address"
+                placeholder="user@institution.edu"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              {!resetSent ? (
+                <Button
+                  title="Send Recovery Link"
+                  onPress={handleResetPassword}
+                  disabled={!supabase}
+                  isLoading={isLoading}
+                  variant="primary"
+                  style={styles.submitBtn}
+                />
+              ) : null}
+
+              <TouchableOpacity
+                onPress={() => {
+                  setIsForgotPassword(false);
+                  setResetSent(false);
+                  setErrorMessage(null);
+                  setSuccessMessage(null);
+                }}
+                style={styles.backToSignInBtn}
+              >
+                <Text style={styles.backToSignInText}>Back to Sign In</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Input
+                label="Email Address"
+                placeholder="admin@institution.edu"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              <Input
+                label="Password"
+                placeholder="••••••••"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+
+              <View style={styles.forgotPasswordRow}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsForgotPassword(true);
+                    setResetSent(false);
+                    setErrorMessage(null);
+                    setSuccessMessage(null);
+                  }}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Button
+                title="Sign In"
+                onPress={handleLogin}
+                disabled={!supabase}
+                isLoading={isLoading}
+                variant="primary"
+                style={styles.submitBtn}
+              />
+
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={onNavigateToRegister}>
+                  <Text style={styles.linkText}>Register here</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -152,6 +249,51 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#DC4545',
     fontSize: 13,
+  },
+  successBox: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successText: {
+    color: '#15803D',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: AUVRYN_COLORS.primaryNavy,
+    marginBottom: 6,
+  },
+  formSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  forgotPasswordRow: {
+    alignItems: 'flex-end',
+    marginTop: -4,
+    marginBottom: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: AUVRYN_COLORS.electricBlue,
+  },
+  backToSignInBtn: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backToSignInText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: AUVRYN_COLORS.electricBlue,
   },
   submitBtn: {
     marginTop: 8,
